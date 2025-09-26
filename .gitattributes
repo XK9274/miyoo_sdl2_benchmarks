@@ -1,0 +1,27 @@
+# Ensure LF line endings for text files
+* text=auto eol=lf
+
+# Source code
+*.c text eol=lf
+*.h text eol=lf
+
+# Scripts and config
+*.sh text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.pc text eol=lf
+.gitignore text eol=lf
+
+# Binary files
+*.a binary
+*.la binary
+*.so binary
+*.png binary
+*.wav binary
+*.0 binary
+*.5 binary
+*.2 binary
+*.16 binary
+*.1 binary
+*.sample binary
