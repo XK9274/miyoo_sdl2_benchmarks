@@ -1,25 +1,20 @@
 # Miyoo SDL2 Benchmarks
 
 <div align="center">
+
 <table>
   <tr>
-    <td style="text-align:center;">
-      <img src="assets/sdl_bench_006.png" alt="Render Suite - Geometric Complexity" style="width:50%; max-width:150px; height:auto;">
-    </td>
-    <td style="text-align:center;">
-      <img src="assets/sdl_bench_007.png" alt="Audio Benchmark - Waveform Visualization" style="width:50%; max-width:150px; height:auto;">
-    </td>
+    <td align="center"><img src="assets/sdl_bench_006.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_007.png" width="300"></td>
   </tr>
   <tr>
-    <td style="text-align:center;">
-      <img src="assets/sdl_bench_008.png" alt="Render Suite - Fill Operations" style="width:50%; max-width:150px; height:auto;">
-    </td>
-    <td style="text-align:center;">
-      <img src="assets/sdl_bench_010.png" alt="Double Buffer Test - Particle Systems" style="width:50%; max-width:150px; height:auto;">
-    </td>
+    <td align="center"><img src="assets/sdl_bench_008.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_010.png" width="300"></td>
   </tr>
 </table>
+
 </div>
+
 
 A collection of SDL2 performance benchmarks specifically designed for the Miyoo Mini platform.
 
