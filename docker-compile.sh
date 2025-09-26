@@ -72,6 +72,15 @@ echo "✓ Scripts made executable"
 echo ""
 echo "Building Docker toolchain and compiling SDL2 libraries..."
 echo "This will take several minutes..."
+
+# Preflight: Ensure Docker is installed and available in PATH
+if ! command -v docker >/dev/null 2>&1; then
+    echo "ERROR: Docker is not installed or not available in your PATH."
+    echo "Please install Docker Engine and ensure the 'docker' command works for your user."
+    echo "Installation guide: https://docs.docker.com/engine/install/"
+    exit 1
+fi
+
 cd "$TOOLCHAIN_DIR"
 
 # Build Docker toolchain using the official Makefile
