@@ -33,3 +33,21 @@ Install/Run
 Notes
 - Built for the Miyoo Mini using the union-miyoomini-toolchain via Docker.
 - For source code, build instructions, and updates, see the repository above.
+
+
+Render Suite - 7 Test Scenes:
+
+1. Fill Operations - Color fills, gradients, alpha blending
+2. Line Drawing - Rapid line rendering, patterns
+3. Texture Operations - Streaming, scaling, rotation
+4. Geometric Complexity - 3D meshes, tessellation, wireframes
+5. Resolution Scaling - Multi-resolution performance tests
+6. Memory Management - Dynamic texture allocation stress testing
+7. Pixel Operations - Direct pixel manipulation effects
+
+Audio Benchmark - 4 Visualization Modes: 
+
+- Bars (rect) - Traditional bar visualization
+- Curves (line) - Smooth waveform curves
+- Dots (rect) - Particle-style visualization
+- Ribbons (geom) - Advanced geometry rendering

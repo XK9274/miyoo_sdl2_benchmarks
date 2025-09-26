@@ -31,7 +31,7 @@ exe_freemma() {
 }
 
 exe_cpuclock() {
-    "$cpuclock 1800"
+    "$cpuclock 1700"
 }
 
 # Function to run benchmark with error checking
