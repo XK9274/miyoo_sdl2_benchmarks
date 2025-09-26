@@ -12,6 +12,10 @@ typedef enum {
     SCENE_FILL = 0,
     SCENE_TEXTURE,
     SCENE_LINES,
+    SCENE_GEOMETRY,
+    SCENE_SCALING,
+    SCENE_MEMORY,
+    SCENE_PIXELS,
     SCENE_MAX
 } SceneKind;
 
@@ -32,6 +36,27 @@ typedef struct {
     float texture_phase_units;
     float lines_cursor_progress;
     int lines_cursor_index;
+
+    // New benchmark state variables
+    float geometry_rotation;
+    int geometry_triangle_count;
+    float geometry_phase;
+
+    int scaling_current_width;
+    int scaling_current_height;
+    float scaling_phase;
+    SDL_Texture **scaling_targets;
+    int scaling_target_count;
+
+    float resources_phase;
+    SDL_Texture **resource_textures;
+    int resource_texture_count;
+    int resource_allocation_index;
+
+    SDL_Surface *pixel_surface;
+    void *pixel_buffer;
+    float pixel_phase;
+    int pixel_plasma_offset;
 } RenderSuiteState;
 
 void rs_state_init(RenderSuiteState *state);

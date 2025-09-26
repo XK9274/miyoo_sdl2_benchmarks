@@ -92,14 +92,14 @@ void overlay_grid_set_row(OverlayGrid *grid, int row,
         return;
     }
 
-    // Set left column (column 0)
+    // Set left column
     if (left_text) {
         overlay_grid_set_cell(grid, row, 0, left_color, 0, "%s", left_text);
     } else {
         overlay_grid_clear_cell(grid, row, 0);
     }
 
-    // Set right column (column 1) if we have at least 2 columns
+    // Set right column if we have at least 2 columns
     if (grid->config.cols >= 2) {
         if (right_text) {
             overlay_grid_set_cell(grid, row, 1, right_color, 0, "%s", right_text);
@@ -151,7 +151,7 @@ void overlay_grid_submit_to_overlay(OverlayGrid *grid, BenchOverlay *overlay)
     BenchOverlayLine lines[BENCH_OVERLAY_MAX_LINES];
     int line_count = 0;
 
-    // Convert grid to lines array - each row becomes 2 lines (left and right columns)
+    // Convert grid to lines array - each row becomes 2 lines
     for (int row = 0; row < grid->config.rows && line_count < BENCH_OVERLAY_MAX_LINES; ++row) {
         for (int col = 0; col < grid->config.cols && line_count < BENCH_OVERLAY_MAX_LINES; ++col) {
             const OverlayCell *cell = &grid->cells[row][col];

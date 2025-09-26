@@ -1036,6 +1036,17 @@ void waveform_toggle_mode(void)
     peaks_initialized = 0;
 }
 
+const char *waveform_get_mode_name(void)
+{
+    switch (current_viz_mode) {
+        case VIZ_MODE_BARS: return "Bars (rect)";
+        case VIZ_MODE_CURVES: return "Curves (line)";
+        case VIZ_MODE_DOTS: return "Dots (rect)";
+        case VIZ_MODE_RIBBONS: return "Ribbons (geom)";
+        default: return "Unknown";
+    }
+}
+
 
 static void waveform_draw_meter_box(SDL_Renderer *target,
                                     BenchMetrics *metrics,

@@ -12,6 +12,10 @@
 #include "render_suite/scenes/fill.h"
 #include "render_suite/scenes/lines.h"
 #include "render_suite/scenes/texture.h"
+#include "render_suite/scenes/geometry.h"
+#include "render_suite/scenes/scaling.h"
+#include "render_suite/scenes/memory.h"
+#include "render_suite/scenes/pixels.h"
 #include "render_suite/state.h"
 
 static void rs_print_system_info(void)
@@ -73,6 +77,11 @@ int main(int argc, char *argv[])
     state.font = bench_load_font(16);
     state.checker_texture = rs_create_checker_texture(renderer, 192, 192);
 
+    // Initialize new benchmark scenes
+    rs_scene_scaling_init(&state, renderer);
+    rs_scene_memory_init(&state, renderer);
+    rs_scene_pixels_init(&state, renderer);
+
     srand((unsigned int)time(NULL));
 
     BenchMetrics metrics;
@@ -131,6 +140,18 @@ int main(int argc, char *argv[])
             case SCENE_LINES:
                 rs_scene_lines(&state, renderer, &metrics, time_seconds);
                 break;
+            case SCENE_GEOMETRY:
+                rs_scene_geometry(&state, renderer, &metrics, delta_seconds);
+                break;
+            case SCENE_SCALING:
+                rs_scene_scaling(&state, renderer, &metrics, delta_seconds);
+                break;
+            case SCENE_MEMORY:
+                rs_scene_memory(&state, renderer, &metrics, delta_seconds);
+                break;
+            case SCENE_PIXELS:
+                rs_scene_pixels(&state, renderer, &metrics, delta_seconds);
+                break;
             default:
                 break;
         }
@@ -141,6 +162,11 @@ int main(int argc, char *argv[])
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         rs_overlay_submit(overlay, &state, &metrics);
     }
+
+    // Cleanup new benchmark scenes
+    rs_scene_scaling_cleanup(&state);
+    rs_scene_memory_cleanup(&state);
+    rs_scene_pixels_cleanup(&state);
 
     rs_state_destroy(&state, renderer);
     bench_overlay_destroy(overlay);

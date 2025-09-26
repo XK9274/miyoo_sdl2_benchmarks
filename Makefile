@@ -49,7 +49,11 @@ RENDER_SOURCES := \
     $(SRC_DIR)/render_suite/state.c \
     $(SRC_DIR)/render_suite/scenes/fill.c \
     $(SRC_DIR)/render_suite/scenes/lines.c \
-    $(SRC_DIR)/render_suite/scenes/texture.c
+    $(SRC_DIR)/render_suite/scenes/texture.c \
+    $(SRC_DIR)/render_suite/scenes/geometry.c \
+    $(SRC_DIR)/render_suite/scenes/scaling.c \
+    $(SRC_DIR)/render_suite/scenes/memory.c \
+    $(SRC_DIR)/render_suite/scenes/pixels.c
 RENDER_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(RENDER_SOURCES))
 RENDER_TARGET  := $(BIN_DIR)/sdl2_render_suite
 

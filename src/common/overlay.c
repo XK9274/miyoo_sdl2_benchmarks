@@ -164,7 +164,7 @@ static int bench_overlay_thread(void *userdata)
                     y_pos = right_y;
                     right_y += line_adv;
                 } else {
-                    // Left column (default)
+                    // Left column
                     x_offset = 8;
                     y_pos = left_y;
                     left_y += line_adv;

@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 
         const double delta_seconds = bench_get_delta_seconds(&last_counter, perf_freq);
 
-        // Reduce render frequency when paused (30fps vs 60fps)
+        // Reduce render frequency when paused
         static Uint32 last_render = 0;
         Uint32 now = SDL_GetTicks();
         const SDL_bool is_playing = audio_device_is_playing();

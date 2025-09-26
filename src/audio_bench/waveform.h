@@ -19,6 +19,7 @@ void waveform_draw(SDL_Renderer *target,
                    int h);
 
 void waveform_toggle_mode(void);
+const char *waveform_get_mode_name(void);
 
 void waveform_draw_ui_area(SDL_Renderer *target,
                           BenchMetrics *metrics,

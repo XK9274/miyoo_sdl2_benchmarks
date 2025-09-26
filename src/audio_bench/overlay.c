@@ -6,6 +6,7 @@
 
 #include "common/format.h"
 #include "common/overlay_grid.h"
+#include "audio_bench/waveform.h"
 
 static SDL_Thread *s_overlay_thread = NULL;
 static SDL_atomic_t s_overlay_running;
@@ -74,10 +75,10 @@ static int overlay_thread_func(void *data)
         const SDL_Color info = {255, 200, 0, 255};
 
         OverlayGrid grid;
-        overlay_grid_init(&grid, 2, 10);  // 2 columns, 10 rows (standardized)
+        overlay_grid_init(&grid, 2, 10);
         overlay_grid_set_background(&grid, (SDL_Color){0, 0, 0, 210});
 
-        // Row 0 - Headers (centered)
+        // Row 0 - Headers
         overlay_grid_set_cell(&grid, 0, 0, accent, 1, "SDL2 Audio Bench");
         overlay_grid_set_cell(&grid, 0, 1, accent, 1, "Control Scheme");
 
@@ -187,7 +188,11 @@ static int overlay_thread_func(void *data)
                             snapshot.playing ? "YES" : "NO");
         overlay_grid_set_cell(&grid, 7, 1, info, 0, "Y - Toggle Mode | X - Reset");
 
-        // Rows 8-9 remain empty for future expansion
+        // Row 8 - Visualization mode display
+        const char *current_mode = waveform_get_mode_name();
+        overlay_grid_set_cell(&grid, 8, 0, cyan, 0, "Draw Method: %s", current_mode);
+
+        // Row 9 remains empty for future expansion
 
         overlay_grid_submit_to_overlay(&grid, s_overlay);
 

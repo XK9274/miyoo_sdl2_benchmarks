@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-// Fast xorshift32 random number generator (much faster than rand())
+// Fast xorshift32 random number generator
 static uint32_t g_rng_state = 1;
 
 static uint32_t fast_rand(void)

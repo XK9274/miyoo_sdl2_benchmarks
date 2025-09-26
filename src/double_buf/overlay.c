@@ -20,10 +20,10 @@ void db_overlay_submit(BenchOverlay *overlay,
     const SDL_Color info = {255, 200, 0, 255};      // Info yellow for controls
 
     OverlayGrid grid;
-    overlay_grid_init(&grid, 2, 10);  // 2 columns, 10 rows (standardized)
+    overlay_grid_init(&grid, 2, 10);
     overlay_grid_set_background(&grid, (SDL_Color){0, 0, 0, 210});
 
-    // Row 0 - Headers (centered)
+    // Row 0 - Headers
     overlay_grid_set_cell(&grid, 0, 0, accent, 1, "SDL2 Hardware Double Buffer");
     overlay_grid_set_cell(&grid, 0, 1, accent, 1, "Control Scheme");
 

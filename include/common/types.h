@@ -32,6 +32,19 @@ typedef struct {
     Uint64 vertices_rendered;
     Uint64 triangles_rendered;
     double accumulated_frame_time_ms;
+
+    // Extended metrics for new benchmarks
+    Uint64 geometry_batches;
+    Uint64 texture_switches;
+    Uint64 memory_allocated_bytes;
+    Uint64 memory_peak_bytes;
+    Uint64 scaling_operations;
+    Uint64 pixel_operations;
+    Uint64 resource_allocations;
+    Uint64 resource_deallocations;
+    double lock_unlock_overhead_ms;
+    double scaling_overhead_ms;
+    double allocation_time_ms;
 } BenchMetrics;
 
 typedef struct {
