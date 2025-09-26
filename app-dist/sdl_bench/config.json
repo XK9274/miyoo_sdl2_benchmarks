@@ -1,0 +1,6 @@
+{
+  "label": "SDL2-Benchmark",
+  "icon": "icon.png",
+  "launch": "launch.sh",
+  "description": "SDL2 Benchmark Run"
+}

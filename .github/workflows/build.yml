@@ -1,0 +1,52 @@
+name: Build SDL2 Benchmarks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build SDL2 benchmarks
+      run: |
+        chmod +x ./compile.sh
+        ./compile.sh
+
+    - name: Verify build artifacts
+      run: |
+        echo "Checking for compiled binaries..."
+        ls -la app-dist/sdl_bench/bin/
+        file app-dist/sdl_bench/bin/*
+
+    - name: Create build archive
+      run: |
+        cd app-dist
+        tar -czf sdl_bench-$(date +%Y%m%d-%H%M%S).tar.gz sdl_bench/
+        mv sdl_bench-*.tar.gz ../
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sdl-benchmarks-${{ github.sha }}
+        path: |
+          sdl_bench-*.tar.gz
+          app-dist/sdl_bench/
+        retention-days: 30
+
+    - name: Upload binaries only
+      uses: actions/upload-artifact@v4
+      with:
+        name: binaries-${{ github.sha }}
+        path: app-dist/sdl_bench/bin/
+        retention-days: 30

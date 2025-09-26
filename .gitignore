@@ -1,0 +1,31 @@
+# Build directory
+build/
+
+# Object files
+*.o
+*.d
+
+# Executables
+*.exe
+*.out
+
+# Temporary files
+*.tmp
+*.temp
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# toolchain artifacts
+union-miyoomini-toolchain/
+
+# Release artifacts
+*.tar.gz
+release_notes.md

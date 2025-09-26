@@ -1,0 +1,208 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - 'patch'
+        - 'minor'
+        - 'major'
+      custom_version:
+        description: 'Custom version (overrides bump type, e.g., v1.2.3)'
+        required: false
+        type: string
+      release_title:
+        description: 'Release title'
+        required: false
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build SDL2 benchmarks
+      run: |
+        chmod +x ./compile.sh
+        ./compile.sh
+
+    - name: Verify build artifacts
+      run: |
+        echo "Checking for compiled binaries..."
+        ls -la app-dist/sdl_bench/bin/
+        file app-dist/sdl_bench/bin/*
+        echo ""
+        echo "Binary details:"
+        for bin in app-dist/sdl_bench/bin/*; do
+          echo "📁 $(basename "$bin"):"
+          file "$bin"
+          ls -lh "$bin"
+          echo ""
+        done
+
+    - name: Create release archive
+      run: |
+        cd app-dist
+
+        # Create timestamped archive
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        TAR_NAME="miyoo-sdl2-benchmarks-${TIMESTAMP}.tar.gz"
+        tar -czf "$TAR_NAME" sdl_bench/
+
+        # Create version archive if tag exists
+        if [ "${{ github.ref_type }}" == "tag" ]; then
+          VERSION_NAME="miyoo-sdl2-benchmarks-${{ github.ref_name }}.tar.gz"
+          cp "$TAR_NAME" "$VERSION_NAME"
+          mv *.tar.gz ../
+        else
+          mv "$TAR_NAME" ../
+        fi
+
+    - name: Determine version
+      id: version
+      run: |
+        if [ "${{ github.ref_type }}" == "tag" ]; then
+          # Triggered by tag push
+          TAG_NAME="${{ github.ref_name }}"
+        elif [ -n "${{ inputs.custom_version }}" ]; then
+          # Custom version provided
+          TAG_NAME="${{ inputs.custom_version }}"
+          if [[ ! "$TAG_NAME" =~ ^v.* ]]; then
+            TAG_NAME="v$TAG_NAME"
+          fi
+        else
+          # Auto-increment based on bump type
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+
+          # Parse version numbers
+          VERSION_PART=${LATEST_TAG#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_PART"
+
+          # Increment based on bump type
+          case "${{ inputs.version_bump }}" in
+            "major")
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            "minor")
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            "patch"|*)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          TAG_NAME="v$MAJOR.$MINOR.$PATCH"
+        fi
+
+        echo "Final tag: $TAG_NAME"
+        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+    - name: Create and push tag (if auto-generated)
+      if: github.ref_type != 'tag'
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git tag -a "${{ steps.version.outputs.tag_name }}" -m "Release ${{ steps.version.outputs.tag_name }}"
+        git push origin "${{ steps.version.outputs.tag_name }}"
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        TAG_NAME="${{ steps.version.outputs.tag_name }}"
+
+        # Generate release notes
+        cat > release_notes.md << EOF
+        # SDL2 Benchmarks for Miyoo Mini - ${TAG_NAME}
+
+        ## 🎮 Performance Testing Suite for Miyoo Mini
+
+        This release contains cross-compiled SDL2 performance benchmarks specifically optimized for the Miyoo Mini handheld device.
+
+        ## 📦 What's Included
+
+        - **SDL2 Software Double Buffer Benchmark** - Tests software-based double buffering performance
+        - **SDL2 Hardware Double Buffer Benchmark** - Tests hardware-accelerated double buffering
+        - **SDL2 Render Suite** - Comprehensive rendering test battery with multiple scenes
+        - **SDL2 Audio Benchmark** - Audio performance and latency testing
+
+        ## 🚀 Installation
+
+        1. Download the \`miyoo-sdl2-benchmarks-${TAG_NAME}.tar.gz\` file
+        2. Extract to get the \`sdl_bench\` directory
+        3. Copy \`sdl_bench\` to your Miyoo Mini SD card: \`/mnt/SDCARD/App/sdl_bench\`
+        4. Restart MainUI or reboot your device
+        5. Navigate to Apps → "SDL Benchmark"
+
+        ## 🔧 Technical Details
+
+        - **Architecture**: ARM (arm-linux-gnueabihf)
+        - **SDL Version**: 2.26.5
+        - **Extensions**: SDL2_ttf, SDL2_mixer
+        - **Optimization**: -O2 with Cortex-A7 NEON optimizations
+        - **Target Device**: Miyoo Mini (and compatible devices)
+
+        ## ⚠️ Important Notes
+
+        - These are **compile-time only** builds
+        - Runtime libraries are provided by the Miyoo Mini system
+        - Do not copy the included lib/ directory to your device
+        - Only copy the bin/ directory contents as needed
+
+        ## 📊 Benchmarks Available
+
+        - **Fill Tests**: Solid color fills, gradients, alpha blending
+        - **Line Tests**: Various line drawing algorithms and anti-aliasing
+        - **Texture Tests**: Texture mapping, scaling, rotation performance
+        - **Particle Systems**: Real-time particle effects and physics
+        - **Audio Tests**: Audio device capabilities and latency measurement
+
+        ## 🐛 Reporting Issues
+
+        Found a bug or have a feature request? Please open an issue on GitHub.
+
+        ## 📜 Build Information
+
+        - **Built**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        - **Commit**: ${{ github.sha }}
+        - **Workflow**: GitHub Actions automated build
+        EOF
+
+        # Set output for release body
+        echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.tag_name }}
+        name: ${{ inputs.release_title || format('SDL2 Benchmarks {0}', steps.version.outputs.tag_name) }}
+        body_path: ${{ steps.release_notes.outputs.notes_file }}
+        files: |
+          miyoo-sdl2-benchmarks-*.tar.gz
+        prerelease: ${{ inputs.prerelease || false }}
+        draft: false
+        generate_release_notes: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
