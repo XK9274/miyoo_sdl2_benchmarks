@@ -31,7 +31,6 @@ static const SDL_Color cube_edge_palette[] = {
     {255, 255, 255, 255},
 };
 
-#if SDL_VERSION_ATLEAST(2,0,18)
 static const int cube_faces[][4] = {
     {0, 1, 2, 3},
     {4, 5, 6, 7},
@@ -81,8 +80,6 @@ static void bench_render_cube_faces(SDL_Renderer *renderer,
 
     bench_render_triangle_batch(renderer, triangle_vertices, triangle_count, metrics);
 }
-#endif
-
 void bench_render_cube(SDL_Renderer *renderer,
                        BenchMetrics *metrics,
                        float rotation_radians,
@@ -99,11 +96,9 @@ void bench_render_cube(SDL_Renderer *renderer,
         bench_project_vertex(cube_base[i], &rotation_cache, center_x, center_y, size, &vertices[i]);
     }
 
-#if SDL_VERSION_ATLEAST(2,0,18)
     if (mode == 0) {
         bench_render_cube_faces(renderer, vertices, metrics);
     }
-#endif
 
     if (mode == 0 || mode == 1) {
         bench_render_edge_batch(renderer,
