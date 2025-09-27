@@ -56,13 +56,13 @@ void space_spawn_firing_particles(SpaceBenchState *state, float x, float y, SDL_
             SpaceParticle *particle = &state->particles[p];
             if (!particle->active) {
                 particle->active = SDL_TRUE;
-                particle->x = x + space_rand_range(state, -1.5f, 1.5f);
-                particle->y = y + space_rand_range(state, -1.5f, 1.5f);
-                particle->vx = space_rand_range(state, -12.0f, 18.0f) - state->scroll_speed * 0.18f;
-                particle->vy = space_rand_range(state, -18.0f, 18.0f);
-                particle->life = particle->max_life = is_laser ? 0.22f : 0.32f;
+                particle->x = x + space_rand_range(state, -6.0f, 3.0f);
+                particle->y = y + space_rand_range(state, -4.0f, 4.0f);
+                particle->vx = space_rand_range(state, -30.0f, 14.0f) - state->scroll_speed * 0.22f;
+                particle->vy = space_rand_range(state, -40.0f, 40.0f);
+                particle->life = particle->max_life = is_laser ? 0.24f : 0.36f;
                 particle->r = 255;
-                particle->g = is_laser ? 180 : 200;
+                particle->g = is_laser ? 190 : 200;
                 particle->b = is_laser ? 255 : 140;
                 break;
             }
@@ -84,7 +84,6 @@ void space_update_particles(SpaceBenchState *state, float dt)
 
         if (particle->life <= 0.0f) {
             particle->active = SDL_FALSE;
-            continue;
         }
     }
 }
