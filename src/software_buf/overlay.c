@@ -20,7 +20,7 @@ void sb_overlay_submit(BenchOverlay *overlay,
     const SDL_Color info = {255, 200, 0, 255};      // Info yellow for controls
 
     OverlayGrid grid;
-    overlay_grid_init(&grid, 2, 10);
+    overlay_grid_init(&grid, 2, 11);
     overlay_grid_set_background(&grid, (SDL_Color){0, 0, 0, 210});
 
     // Row 0 - Headers
@@ -29,8 +29,9 @@ void sb_overlay_submit(BenchOverlay *overlay,
 
     // Row 1 - Particle status left, first control right
     overlay_grid_set_cell(&grid, 1, 0, primary, 0,
-                        "Particles %d/%d | Cube %s | Grid %s",
+                        "Particles %d/%d | Shape %s | Cube %s | Grid %s",
                         state->particle_count, SB_MAX_PARTICLES,
+                        state->shape_type == 0 ? "CUBE" : "OCTAHEDRON",
                         state->show_cube ? "ON" : "OFF",
                         state->stress_grid ? "ON" : "OFF");
     overlay_grid_set_cell(&grid, 1, 1, primary, 0, "A/B - +/-100 Particles");
@@ -73,13 +74,17 @@ void sb_overlay_submit(BenchOverlay *overlay,
 
     // Row 7 - Empty left, control right
     overlay_grid_set_cell(&grid, 7, 0, primary, 0, "");
-    overlay_grid_set_cell(&grid, 7, 1, info, 0, "SELECT - Reset Metrics");
+    overlay_grid_set_cell(&grid, 7, 1, primary, 0, "UP/DOWN - Change Shape");
 
-    // Row 8 - Empty left, exit control right
+    // Row 8 - Empty left, control right
     overlay_grid_set_cell(&grid, 8, 0, primary, 0, "");
-    overlay_grid_set_cell(&grid, 8, 1, info, 0, "START/ESC - Exit");
+    overlay_grid_set_cell(&grid, 8, 1, info, 0, "SELECT - Reset Metrics");
 
-    // Row 9 remains empty for future expansion
+    // Row 9 - Empty left, exit control right
+    overlay_grid_set_cell(&grid, 9, 0, primary, 0, "");
+    overlay_grid_set_cell(&grid, 9, 1, info, 0, "START/ESC - Exit");
+
+    // Row 10 remains empty for future expansion
 
     overlay_grid_submit_to_overlay(&grid, overlay);
 }

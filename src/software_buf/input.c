@@ -56,6 +56,12 @@ SDL_bool sb_handle_input(SoftwareBenchState *state, BenchMetrics *metrics)
                 case BTN_SELECT:
                     bench_reset_metrics(metrics);
                     break;
+                case BTN_UP:
+                    state->shape_type = (state->shape_type + 1) % 2;
+                    break;
+                case BTN_DOWN:
+                    state->shape_type = (state->shape_type + 1) % 2;
+                    break;
                 default:
                     break;
             }
