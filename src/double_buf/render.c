@@ -1,7 +1,7 @@
 #include "double_buf/render.h"
 
 #include "double_buf/particles.h"
-#include "common/geometry.h"
+#include "common/geometry/shapes.h"
 
 void db_render_backdrop(DoubleBenchState *state,
                         SDL_Renderer *renderer,
@@ -51,23 +51,14 @@ void db_render_cube_and_particles(DoubleBenchState *state,
     }
 
     if (state->show_cube) {
-        if (state->shape_type == 0) {
-            bench_render_cube(renderer,
-                              metrics,
-                              state->cube_rotation,
-                              DB_SCREEN_W * 0.5f,
-                              state->center_y,
-                              50.0f,
-                              state->render_mode);
-        } else {
-            bench_render_octahedron(renderer,
-                                    metrics,
-                                    state->cube_rotation,
-                                    DB_SCREEN_W * 0.5f,
-                                    state->center_y,
-                                    50.0f,
-                                    state->render_mode);
-        }
+        bench_render_shape(state->shape_type,
+                           renderer,
+                           metrics,
+                           state->cube_rotation,
+                           DB_SCREEN_W * 0.5f,
+                           state->center_y,
+                           50.0f,
+                           state->render_mode);
     }
 
     db_particles_draw(state, renderer, metrics);

@@ -54,6 +54,7 @@ void sb_state_init(SoftwareBenchState *state)
     state->stress_grid = SDL_FALSE;
     state->render_mode = 1;
     state->shape_type = 0;
+
     sb_state_update_layout(state, 0);
 
     // Seed fast random number generator

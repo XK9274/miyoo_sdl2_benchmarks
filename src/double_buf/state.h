@@ -21,6 +21,7 @@ typedef struct {
     int shape_type;
     float top_margin;
     float center_y;
+
 } DoubleBenchState;
 
 void db_state_init(DoubleBenchState *state);

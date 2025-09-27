@@ -1,7 +1,7 @@
 #include "software_buf/render.h"
 
 #include "software_buf/particles.h"
-#include "common/geometry.h"
+#include "common/geometry/shapes.h"
 
 static void draw_stress_grid(SoftwareBenchState *state,
                              SDL_Renderer *renderer,
@@ -42,23 +42,14 @@ void sb_render_scene(SDL_Renderer *renderer,
     draw_stress_grid(state, renderer, metrics);
 
     if (state->show_cube) {
-        if (state->shape_type == 0) {
-            bench_render_cube(renderer,
-                              metrics,
-                              state->cube_rotation,
-                              SB_SCREEN_W * 0.5f,
-                              state->center_y,
-                              50.0f,
-                              state->render_mode);
-        } else {
-            bench_render_octahedron(renderer,
-                                    metrics,
-                                    state->cube_rotation,
-                                    SB_SCREEN_W * 0.5f,
-                                    state->center_y,
-                                    50.0f,
-                                    state->render_mode);
-        }
+        bench_render_shape(state->shape_type,
+                           renderer,
+                           metrics,
+                           state->cube_rotation,
+                           SB_SCREEN_W * 0.5f,
+                           state->center_y,
+                           50.0f,
+                           state->render_mode);
     }
 
     sb_particles_draw(state, renderer, metrics);
