@@ -130,7 +130,9 @@ docker_cmd="
     fi
 "
 
-docker run --rm -v "$WORKSPACE_DIR":/root/workspace/build_source miyoomini-toolchain bash -c "$docker_cmd"
+docker run --rm \
+    -v "$WORKSPACE_DIR":/root/workspace/build_source \
+    miyoomini-toolchain bash -c "$docker_cmd"
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Docker compilation failed"
