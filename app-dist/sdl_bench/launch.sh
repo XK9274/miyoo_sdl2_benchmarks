@@ -72,8 +72,9 @@ exe_cpuclock
 run_benchmark "SDL2 Render Suite" "bin/sdl2_render_suite"
 run_benchmark "SDL2 Software Double Buffer Benchmark" "bin/sdl2_bench_software_double_buf"
 run_benchmark "SDL2 Double Buffer Benchmark" "bin/sdl2_bench_double_buf"
+run_benchmark "SDL2 Interactive Demo" "bin/sdl2_space_bench"
 run_benchmark "SDL2 Audio Benchmark" "bin/sdl2_audio_bench"
-# run_benchmark "SDL2 Interactive Demo" "bin/sdl2_spaceship_game"
+
 
 echo "========================================="
 echo "All benchmarks completed!"
