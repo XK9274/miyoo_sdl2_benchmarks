@@ -8,7 +8,7 @@ void space_render_particles(const SpaceBenchState *state,
 {
     SDL_BlendMode old_mode;
     SDL_GetRenderDrawBlendMode(renderer, &old_mode);
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_ADD);
 
     for (int i = 0; i < SPACE_MAX_PARTICLES; ++i) {
         const SpaceParticle *particle = &state->particles[i];
@@ -18,10 +18,10 @@ void space_render_particles(const SpaceBenchState *state,
 
         const float life_ratio = particle->life / particle->max_life;
         const float fade = SDL_clamp(life_ratio, 0.0f, 1.0f);
-        const Uint8 alpha = (Uint8)(200 * fade);
-        const Uint8 r = (Uint8)((float)particle->r * fade);
-        const Uint8 g = (Uint8)((float)particle->g * fade);
-        const Uint8 b = (Uint8)((float)particle->b * fade);
+        const Uint8 alpha = (Uint8)(255 * fade);
+        const Uint8 r = particle->r;
+        const Uint8 g = particle->g;
+        const Uint8 b = particle->b;
 
         SDL_SetRenderDrawColor(renderer, r, g, b, alpha);
         SDL_RenderDrawPointF(renderer, particle->x, particle->y);

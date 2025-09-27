@@ -9,6 +9,7 @@
 #define SPACE_SCREEN_H BENCH_SCREEN_H
 
 #define SPACE_STAR_COUNT 96
+#define SPACE_SPEEDLINE_COUNT 24
 #define SPACE_MAX_BULLETS 128
 #define SPACE_MAX_LASERS 16
 #define SPACE_MAX_ENEMIES 40
@@ -291,6 +292,10 @@ typedef struct {
     float star_y[SPACE_STAR_COUNT];
     float star_speed[SPACE_STAR_COUNT];
     Uint8 star_brightness[SPACE_STAR_COUNT];
+    float speedline_x[SPACE_SPEEDLINE_COUNT];
+    float speedline_y[SPACE_SPEEDLINE_COUNT];
+    float speedline_length[SPACE_SPEEDLINE_COUNT];
+    float speedline_speed[SPACE_SPEEDLINE_COUNT];
 
     SpaceBullet bullets[SPACE_MAX_BULLETS];
     SpaceLaserBeam player_laser;

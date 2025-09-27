@@ -88,6 +88,15 @@ void space_state_init(SpaceBenchState *state)
 
     for (int i = 0; i < SPACE_STAR_COUNT; ++i) {
         space_spawn_star(state, i, space_rand_range(state, 0.0f, (float)SPACE_SCREEN_W));
+        state->star_speed[i] = space_rand_range(state, 18.0f, 32.0f);
+        state->star_brightness[i] = (Uint8)space_rand_range(state, 80.0f, 160.0f);
+    }
+
+    for (int i = 0; i < SPACE_SPEEDLINE_COUNT; ++i) {
+        state->speedline_x[i] = space_rand_range(state, 0.0f, (float)SPACE_SCREEN_W);
+        state->speedline_y[i] = space_rand_range(state, state->play_area_top + 10.0f, state->play_area_bottom - 10.0f);
+        state->speedline_length[i] = space_rand_range(state, 8.0f, 18.0f);
+        state->speedline_speed[i] = space_rand_range(state, 90.0f, 140.0f);
     }
 
     for (int i = 0; i < SPACE_MAX_BULLETS; ++i) {
@@ -187,6 +196,15 @@ void space_state_update(SpaceBenchState *state, float dt)
     }
 
     space_update_stars(state, dt);
+    for (int i = 0; i < SPACE_SPEEDLINE_COUNT; ++i) {
+        state->speedline_x[i] -= (state->speedline_speed[i] + state->scroll_speed) * dt;
+        if (state->speedline_x[i] + state->speedline_length[i] < 0.0f) {
+            state->speedline_x[i] = (float)SPACE_SCREEN_W + space_rand_range(state, 20.0f, 60.0f);
+            state->speedline_y[i] = space_rand_range(state, state->play_area_top + 10.0f, state->play_area_bottom - 10.0f);
+            state->speedline_length[i] = space_rand_range(state, 8.0f, 18.0f);
+            state->speedline_speed[i] = space_rand_range(state, 90.0f, 140.0f);
+        }
+    }
     state->time_accumulator += dt;
 
     state->scroll_speed += (state->target_scroll_speed - state->scroll_speed) * SDL_min(1.0f, dt * 0.85f);
