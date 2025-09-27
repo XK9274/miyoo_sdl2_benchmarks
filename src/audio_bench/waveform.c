@@ -825,7 +825,6 @@ static void waveform_render_ribbons(SDL_Renderer *target,
 
     SDL_SetRenderDrawBlendMode(target, SDL_BLENDMODE_ADD);
 
-#if SDL_VERSION_ATLEAST(2,0,18)
     SDL_Vertex verts[(WAVEFORM_DRAW_MAX_POINTS - 1) * 6];
     int v = 0;
 
@@ -864,37 +863,6 @@ static void waveform_render_ribbons(SDL_Renderer *target,
         metrics->vertices_rendered += v;
         metrics->triangles_rendered += v / 3;
     }
-#else
-    for (int i = 0; i < render_count - 1; ++i) {
-        const WavePoint *a = &render_points[i];
-        const WavePoint *b = &render_points[i + 1];
-
-        const float avg_progress = waveform_wrap_unit(((a->progress + b->progress) * 0.5f) + color_phase * 0.65f);
-        SDL_Color base = waveform_sample_gradient(avg_progress);
-        const float combined_energy = waveform_clamp((a->energy + b->energy) * 0.5f + audio_pulse * 0.25f, 0.0f, 1.15f);
-        const float brightness = waveform_clamp(0.28f + combined_energy * 0.6f + audio_energy * 0.25f, 0.22f, 1.3f);
-        const Uint8 r = (Uint8)SDL_clamp((int)(base.r * brightness), 0, 255);
-        const Uint8 g = (Uint8)SDL_clamp((int)(base.g * brightness), 0, 255);
-        const Uint8 bcol = (Uint8)SDL_clamp((int)(base.b * brightness), 0, 255);
-
-        const int x0 = (int)a->center_x;
-        const int x1 = (int)b->center_x;
-        const int top0 = mid_y - (int)(a->avg * base_amp);
-        const int top1 = mid_y - (int)(b->avg * base_amp);
-        const int bot0 = mid_y + (int)(a->avg * base_amp * 0.32f);
-        const int bot1 = mid_y + (int)(b->avg * base_amp * 0.32f);
-
-        SDL_SetRenderDrawColor(target, r, g, bcol, 215);
-        SDL_RenderDrawLine(target, x0, top0, x1, top1);
-        SDL_SetRenderDrawColor(target, SDL_min(255, r + 35), SDL_min(255, g + 35), SDL_min(255, bcol + 35), 185);
-        SDL_RenderDrawLine(target, x0, bot0, x1, bot1);
-
-        if (metrics) {
-            metrics->draw_calls += 2;
-            metrics->vertices_rendered += 4;
-        }
-    }
-#endif
 
     SDL_SetRenderDrawBlendMode(target, SDL_BLENDMODE_BLEND);
 }

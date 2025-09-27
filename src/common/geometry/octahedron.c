@@ -28,7 +28,6 @@ static const SDL_Color octahedron_edge_palette[] = {
     {255, 255, 255, 255},
 };
 
-#if SDL_VERSION_ATLEAST(2,0,18)
 static const int octahedron_faces[][3] = {
     {0, 2, 4}, {0, 4, 3}, {0, 3, 5}, {0, 5, 2},
     {1, 4, 2}, {1, 3, 4}, {1, 5, 3}, {1, 2, 5},
@@ -69,8 +68,6 @@ static void bench_render_octahedron_faces(SDL_Renderer *renderer,
 
     bench_render_triangle_batch(renderer, triangle_vertices, triangle_count, metrics);
 }
-#endif
-
 void bench_render_octahedron(SDL_Renderer *renderer,
                              BenchMetrics *metrics,
                              float rotation_radians,
@@ -87,11 +84,9 @@ void bench_render_octahedron(SDL_Renderer *renderer,
         bench_project_vertex(octahedron_base[i], &rotation_cache, center_x, center_y, size, &vertices[i]);
     }
 
-#if SDL_VERSION_ATLEAST(2,0,18)
     if (mode == 0) {
         bench_render_octahedron_faces(renderer, vertices, metrics);
     }
-#endif
 
     if (mode == 0 || mode == 1) {
         bench_render_edge_batch(renderer,

@@ -67,7 +67,6 @@ static void bench_generate_sphere_vertices(BenchVertex *out_vertices,
     bench_project_vertex(base, cache, center_x, center_y, size, &out_vertices[vertex_index]);
 }
 
-#if SDL_VERSION_ATLEAST(2,0,18)
 static void bench_render_sphere_faces(SDL_Renderer *renderer,
                                       const BenchVertex *vertices,
                                       BenchMetrics *metrics)
@@ -140,8 +139,6 @@ static void bench_render_sphere_faces(SDL_Renderer *renderer,
 
     bench_render_triangle_batch(renderer, triangle_vertices, triangle_count, metrics);
 }
-#endif
-
 static void bench_render_sphere_wireframe(SDL_Renderer *renderer,
                                           const BenchVertex *vertices,
                                           BenchMetrics *metrics)
@@ -207,12 +204,10 @@ void bench_render_sphere(SDL_Renderer *renderer,
 
     bench_generate_sphere_vertices(vertices, &rotation_cache, center_x, center_y, size);
 
-#if SDL_VERSION_ATLEAST(2,0,18)
     if (mode == 0) {
         bench_render_sphere_faces(renderer, vertices, metrics);
         return;
     }
-#endif
 
     if (mode == 1) {
         bench_render_sphere_wireframe(renderer, vertices, metrics);
