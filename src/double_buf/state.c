@@ -35,6 +35,7 @@ void db_state_init(DoubleBenchState *state)
     state->show_particles = SDL_TRUE;
     state->backdrop_grid = SDL_FALSE;
     state->render_mode = 1;
+    state->shape_type = 0;
     db_state_update_layout(state, 0);
 
     srand((unsigned int)time(NULL));

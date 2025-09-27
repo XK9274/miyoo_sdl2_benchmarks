@@ -42,13 +42,23 @@ void sb_render_scene(SDL_Renderer *renderer,
     draw_stress_grid(state, renderer, metrics);
 
     if (state->show_cube) {
-        bench_render_cube(renderer,
-                          metrics,
-                          state->cube_rotation,
-                          SB_SCREEN_W * 0.5f,
-                          state->center_y,
-                          50.0f,
-                          state->render_mode);
+        if (state->shape_type == 0) {
+            bench_render_cube(renderer,
+                              metrics,
+                              state->cube_rotation,
+                              SB_SCREEN_W * 0.5f,
+                              state->center_y,
+                              50.0f,
+                              state->render_mode);
+        } else {
+            bench_render_octahedron(renderer,
+                                    metrics,
+                                    state->cube_rotation,
+                                    SB_SCREEN_W * 0.5f,
+                                    state->center_y,
+                                    50.0f,
+                                    state->render_mode);
+        }
     }
 
     sb_particles_draw(state, renderer, metrics);

@@ -18,6 +18,7 @@ typedef struct {
     SDL_bool show_particles;
     SDL_bool stress_grid;
     int render_mode;
+    int shape_type;
     float top_margin;
     float center_y;
 } SoftwareBenchState;

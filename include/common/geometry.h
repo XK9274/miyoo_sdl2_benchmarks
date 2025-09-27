@@ -13,4 +13,12 @@ void bench_render_cube(SDL_Renderer *renderer,
                        float size,
                        int mode);
 
+void bench_render_octahedron(SDL_Renderer *renderer,
+                             BenchMetrics *metrics,
+                             float rotation_radians,
+                             float center_x,
+                             float center_y,
+                             float size,
+                             int mode);
+
 #endif /* COMMON_GEOMETRY_H */
