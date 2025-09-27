@@ -34,8 +34,25 @@ SPACE_SOURCES := \
     $(SRC_DIR)/space_bench/input.c \
     $(SRC_DIR)/space_bench/main.c \
     $(SRC_DIR)/space_bench/overlay.c \
-    $(SRC_DIR)/space_bench/render.c \
-    $(SRC_DIR)/space_bench/state.c
+    $(SRC_DIR)/space_bench/render/render_main.c \
+    $(SRC_DIR)/space_bench/render/util.c \
+    $(SRC_DIR)/space_bench/render/background.c \
+    $(SRC_DIR)/space_bench/render/upgrades.c \
+    $(SRC_DIR)/space_bench/render/projectiles.c \
+    $(SRC_DIR)/space_bench/render/particles.c \
+    $(SRC_DIR)/space_bench/render/enemies.c \
+    $(SRC_DIR)/space_bench/render/drones.c \
+    $(SRC_DIR)/space_bench/render/anomaly.c \
+    $(SRC_DIR)/space_bench/render/player.c \
+    $(SRC_DIR)/space_bench/render/game_over.c \
+    $(SRC_DIR)/space_bench/state/state_main.c \
+    $(SRC_DIR)/space_bench/state/util.c \
+    $(SRC_DIR)/space_bench/state/upgrades.c \
+    $(SRC_DIR)/space_bench/state/player.c \
+    $(SRC_DIR)/space_bench/state/projectiles.c \
+    $(SRC_DIR)/space_bench/state/anomaly.c \
+    $(SRC_DIR)/space_bench/state/effects.c \
+    $(SRC_DIR)/space_bench/state/spawn.c
 SPACE_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SPACE_SOURCES))
 SPACE_TARGET  := $(BIN_DIR)/sdl2_space_bench
 
@@ -106,11 +123,17 @@ endif
 SDL_INCLUDE   := $(SYSROOT)/usr/include/SDL2
 SDL_LIBDIR    := $(SYSROOT)/usr/lib
 
+ARM_NEON_DEFINE := -D__ARM_NEON
+ARM_CPU_FLAGS   := -mcpu=cortex-a7 -mfpu=neon -mfloat-abi=hard -ftree-vectorize -fomit-frame-pointer -fdata-sections -ffunction-sections
+
 # Flags ----------------------------------------------------------------------
 CFLAGS       ?= -O2
-CFLAGS       += -std=c11 -Wall -Wextra -D_REENTRANT -DMMIYOO
-CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SYSROOT)/usr/include -I$(INC_DIR) -I$(SRC_DIR)
+CFLAGS       := $(filter-out $(ARM_NEON_DEFINE),$(CFLAGS))
+CFLAGS       += -std=c11 -Wall -Wextra -D_REENTRANT -DMMIYOO $(ARM_CPU_FLAGS)
+CPPFLAGS     := $(filter-out $(ARM_NEON_DEFINE),$(CPPFLAGS))
+CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SYSROOT)/usr/include -I$(INC_DIR) -I$(SRC_DIR) $(ARM_NEON_DEFINE)
 LDFLAGS      += $(SYSROOT_FLAG) -L$(SDL_LIBDIR)
+LDFLAGS      += $(ARM_CPU_FLAGS) -Wl,--gc-sections
 LDLIBS       += -lSDL2 -lSDL2_ttf -lm -lpthread
 
 # Shared objects to bundle next to the binary

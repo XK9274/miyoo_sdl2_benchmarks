@@ -158,6 +158,7 @@ typedef struct {
     float x;
     float y;
     float vx;
+    float target_y;
     float rotation;
     float rotation_speed;
     float scale;
