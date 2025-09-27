@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 
 #include "controller_input.h"
+#include "common/geometry/shapes.h"
 
 SDL_bool db_handle_input(DoubleBenchState *state, BenchMetrics *metrics)
 {
@@ -57,10 +58,10 @@ SDL_bool db_handle_input(DoubleBenchState *state, BenchMetrics *metrics)
                     bench_reset_metrics(metrics);
                     break;
                 case BTN_UP:
-                    state->shape_type = (state->shape_type + 1) % 2;
+                    state->shape_type = (state->shape_type + 1) % SHAPE_COUNT;
                     break;
                 case BTN_DOWN:
-                    state->shape_type = (state->shape_type + 1) % 2;
+                    state->shape_type = (state->shape_type + SHAPE_COUNT - 1) % SHAPE_COUNT;
                     break;
                 default:
                     break;

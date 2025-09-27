@@ -5,6 +5,6 @@
 #include "common/metrics.h"
 #include "common/overlay.h"
 #include "common/format.h"
-#include "common/geometry.h"
+#include "common/geometry/shapes.h"
 
 #endif /* BENCH_COMMON_H */

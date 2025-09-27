@@ -15,7 +15,12 @@ TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
 
 COMMON_SOURCES := \
     $(SRC_DIR)/common/format.c \
-    $(SRC_DIR)/common/geometry.c \
+    $(SRC_DIR)/common/geometry/core.c \
+    $(SRC_DIR)/common/geometry/shapes.c \
+    $(SRC_DIR)/common/geometry/cube.c \
+    $(SRC_DIR)/common/geometry/octahedron.c \
+    $(SRC_DIR)/common/geometry/tetrahedron.c \
+    $(SRC_DIR)/common/geometry/sphere.c \
     $(SRC_DIR)/common/metrics.c \
     $(SRC_DIR)/common/overlay.c \
     $(SRC_DIR)/common/overlay_grid.c

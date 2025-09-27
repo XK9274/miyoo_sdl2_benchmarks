@@ -21,6 +21,7 @@ typedef struct {
     int shape_type;
     float top_margin;
     float center_y;
+
 } SoftwareBenchState;
 
 void sb_state_init(SoftwareBenchState *state);
