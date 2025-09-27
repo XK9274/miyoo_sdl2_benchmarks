@@ -88,6 +88,10 @@ app-dist/sdl_bench # Will contain the ready-to-use package w/ bin/lib/scripts.
   - Audio performance testing
   - Audio device proving, testing samples/buffers etc.
 
+- **SDL2 Star Wing Bench** (`space_bench`)
+  - Space shooter game with performance metrics
+  - Player movement, projectiles, drones, anomalies, effects system
+
 ## Build System Architecture
 
 ### Docker Pipeline
@@ -130,7 +134,8 @@ miyoo_sdl2_benchmarks/
 │   ├── audio_bench/              # Audio benchmark
 │   ├── double_buf/               # Hardware double buffer test
 │   ├── software_buf/             # Software double buffer test
-│   └── render_suite/             # Comprehensive render tests
+│   ├── render_suite/             # Comprehensive render tests
+│   └── space_bench/              # Star Wing space shooter benchmark
 │
 ├── 📁 include/                    # Header files
 ├── 📁 build/                      # Compiled binaries (generated)

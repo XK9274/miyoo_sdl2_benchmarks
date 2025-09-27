@@ -13,6 +13,7 @@ What’s inside this folder (sdl_bench/)
   • sdl2_bench_double_buf            – Hardware double buffering test (mmiyoo backend)
   • sdl2_render_suite                – Comprehensive rendering suite (fills, lines, textures)
   • sdl2_audio_bench                 – Audio device/sample/buffer tests
+  • space_bench                     – Star Wing space shooter with metrics
 
 - lib/
   Required runtime libraries for the benchmarks (SDL2 and friends).
@@ -45,9 +46,16 @@ Render Suite - 7 Test Scenes:
 6. Memory Management - Dynamic texture allocation stress testing
 7. Pixel Operations - Direct pixel manipulation effects
 
-Audio Benchmark - 4 Visualization Modes: 
+Audio Benchmark - 4 Visualization Modes:
 
 - Bars (rect) - Traditional bar visualization
 - Curves (line) - Smooth waveform curves
 - Dots (rect) - Particle-style visualization
 - Ribbons (geom) - Advanced geometry rendering
+
+Star Wing Bench - Space Shooter Game:
+
+- Space combat simulation with performance tracking
+- Player controls, projectile systems, enemy drones
+- Anomaly effects, upgrade mechanics, background rendering
+- Real-time metrics overlay (draw calls, vertices, triangles)
