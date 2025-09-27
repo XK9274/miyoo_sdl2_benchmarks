@@ -8,6 +8,7 @@ OBJ_DIR       := $(BUILD_DIR)/obj
 
 PROGRAMS      := sdl2_bench_software_double_buf \
                  sdl2_bench_double_buf \
+                 sdl2_space_bench \
                  sdl2_render_suite \
                  sdl2_audio_bench
 
@@ -21,10 +22,22 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/geometry/octahedron.c \
     $(SRC_DIR)/common/geometry/tetrahedron.c \
     $(SRC_DIR)/common/geometry/sphere.c \
+    $(SRC_DIR)/common/geometry/icosahedron.c \
+    $(SRC_DIR)/common/geometry/pentagonal_prism.c \
+    $(SRC_DIR)/common/geometry/square_pyramid.c \
     $(SRC_DIR)/common/metrics.c \
     $(SRC_DIR)/common/overlay.c \
     $(SRC_DIR)/common/overlay_grid.c
 COMMON_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(COMMON_SOURCES))
+
+SPACE_SOURCES := \
+    $(SRC_DIR)/space_bench/input.c \
+    $(SRC_DIR)/space_bench/main.c \
+    $(SRC_DIR)/space_bench/overlay.c \
+    $(SRC_DIR)/space_bench/render.c \
+    $(SRC_DIR)/space_bench/state.c
+SPACE_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SPACE_SOURCES))
+SPACE_TARGET  := $(BIN_DIR)/sdl2_space_bench
 
 SOFTWARE_SOURCES := \
     $(SRC_DIR)/software_buf/input.c \
@@ -72,6 +85,7 @@ AUDIO_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(AUDIO_SOURCES))
 AUDIO_TARGET  := $(BIN_DIR)/sdl2_audio_bench
 
 ALL_OBJECTS   := $(COMMON_OBJECTS) \
+                 $(SPACE_OBJECTS) \
                  $(SOFTWARE_OBJECTS) \
                  $(DOUBLE_OBJECTS) \
                  $(RENDER_OBJECTS) \
@@ -107,6 +121,10 @@ SDL_SHARED_LIBS := \
 .PHONY: all clean bundle print-config test
 
 all: $(TARGETS)
+
+$(SPACE_TARGET): $(COMMON_OBJECTS) $(SPACE_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(SPACE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
 
 $(SOFTWARE_TARGET): $(COMMON_OBJECTS) $(SOFTWARE_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(SOFTWARE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@

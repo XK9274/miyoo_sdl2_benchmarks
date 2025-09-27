@@ -9,13 +9,19 @@
 #include "common/geometry/octahedron.h"
 #include "common/geometry/tetrahedron.h"
 #include "common/geometry/sphere.h"
+#include "common/geometry/icosahedron.h"
+#include "common/geometry/pentagonal_prism.h"
+#include "common/geometry/square_pyramid.h"
 
 typedef enum {
     SHAPE_CUBE = 0,
     SHAPE_OCTAHEDRON = 1,
     SHAPE_TETRAHEDRON = 2,
     SHAPE_SPHERE = 3,
-    SHAPE_COUNT = 4
+    SHAPE_ICOSAHEDRON = 4,
+    SHAPE_PENTAGONAL_PRISM = 5,
+    SHAPE_SQUARE_PYRAMID = 6,
+    SHAPE_COUNT = 7
 } BenchShapeType;
 
 typedef void (*ShapeRenderFunc)(SDL_Renderer*, BenchMetrics*,

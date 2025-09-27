@@ -5,6 +5,9 @@ static const ShapeRenderFunc shape_renderers[SHAPE_COUNT] = {
     [SHAPE_OCTAHEDRON] = bench_render_octahedron,
     [SHAPE_TETRAHEDRON] = bench_render_tetrahedron,
     [SHAPE_SPHERE] = bench_render_sphere,
+    [SHAPE_ICOSAHEDRON] = bench_render_icosahedron,
+    [SHAPE_PENTAGONAL_PRISM] = bench_render_pentagonal_prism,
+    [SHAPE_SQUARE_PYRAMID] = bench_render_square_pyramid,
 };
 
 const char *bench_get_shape_name(BenchShapeType shape)
@@ -14,6 +17,9 @@ const char *bench_get_shape_name(BenchShapeType shape)
         case SHAPE_OCTAHEDRON: return "OCTAHEDRON";
         case SHAPE_TETRAHEDRON: return "TETRAHEDRON";
         case SHAPE_SPHERE: return "SPHERE";
+        case SHAPE_ICOSAHEDRON: return "ICOSAHEDRON";
+        case SHAPE_PENTAGONAL_PRISM: return "PENTAGONAL PRISM";
+        case SHAPE_SQUARE_PYRAMID: return "SQUARE PYRAMID";
         default: return "UNKNOWN";
     }
 }
