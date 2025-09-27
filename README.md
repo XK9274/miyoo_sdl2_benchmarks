@@ -8,7 +8,7 @@
     <td align="center"><img src="assets/sdl_bench_007.png" width="300"></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/sdl_bench_008.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_022.png" width="300"></td>
     <td align="center"><img src="assets/sdl_bench_010.png" width="300"></td>
   </tr>
 </table>
@@ -87,17 +87,6 @@ app-dist/sdl_bench # Will contain the ready-to-use package w/ bin/lib/scripts.
 - **SDL2 Audio Benchmark** (`sdl2_audio_bench`)
   - Audio performance testing
   - Audio device proving, testing samples/buffers etc.
-
-- **SDL2 Space Bench** (`sdl2_space_bench`)
-  - Arcade-style stress test that now swaps in a full space skirmish
-  - Includes multi-layer anomaly boss with rotating laser rings, missile barrages, and layered shield phases
-  - Demonstrates weapon upgrades, drone support, particle-heavy explosions, and star-field parallax
-
-## Release Notes
-
-- Added the new Space Bench encounter with layered anomaly boss, beam sweeps, and upgrade-driven player progression
-- Tuned anomaly laser rotations and missile barrages for fairer dodging, plus refreshed particle/shield rendering
-- Refactored `src/space_bench/state/` and `src/space_bench/render/` into modular files for easier maintenance and future feature work
 
 ## Build System Architecture
 
