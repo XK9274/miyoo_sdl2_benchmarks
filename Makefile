@@ -14,6 +14,10 @@ PROGRAMS      := sdl2_bench_software_double_buf \
 
 TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
 
+# NEON library
+NEON_DIR       := neon-arm-library
+NEON_LIB       := $(NEON_DIR)/lib/libneonarmmiyoo.a
+
 COMMON_SOURCES := \
     $(SRC_DIR)/common/format.c \
     $(SRC_DIR)/common/geometry/core.c \
@@ -131,10 +135,11 @@ CFLAGS       ?= -O2
 CFLAGS       := $(filter-out $(ARM_NEON_DEFINE),$(CFLAGS))
 CFLAGS       += -std=c11 -Wall -Wextra -D_REENTRANT -DMMIYOO $(ARM_CPU_FLAGS)
 CPPFLAGS     := $(filter-out $(ARM_NEON_DEFINE),$(CPPFLAGS))
-CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SYSROOT)/usr/include -I$(INC_DIR) -I$(SRC_DIR) $(ARM_NEON_DEFINE)
+CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SYSROOT)/usr/include -I$(INC_DIR) -I$(SRC_DIR) -I$(NEON_DIR)/include $(ARM_NEON_DEFINE)
 LDFLAGS      += $(SYSROOT_FLAG) -L$(SDL_LIBDIR)
 LDFLAGS      += $(ARM_CPU_FLAGS) -Wl,--gc-sections
 LDLIBS       += -lSDL2 -lSDL2_ttf -lm -lpthread
+LDLIBS       += $(NEON_LIB)
 
 # Shared objects to bundle next to the binary
 SDL_SHARED_LIBS := \
@@ -145,29 +150,34 @@ SDL_SHARED_LIBS := \
 
 all: $(TARGETS)
 
-$(SPACE_TARGET): $(COMMON_OBJECTS) $(SPACE_OBJECTS) | $(BIN_DIR)
+# Build NEON library
+$(NEON_LIB):
+	$(MAKE) -C $(NEON_DIR) CROSS_COMPILE=$(CROSS_PREFIX)
+
+$(SPACE_TARGET): $(COMMON_OBJECTS) $(SPACE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(SPACE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(SOFTWARE_TARGET): $(COMMON_OBJECTS) $(SOFTWARE_OBJECTS) | $(BIN_DIR)
+$(SOFTWARE_TARGET): $(COMMON_OBJECTS) $(SOFTWARE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(SOFTWARE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(DOUBLE_TARGET): $(COMMON_OBJECTS) $(DOUBLE_OBJECTS) | $(BIN_DIR)
+$(DOUBLE_TARGET): $(COMMON_OBJECTS) $(DOUBLE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(DOUBLE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(RENDER_TARGET): $(COMMON_OBJECTS) $(RENDER_OBJECTS) | $(BIN_DIR)
+$(RENDER_TARGET): $(COMMON_OBJECTS) $(RENDER_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(RENDER_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(AUDIO_TARGET): $(COMMON_OBJECTS) $(AUDIO_OBJECTS) | $(BIN_DIR)
+$(AUDIO_TARGET): $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
+
 
 bundle: $(TARGETS)
 	@echo "Bundling SDL2 libraries..."
@@ -189,6 +199,7 @@ $(OBJ_DIR):
 
 clean:
 	rm -rf $(BUILD_DIR)
+	@if [ -d $(NEON_DIR) ]; then $(MAKE) -C $(NEON_DIR) clean; fi
 	@echo "Cleaned build directory"
 
 print-config:

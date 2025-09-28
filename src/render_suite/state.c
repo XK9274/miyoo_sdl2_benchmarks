@@ -1,4 +1,5 @@
 #include "render_suite/state.h"
+#include "render_suite/render_neon.h"
 
 #include <math.h>
 
@@ -30,6 +31,8 @@ void rs_state_init(RenderSuiteState *state)
     state->texture_phase_units = 0.0f;
     state->lines_cursor_progress = 0.0f;
     state->lines_cursor_index = 0;
+    state->pixel_texture = NULL;
+    state->has_neon = RS_HAS_NEON ? SDL_TRUE : SDL_FALSE;
 }
 
 void rs_state_update_layout(RenderSuiteState *state, BenchOverlay *overlay)
@@ -49,6 +52,10 @@ void rs_state_destroy(RenderSuiteState *state, SDL_Renderer *renderer)
     if (state->checker_texture) {
         SDL_DestroyTexture(state->checker_texture);
         state->checker_texture = NULL;
+    }
+    if (state->pixel_texture) {
+        SDL_DestroyTexture(state->pixel_texture);
+        state->pixel_texture = NULL;
     }
     if (state->font) {
         TTF_CloseFont(state->font);
@@ -93,4 +100,22 @@ float rs_state_cos(const RenderSuiteState *state, float units)
     }
     const float quarter_turn = (float)(state->sin_table_size >> 2);
     return rs_state_sin(state, units + quarter_turn);
+}
+
+float rs_state_sin_rad(const RenderSuiteState *state, float radians)
+{
+    if (!state || state->sin_table_size <= 0) {
+        return 0.0f;
+    }
+    const float units = radians * (float)state->sin_table_size / RS_TWO_PI;
+    return rs_state_sin(state, units);
+}
+
+float rs_state_cos_rad(const RenderSuiteState *state, float radians)
+{
+    if (!state || state->sin_table_size <= 0) {
+        return 0.0f;
+    }
+    const float units = radians * (float)state->sin_table_size / RS_TWO_PI;
+    return rs_state_cos(state, units);
 }
