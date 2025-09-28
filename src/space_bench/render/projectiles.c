@@ -15,12 +15,10 @@ void space_render_enemy_shots(const SpaceBenchState *state,
     SDL_FRect shot_inner_rects[SPACE_MAX_ENEMY_SHOTS];
     SDL_FRect missile_outer_rects[SPACE_MAX_ENEMY_SHOTS];
     SDL_FRect missile_inner_rects[SPACE_MAX_ENEMY_SHOTS];
-    const SpaceEnemyShot *missile_trails[SPACE_MAX_ENEMY_SHOTS];
     int shot_outer_count = 0;
     int shot_inner_count = 0;
     int missile_outer_count = 0;
     int missile_inner_count = 0;
-    int missile_trail_count = 0;
 
     for (int i = 0; i < SPACE_MAX_ENEMY_SHOTS; ++i) {
         const SpaceEnemyShot *shot = &state->enemy_shots[i];
@@ -31,9 +29,6 @@ void space_render_enemy_shots(const SpaceBenchState *state,
         if (shot->is_missile) {
             missile_outer_rects[missile_outer_count++] = (SDL_FRect){shot->x - 4.0f, shot->y - 1.5f, 8.0f, 3.0f};
             missile_inner_rects[missile_inner_count++] = (SDL_FRect){shot->x - 2.0f, shot->y - 0.75f, 4.0f, 1.5f};
-            if (shot->trail_count > 0) {
-                missile_trails[missile_trail_count++] = shot;
-            }
         } else {
             shot_outer_rects[shot_outer_count++] = (SDL_FRect){shot->x - 4.0f, shot->y - 1.5f, 8.0f, 3.0f};
             shot_inner_rects[shot_inner_count++] = (SDL_FRect){shot->x - 2.0f, shot->y - 0.75f, 4.0f, 1.5f};
@@ -71,21 +66,6 @@ void space_render_enemy_shots(const SpaceBenchState *state,
         if (metrics) {
             metrics->draw_calls++;
             metrics->vertices_rendered += missile_inner_count * 4;
-        }
-    }
-
-    for (int i = 0; i < missile_trail_count; ++i) {
-        const SpaceEnemyShot *shot = missile_trails[i];
-        for (int t = 0; t < shot->trail_count; ++t) {
-            const float age = (float)(shot->trail_count - t) / (float)shot->trail_count;
-            const Uint8 brightness = (Uint8)(255 * age * 0.8f);
-            const Uint8 opacity = (Uint8)(200 * age);
-            SDL_SetRenderDrawColor(renderer, brightness, brightness * 0.6f, brightness * 0.3f, opacity);
-            SDL_RenderDrawPointF(renderer, shot->trail_points[t][0], shot->trail_points[t][1]);
-        }
-        if (metrics) {
-            metrics->draw_calls += shot->trail_count;
-            metrics->vertices_rendered += shot->trail_count;
         }
     }
 }

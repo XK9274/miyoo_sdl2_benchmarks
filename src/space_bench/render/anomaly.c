@@ -2,6 +2,25 @@
 
 #include <math.h>
 
+#define SPACE_ANOMALY_SHIELD_SEGMENTS 32
+
+static SDL_bool g_shield_lut_ready = SDL_FALSE;
+static float g_shield_cos[SPACE_ANOMALY_SHIELD_SEGMENTS + 1];
+static float g_shield_sin[SPACE_ANOMALY_SHIELD_SEGMENTS + 1];
+
+static void space_anomaly_prepare_shield_lut(void)
+{
+    if (g_shield_lut_ready) {
+        return;
+    }
+    for (int i = 0; i <= SPACE_ANOMALY_SHIELD_SEGMENTS; ++i) {
+        const float angle = (float)(M_PI * 2.0) * (float)i / (float)SPACE_ANOMALY_SHIELD_SEGMENTS;
+        g_shield_cos[i] = cosf(angle);
+        g_shield_sin[i] = sinf(angle);
+    }
+    g_shield_lut_ready = SDL_TRUE;
+}
+
 void space_render_anomaly(const SpaceBenchState *state,
                                  SDL_Renderer *renderer,
                                  BenchMetrics *metrics)
@@ -51,15 +70,22 @@ void space_render_anomaly(const SpaceBenchState *state,
     // Core layer - visual only
     if (anomaly->core_points[0].active) {
         SDL_FPoint core_pts[20];
+        int core_count = 0;
         for (int i = 0; i < 20; ++i) {
-            const float angle = anomaly->core_points[i].angle + anomaly->core_rotation;
-            core_pts[i].x = anomaly->x + cosf(angle) * anomaly->core_points[i].radius;
-            core_pts[i].y = anomaly->y + sinf(angle) * anomaly->core_points[i].radius;
+            if (!anomaly->core_points[i].active) {
+                continue;
+            }
+            core_pts[core_count++] = (SDL_FPoint){
+                anomaly->core_points[i].cached_x,
+                anomaly->core_points[i].cached_y
+            };
         }
-        SDL_SetRenderDrawColor(renderer, 255, 255, 100, 200);
-        SDL_RenderDrawPointsF(renderer, core_pts, 20);
-        draw_calls++;
-        vertices += 20;
+        if (core_count > 0) {
+            SDL_SetRenderDrawColor(renderer, 255, 255, 100, 200);
+            SDL_RenderDrawPointsF(renderer, core_pts, core_count);
+            draw_calls++;
+            vertices += core_count;
+        }
     }
 
     // Inner layer - lasers
@@ -68,10 +94,12 @@ void space_render_anomaly(const SpaceBenchState *state,
         int inner_count = 0;
         for (int i = 0; i < 4; ++i) {
             if (!anomaly->inner_points[i].active) continue;
-            const float angle = anomaly->inner_points[i].angle + anomaly->inner_rotation;
-            const float x = anomaly->x + cosf(angle) * anomaly->inner_points[i].radius;
-            const float y = anomaly->y + sinf(angle) * anomaly->inner_points[i].radius;
-            inner_rects[inner_count++] = (SDL_FRect){x - 1.0f, y - 1.0f, 2.0f, 2.0f};
+            inner_rects[inner_count++] = (SDL_FRect){
+                anomaly->inner_points[i].cached_x - 1.0f,
+                anomaly->inner_points[i].cached_y - 1.0f,
+                2.0f,
+                2.0f
+            };
         }
         if (inner_count > 0) {
             SDL_SetRenderDrawColor(renderer, 100, 100, 255, 220);
@@ -87,10 +115,12 @@ void space_render_anomaly(const SpaceBenchState *state,
         int mid1_count = 0;
         for (int i = 0; i < 6; ++i) {
             if (!anomaly->mid1_points[i].active) continue;
-            const float angle = anomaly->mid1_points[i].angle + anomaly->mid1_rotation;
-            const float x = anomaly->x + cosf(angle) * anomaly->mid1_points[i].radius;
-            const float y = anomaly->y + sinf(angle) * anomaly->mid1_points[i].radius;
-            mid1_rects[mid1_count++] = (SDL_FRect){x - 1.0f, y - 1.0f, 2.0f, 2.0f};
+            mid1_rects[mid1_count++] = (SDL_FRect){
+                anomaly->mid1_points[i].cached_x - 1.0f,
+                anomaly->mid1_points[i].cached_y - 1.0f,
+                2.0f,
+                2.0f
+            };
         }
         if (mid1_count > 0) {
             SDL_SetRenderDrawColor(renderer, 255, 255, 100, 200);
@@ -161,10 +191,12 @@ void space_render_anomaly(const SpaceBenchState *state,
         int mid2_count = 0;
         for (int i = 0; i < 8; ++i) {
             if (!anomaly->mid2_points[i].active) continue;
-            const float angle = anomaly->mid2_points[i].angle + anomaly->mid2_rotation;
-            const float x = anomaly->x + cosf(angle) * anomaly->mid2_points[i].radius;
-            const float y = anomaly->y + sinf(angle) * anomaly->mid2_points[i].radius;
-            mid2_rects[mid2_count++] = (SDL_FRect){x - 1.0f, y - 1.0f, 2.0f, 2.0f};
+            mid2_rects[mid2_count++] = (SDL_FRect){
+                anomaly->mid2_points[i].cached_x - 1.0f,
+                anomaly->mid2_points[i].cached_y - 1.0f,
+                2.0f,
+                2.0f
+            };
         }
         if (mid2_count > 0) {
             SDL_SetRenderDrawColor(renderer, 255, 180, 100, 200);
@@ -180,10 +212,12 @@ void space_render_anomaly(const SpaceBenchState *state,
         int outer_count = 0;
         for (int i = 0; i < 10; ++i) {
             if (!anomaly->outer_points[i].active) continue;
-            const float angle = anomaly->outer_points[i].angle + anomaly->outer_rotation;
-            const float x = anomaly->x + cosf(angle) * anomaly->outer_points[i].radius;
-            const float y = anomaly->y + sinf(angle) * anomaly->outer_points[i].radius;
-            outer_rects[outer_count++] = (SDL_FRect){x - 1.0f, y - 1.0f, 2.0f, 2.0f};
+            outer_rects[outer_count++] = (SDL_FRect){
+                anomaly->outer_points[i].cached_x - 1.0f,
+                anomaly->outer_points[i].cached_y - 1.0f,
+                2.0f,
+                2.0f
+            };
         }
         if (outer_count > 0) {
             SDL_SetRenderDrawColor(renderer, 255, 80, 80, 220);
@@ -199,10 +233,11 @@ void space_render_anomaly(const SpaceBenchState *state,
     for (int i = 0; i < 64; ++i) {
         const AnomalyOrbitalPoint *point = &anomaly->orbital_points[i];
         if (!point->active) continue;
-        const float x = anomaly->x + cosf(point->angle) * point->radius;
-        const float y = anomaly->y + sinf(point->angle) * point->radius;
         int bucket = (int)SDL_clamp(point->radius / (anomaly->scale * 1.5f) * 3.0f, 0.0f, 3.0f);
-        orbital_bins[bucket][orbital_counts[bucket]++] = (SDL_FPoint){x, y};
+        orbital_bins[bucket][orbital_counts[bucket]++] = (SDL_FPoint){
+            point->cached_x,
+            point->cached_y
+        };
     }
     const SDL_Color orbital_colors[4] = {
         {100, 150, 255, 180},
@@ -224,25 +259,21 @@ void space_render_anomaly(const SpaceBenchState *state,
 
     // Render anomaly shield
     if (anomaly->shield_active && anomaly->shield_strength > 0.0f) {
+        space_anomaly_prepare_shield_lut();
         const float shield_radius = anomaly->scale * 2.0f;
         const float pulse_factor = 0.7f + 0.3f * sinf(anomaly->shield_pulse);
         const float shield_alpha = (anomaly->shield_strength / anomaly->shield_max_strength) * 120.0f * pulse_factor;
 
-        // Draw shield circle
-        const int segments = 32;
-        for (int i = 0; i < segments; ++i) {
-            const float angle1 = (float)(M_PI * 2.0) * (float)i / (float)segments;
-            const float angle2 = (float)(M_PI * 2.0) * (float)(i + 1) / (float)segments;
-
-            const float x1 = anomaly->x + cosf(angle1) * shield_radius;
-            const float y1 = anomaly->y + sinf(angle1) * shield_radius;
-            const float x2 = anomaly->x + cosf(angle2) * shield_radius;
-            const float y2 = anomaly->y + sinf(angle2) * shield_radius;
-
-            SDL_SetRenderDrawColor(renderer, 100, 200, 255, (Uint8)shield_alpha);
-            SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
-            draw_calls++;
+        SDL_FPoint shield_points[SPACE_ANOMALY_SHIELD_SEGMENTS + 1];
+        for (int i = 0; i <= SPACE_ANOMALY_SHIELD_SEGMENTS; ++i) {
+            shield_points[i].x = anomaly->x + g_shield_cos[i] * shield_radius;
+            shield_points[i].y = anomaly->y + g_shield_sin[i] * shield_radius;
         }
+
+        SDL_SetRenderDrawColor(renderer, 100, 200, 255, (Uint8)shield_alpha);
+        SDL_RenderDrawLinesF(renderer, shield_points, SPACE_ANOMALY_SHIELD_SEGMENTS + 1);
+        draw_calls++;
+        vertices += SPACE_ANOMALY_SHIELD_SEGMENTS + 1;
     }
 
     if (metrics) {

@@ -36,26 +36,36 @@ void space_render_player(const SpaceBenchState *state,
     }
 
     if (state->weapon_upgrades.thumper_active) {
+        static SDL_bool lut_ready = SDL_FALSE;
+        static float ring_cos[SPACE_THUMPER_SEGMENTS + 1];
+        static float ring_sin[SPACE_THUMPER_SEGMENTS + 1];
+
+        if (!lut_ready) {
+            for (int i = 0; i <= SPACE_THUMPER_SEGMENTS; ++i) {
+                const float angle = (float)(M_PI * 2.0) * (float)i / (float)SPACE_THUMPER_SEGMENTS;
+                ring_cos[i] = cosf(angle);
+                ring_sin[i] = sinf(angle);
+            }
+            lut_ready = SDL_TRUE;
+        }
+
         const float pulse_time = state->weapon_upgrades.thumper_pulse_timer;
         if (pulse_time < 0.45f) {
             const float t = SDL_clamp(pulse_time / 0.3f, 0.0f, 1.0f);
             const float ring_radius = state->player_radius + 10.0f + t * 24.0f;
             const Uint8 ring_alpha = (Uint8)(170 * (1.0f - t));
-            const int ring_segments = 24;
             SDL_SetRenderDrawColor(renderer, 160, 220, 255, ring_alpha);
-            for (int i = 0; i < ring_segments; ++i) {
-                const float angle1 = (float)(M_PI * 2.0) * (float)i / (float)ring_segments;
-                const float angle2 = (float)(M_PI * 2.0) * (float)(i + 1) / (float)ring_segments;
-                const float x1 = origin_x + cosf(angle1) * ring_radius;
-                const float y1 = origin_y + sinf(angle1) * ring_radius;
-                const float x2 = origin_x + cosf(angle2) * ring_radius;
-                const float y2 = origin_y + sinf(angle2) * ring_radius;
-                SDL_RenderDrawLineF(renderer, x1, y1, x2, y2);
+
+            SDL_FPoint ring_points[SPACE_THUMPER_SEGMENTS + 1];
+            for (int i = 0; i <= SPACE_THUMPER_SEGMENTS; ++i) {
+                ring_points[i].x = origin_x + ring_cos[i] * ring_radius;
+                ring_points[i].y = origin_y + ring_sin[i] * ring_radius;
             }
+            SDL_RenderDrawLinesF(renderer, ring_points, SPACE_THUMPER_SEGMENTS + 1);
 
             if (metrics) {
-                metrics->draw_calls += ring_segments;
-                metrics->vertices_rendered += ring_segments * 2;
+                metrics->draw_calls += 1;
+                metrics->vertices_rendered += SPACE_THUMPER_SEGMENTS + 1;
             }
         }
     }
@@ -67,11 +77,14 @@ void space_render_player(const SpaceBenchState *state,
     const SpaceVec3 local_base_c = {-8.0f, 8.0f, 8.0f};
     const SpaceVec3 local_base_d = {-8.0f, -8.0f, 8.0f};
 
-    SpaceVec3 apex = space_rotate_roll(local_apex, roll);
-    SpaceVec3 base_a = space_rotate_roll(local_base_a, roll);
-    SpaceVec3 base_b = space_rotate_roll(local_base_b, roll);
-    SpaceVec3 base_c = space_rotate_roll(local_base_c, roll);
-    SpaceVec3 base_d = space_rotate_roll(local_base_d, roll);
+    const float sin_roll = sinf(roll);
+    const float cos_roll = cosf(roll);
+
+    SpaceVec3 apex = space_apply_roll_cached(local_apex, sin_roll, cos_roll);
+    SpaceVec3 base_a = space_apply_roll_cached(local_base_a, sin_roll, cos_roll);
+    SpaceVec3 base_b = space_apply_roll_cached(local_base_b, sin_roll, cos_roll);
+    SpaceVec3 base_c = space_apply_roll_cached(local_base_c, sin_roll, cos_roll);
+    SpaceVec3 base_d = space_apply_roll_cached(local_base_d, sin_roll, cos_roll);
 
     const SDL_FPoint apex_pt = space_project_point(apex, origin_x, origin_y);
     const SDL_FPoint base_a_pt = space_project_point(base_a, origin_x, origin_y);

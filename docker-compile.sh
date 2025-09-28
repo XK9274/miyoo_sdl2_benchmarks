@@ -49,6 +49,41 @@ else
     echo "✓ Toolchain already exists at: $TOOLCHAIN_DIR"
 fi
 
+# Step 1.5: Ensure NEON ARM library submodule is initialized
+echo "Checking NEON ARM library submodule..."
+NEON_DIR="${SCRIPT_DIR}/neon-arm-library"
+
+if [ ! -d "$NEON_DIR" ] || [ ! -f "$NEON_DIR/include/neon.h" ]; then
+    echo "NEON ARM library submodule not found or incomplete, initializing..."
+    cd "$SCRIPT_DIR"
+
+    # Initialize submodules if .gitmodules exists
+    if [ -f ".gitmodules" ]; then
+        git submodule update --init --recursive
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to initialize git submodules"
+            exit 1
+        fi
+    else
+        # If no .gitmodules, clone directly
+        echo "No .gitmodules found, cloning NEON library directly..."
+        git clone https://github.com/XK9274/neon-arm-library-miyoo.git "$NEON_DIR"
+        if [ $? -ne 0 ]; then
+            echo "ERROR: Failed to clone NEON ARM library"
+            exit 1
+        fi
+    fi
+
+    # Verify the submodule was set up correctly
+    if [ ! -f "$NEON_DIR/include/neon.h" ]; then
+        echo "ERROR: NEON ARM library setup failed - neon.h not found"
+        exit 1
+    fi
+    echo "✓ NEON ARM library submodule initialized successfully"
+else
+    echo "✓ NEON ARM library submodule already exists"
+fi
+
 # Step 2: Copy scripts to workspace
 echo "Copying scripts to Docker workspace..."
 mkdir -p "$WORKSPACE_DIR"
@@ -57,9 +92,7 @@ cp -f "$SCRIPT_DIR/compile.sh" "$WORKSPACE_DIR/"
 cp -f "$SCRIPT_DIR/Makefile" "$WORKSPACE_DIR/"
 cp -rf "$SCRIPT_DIR/src" "$WORKSPACE_DIR/"
 cp -rf "$SCRIPT_DIR/include" "$WORKSPACE_DIR/"
-if [ -d "$SCRIPT_DIR/neon-arm-library" ]; then
-    cp -rf "$SCRIPT_DIR/neon-arm-library" "$WORKSPACE_DIR/"
-fi
+cp -rf "$SCRIPT_DIR/neon-arm-library" "$WORKSPACE_DIR/"
 if [ -d "$SCRIPT_DIR/build_artifacts" ]; then
     mkdir -p "$WORKSPACE_DIR/build_artifacts"
     cp -a "$SCRIPT_DIR/build_artifacts/." "$WORKSPACE_DIR/build_artifacts/"

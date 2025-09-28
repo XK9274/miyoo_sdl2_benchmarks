@@ -117,8 +117,7 @@ void space_state_init(SpaceBenchState *state)
     for (int i = 0; i < SPACE_MAX_ENEMY_SHOTS; ++i) {
         state->enemy_shots[i].active = SDL_FALSE;
         state->enemy_shots[i].is_missile = SDL_FALSE;
-        state->enemy_shots[i].trail_count = 0;
-        state->enemy_shots[i].trail_timer = 0.0f;
+        state->enemy_shots[i].trail_emit_timer = 0.0f;
         state->enemy_shots[i].damage = 0.0f;
     }
 
@@ -129,6 +128,7 @@ void space_state_init(SpaceBenchState *state)
     for (int i = 0; i < SPACE_MAX_PARTICLES; ++i) {
         state->particles[i].active = SDL_FALSE;
     }
+    state->particle_cursor = 0;
 
     state->weapon_upgrades.split_level = 0;
     state->weapon_upgrades.guidance_active = SDL_FALSE;

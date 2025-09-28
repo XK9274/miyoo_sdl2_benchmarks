@@ -57,4 +57,13 @@ void space_render_explosions(const SpaceBenchState *state, SDL_Renderer *rendere
 void space_render_player(const SpaceBenchState *state, SDL_Renderer *renderer, BenchMetrics *metrics);
 void space_render_game_over(const SpaceBenchState *state, SDL_Renderer *renderer, BenchMetrics *metrics);
 
+static inline SpaceVec3 space_apply_roll_cached(SpaceVec3 v, float sin_roll, float cos_roll)
+{
+    const float old_y = v.y;
+    const float old_z = v.z;
+    v.y = old_y * cos_roll - old_z * sin_roll;
+    v.z = old_y * sin_roll + old_z * cos_roll;
+    return v;
+}
+
 #endif  // SPACE_BENCH_RENDER_INTERNAL_H

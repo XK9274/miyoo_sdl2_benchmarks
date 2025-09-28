@@ -47,6 +47,11 @@ void space_spawn_explosion(SpaceBenchState *state, float x, float y, float radiu
 void space_spawn_layer_explosion(SpaceBenchState *state, float x, float y, float radius, int particles);
 void space_spawn_firing_particles(SpaceBenchState *state, float x, float y, SDL_bool is_laser);
 void space_update_particles(SpaceBenchState *state, float dt);
+void space_spawn_enemy_missile_trail(SpaceBenchState *state,
+                                     float x,
+                                     float y,
+                                     float vx,
+                                     float vy);
 
 void space_activate_anomaly(SpaceBenchState *state);
 void space_update_anomaly(SpaceBenchState *state, float dt);

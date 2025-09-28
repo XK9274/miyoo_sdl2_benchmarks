@@ -87,3 +87,35 @@ void space_update_particles(SpaceBenchState *state, float dt)
         }
     }
 }
+
+void space_spawn_enemy_missile_trail(SpaceBenchState *state,
+                                     float x,
+                                     float y,
+                                     float vx,
+                                     float vy)
+{
+    int cursor = state->particle_cursor % SPACE_MAX_PARTICLES;
+    for (int attempt = 0; attempt < SPACE_MAX_PARTICLES; ++attempt) {
+        const int idx = (cursor + attempt) % SPACE_MAX_PARTICLES;
+        SpaceParticle *particle = &state->particles[idx];
+        if (particle->active) {
+            continue;
+        }
+
+        const float jitter_x = space_rand_range(state, -18.0f, 18.0f);
+        const float jitter_y = space_rand_range(state, -12.0f, 12.0f);
+
+        particle->active = SDL_TRUE;
+        particle->x = x + jitter_x * 0.05f;
+        particle->y = y + jitter_y * 0.05f;
+        particle->vx = -vx * 0.12f + jitter_x * 0.6f - state->scroll_speed * 0.15f;
+        particle->vy = -vy * 0.12f + jitter_y * 0.4f;
+        particle->life = particle->max_life = 0.32f;
+        particle->r = 255;
+        particle->g = 180;
+        particle->b = 100;
+
+        state->particle_cursor = (idx + 1) % SPACE_MAX_PARTICLES;
+        break;
+    }
+}

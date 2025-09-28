@@ -16,28 +16,14 @@ void space_update_enemy_shots(SpaceBenchState *state, float dt)
         shot->life -= dt;
 
         if (shot->is_missile) {
-            shot->trail_timer += dt;
-            if (shot->trail_timer >= 0.05f) {
-                shot->trail_timer = 0.0f;
-
-                const float missile_length = 8.0f;
-                const float speed = SDL_sqrtf(shot->vx * shot->vx + shot->vy * shot->vy);
-                if (speed > 0.0f) {
-                    const float rear_x = shot->x - (shot->vx / speed) * missile_length;
-                    const float rear_y = shot->y - (shot->vy / speed) * missile_length;
-
-                    if (shot->trail_count >= 16) {
-                        for (int t = 0; t < 15; ++t) {
-                            shot->trail_points[t][0] = shot->trail_points[t + 1][0];
-                            shot->trail_points[t][1] = shot->trail_points[t + 1][1];
-                        }
-                        shot->trail_count = 15;
-                    }
-
-                    shot->trail_points[shot->trail_count][0] = rear_x;
-                    shot->trail_points[shot->trail_count][1] = rear_y;
-                    shot->trail_count++;
-                }
+            shot->trail_emit_timer += dt;
+            if (shot->trail_emit_timer >= 0.04f) {
+                shot->trail_emit_timer -= 0.04f;
+                space_spawn_enemy_missile_trail(state,
+                                                shot->x,
+                                                shot->y,
+                                                shot->vx,
+                                                shot->vy);
             }
         }
 
@@ -45,6 +31,7 @@ void space_update_enemy_shots(SpaceBenchState *state, float dt)
             shot->y < state->play_area_top - 40.0f || shot->y > state->play_area_bottom + 40.0f) {
             shot->active = SDL_FALSE;
             shot->damage = 0.0f;
+            shot->trail_emit_timer = 0.0f;
             continue;
         }
 
@@ -59,6 +46,7 @@ void space_update_enemy_shots(SpaceBenchState *state, float dt)
                 shot->damage = 0.0f;
                 space_spawn_explosion(state, shot->x, shot->y, 18.0f);
                 state->score += 10;
+                shot->trail_emit_timer = 0.0f;
                 continue;
             }
         }
@@ -69,6 +57,17 @@ void space_update_enemy_shots(SpaceBenchState *state, float dt)
         const float dist_sq = dx * dx + dy * dy;
 
         if (state->weapon_upgrades.thumper_active && dist_sq <= hit_radius * hit_radius) {
+            state->weapon_upgrades.thumper_pulse_timer = 0.0f;
+
+            const SDL_bool deflect = (space_rand_u32(state) & 1u) == 0u;
+            if (!deflect) {
+                space_spawn_explosion(state, shot->x, shot->y, 7.5f);
+                shot->active = SDL_FALSE;
+                shot->damage = 0.0f;
+                shot->trail_emit_timer = 0.0f;
+                continue;
+            }
+
             const float len = SDL_max(1.0f, SDL_sqrtf(dist_sq));
             float dir_x = (len > 0.0f) ? dx / len : 1.0f;
             float dir_y = (len > 0.0f) ? dy / len : 0.0f;
@@ -80,11 +79,11 @@ void space_update_enemy_shots(SpaceBenchState *state, float dt)
             shot->vy = dir_y * (deflect_speed * 0.75f);
             shot->x = state->player_x + dir_x * (state->player_radius + 8.0f);
             shot->y = state->player_y + dir_y * (state->player_radius + 8.0f);
-            shot->life = SDL_min(shot->life + 0.45f, 3.5f);
+            shot->life = SDL_min(shot->life + 0.45f, 3.0f);
             shot->damage = SDL_max(1.0f, shot->damage * 0.5f);
             shot->is_missile = SDL_FALSE;
-            space_spawn_explosion(state, shot->x, shot->y, 12.0f);
-            state->weapon_upgrades.thumper_pulse_timer = 0.0f;
+            shot->trail_emit_timer = 0.0f;
+            space_spawn_explosion(state, shot->x, shot->y, 9.0f);
             continue;
         }
 
@@ -92,6 +91,7 @@ void space_update_enemy_shots(SpaceBenchState *state, float dt)
             shot->active = SDL_FALSE;
             const float damage = (shot->damage > 0.0f) ? shot->damage : (shot->is_missile ? 12.0f : 5.0f);
             shot->damage = 0.0f;
+            shot->trail_emit_timer = 0.0f;
             space_player_take_damage(state, damage);
         }
     }
@@ -109,7 +109,7 @@ void space_fire_enemy_shot(SpaceBenchState *state, const SpaceEnemy *enemy)
             shot->vy = enemy->vy * 0.5f;
             shot->life = 3.0f;
             shot->is_missile = SDL_FALSE;
-            shot->trail_count = 0;
+            shot->trail_emit_timer = 0.0f;
             shot->damage = 5.0f;
             return;
         }
@@ -128,8 +128,7 @@ void space_fire_anomaly_missile(SpaceBenchState *state, float x, float y, float 
             shot->vy = dy * SPACE_ENEMY_MISSILE_SPEED;
             shot->life = 5.0f;
             shot->is_missile = SDL_TRUE;
-            shot->trail_count = 0;
-            shot->trail_timer = 0.0f;
+            shot->trail_emit_timer = 0.0f;
             shot->damage = 12.0f;
             return;
         }
