@@ -76,11 +76,6 @@ app-dist/sdl_bench # Will contain the ready-to-use package w/ bin/lib/scripts.
 
 3. **Launch benchmarks** - Navigate to Apps → "SDL Benchmark"
 
-### Alternative: Download Pre-built Release
-1. Go to [Releases](https://github.com/XK9274/miyoo_sdl2_benchmarks/releases)
-2. Download the latest `miyoo-sdl2-benchmarks-vX.X.X.tar.gz`
-3. Extract and copy `sdl_bench/` to `/mnt/SDCARD/App/`
-
 ## Benchmarks Included
 
 ### Performance Tests
