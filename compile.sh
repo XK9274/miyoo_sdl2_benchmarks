@@ -11,6 +11,15 @@
 #   --help      Show this help message
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GL_LIB_SOURCE_DIR="$SCRIPT_DIR/app-dist/sdl_bench/lib"
+GL_ARTIFACT_DIR="$SCRIPT_DIR/build_artifacts/gles_libs"
+
+sync_gles_artifacts() {
+    if [ -d "$GL_LIB_SOURCE_DIR" ]; then
+        mkdir -p "$GL_ARTIFACT_DIR"
+        cp -a "$GL_LIB_SOURCE_DIR/." "$GL_ARTIFACT_DIR/"
+    fi
+}
 
 # Parse arguments
 LOCAL_MODE=false
@@ -52,6 +61,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Check for local compilation
+sync_gles_artifacts
+
 if [ "$LOCAL_MODE" = "true" ]; then
     echo "Building SDL2 benchmarks for Miyoo Mini (local mode)..."
     echo "WARNING: This requires the cross-compilation toolchain to be already set up"

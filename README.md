@@ -1,26 +1,39 @@
-# Miyoo SDL2 Benchmarks
+# Miyoo SDL2/OpenGL Benchmarks
 
 <div align="center">
 
 <table>
   <tr>
-    <td align="center"><img src="assets/sdl_bench_006.png" width="300"></td>
-    <td align="center"><img src="assets/sdl_bench_007.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_030.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_029.png" width="300"></td>
   </tr>
   <tr>
+    <td align="center"><img src="assets/sdl_bench_028.png" width="300"></td>
     <td align="center"><img src="assets/sdl_bench_022.png" width="300"></td>
+  </tr>
+  <tr>
     <td align="center"><img src="assets/sdl_bench_010.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_008.png" width="300"></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/sdl_bench_007.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_006.png" width="300"></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/sdl_bench_033.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_032.png" width="300"></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/sdl_bench_031.png" width="300"></td>
+    <td align="center"></td>
   </tr>
 </table>
 
 </div>
 
-
-A collection of SDL2 performance benchmarks specifically designed for the Miyoo Mini platform.
-
 ## Description
 
-This repository contains SDL2 benchmark tests that measure rendering performance on the Miyoo Mini handheld device. The benchmarks test various SDL2 rendering techniques including software/hardware double buffering, comprehensive rendering suites, and audio performance testing.
+This repository contains SDL2 benchmark tests that measure rendering performance on the Miyoo Mini handheld device. The benchmarks test various SDL2 rendering techniques including software/hardware double buffering, comprehensive rendering suites for SDL2 native rendering, and OpenGL ES, aswell as audio backend testing.
 
 ## Quick Start
 
@@ -84,6 +97,10 @@ app-dist/sdl_bench # Will contain the ready-to-use package w/ bin/lib/scripts.
   - Comprehensive rendering test battery
   - Multiple test scenes: fills, rapid line drawing, textures churn
 
+- **SDL2 Render Suite GL** (`sdl2_render_suite_gl`)
+  - Lightweight OpenGL ES effect sampler
+  - Demonstrates simple shader-based visuals suited for the Miyoo Mini
+
 - **SDL2 Audio Benchmark** (`sdl2_audio_bench`)
   - Audio performance testing
   - Audio device proving, testing samples/buffers etc.
@@ -135,6 +152,7 @@ miyoo_sdl2_benchmarks/
 │   ├── double_buf/               # Hardware double buffer test
 │   ├── software_buf/             # Software double buffer test
 │   ├── render_suite/             # Comprehensive render tests
+│   ├── render_suite_gl/          # OpenGL ES effect sampler
 │   └── space_bench/              # Star Wing space shooter benchmark
 │
 ├── 📁 include/                    # Header files

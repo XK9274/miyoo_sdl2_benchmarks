@@ -8,6 +8,7 @@
 #include "software_buf/particles.h"
 #include "software_buf/render.h"
 #include "software_buf/state.h"
+#include "common/loading_screen.h"
 
 int main(int argc, char *argv[])
 {
@@ -48,6 +49,15 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    BenchLoadingScreen loading;
+    SDL_bool loading_active = bench_loading_begin(&loading,
+                                                  window,
+                                                  renderer,
+                                                  BENCH_LOADING_STYLE_RECT);
+    if (loading_active) {
+        bench_loading_step(&loading, 0.15f, "Initialising renderer");
+    }
+
     SDL_Texture *backbuffer = SDL_CreateTexture(renderer,
                                                 SDL_PIXELFORMAT_RGBA8888,
                                                 SDL_TEXTUREACCESS_TARGET,
@@ -55,6 +65,9 @@ int main(int argc, char *argv[])
                                                 SB_SCREEN_H);
     if (!backbuffer) {
         printf("Backbuffer creation failed: %s\n", SDL_GetError());
+        if (loading_active) {
+            bench_loading_abort(&loading);
+        }
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();
@@ -64,6 +77,9 @@ int main(int argc, char *argv[])
 
     BenchOverlay *overlay = bench_overlay_create(renderer, SB_SCREEN_W, 16, 12);
     if (!overlay) {
+        if (loading_active) {
+            bench_loading_abort(&loading);
+        }
         SDL_DestroyTexture(backbuffer);
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
@@ -73,10 +89,18 @@ int main(int argc, char *argv[])
 
     SoftwareBenchState state;
     sb_state_init(&state);
+    if (loading_active) {
+        bench_loading_step(&loading, 0.35f, "Preparing state");
+    }
 
     BenchMetrics metrics;
     bench_reset_metrics(&metrics);
     sb_overlay_submit(overlay, &state, &metrics);
+    if (loading_active) {
+        bench_loading_mark_idle(&loading, "GL modules idle - software path");
+        bench_loading_finish(&loading);
+        loading_active = SDL_FALSE;
+    }
 
     printf("SDL2 software double buffer benchmark started\n");
 

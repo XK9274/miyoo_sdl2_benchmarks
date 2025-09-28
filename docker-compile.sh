@@ -97,6 +97,9 @@ if [ -d "$SCRIPT_DIR/build_artifacts" ]; then
     mkdir -p "$WORKSPACE_DIR/build_artifacts"
     cp -a "$SCRIPT_DIR/build_artifacts/." "$WORKSPACE_DIR/build_artifacts/"
 fi
+# Ensure GLES libs are available in build artifacts for linking
+mkdir -p "$WORKSPACE_DIR/build_artifacts/gles_libs"
+cp -a "$SCRIPT_DIR/app-dist/sdl_bench/lib/." "$WORKSPACE_DIR/build_artifacts/gles_libs/" 2>/dev/null || true
 echo "✓ Scripts and source files copied to workspace"
 
 # Step 3: Make scripts executable

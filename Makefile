@@ -6,10 +6,15 @@ BUILD_DIR     ?= build
 BIN_DIR       := $(BUILD_DIR)/bin
 OBJ_DIR       := $(BUILD_DIR)/obj
 
+LOCAL_LIB_DIR := app-dist/sdl_bench/lib
+GL_ARTIFACT_DIR := build_artifacts/gles_libs
+GL_ARTIFACT_STAMP := $(GL_ARTIFACT_DIR)/.stamp
+
 PROGRAMS      := sdl2_bench_software_double_buf \
                  sdl2_bench_double_buf \
                  sdl2_space_bench \
                  sdl2_render_suite \
+                 sdl2_render_suite_gl \
                  sdl2_audio_bench
 
 TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
@@ -31,7 +36,8 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/geometry/square_pyramid.c \
     $(SRC_DIR)/common/metrics.c \
     $(SRC_DIR)/common/overlay.c \
-    $(SRC_DIR)/common/overlay_grid.c
+    $(SRC_DIR)/common/overlay_grid.c \
+    $(SRC_DIR)/common/loading_screen.c
 COMMON_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(COMMON_SOURCES))
 
 SPACE_SOURCES := \
@@ -96,6 +102,15 @@ RENDER_SOURCES := \
 RENDER_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(RENDER_SOURCES))
 RENDER_TARGET  := $(BIN_DIR)/sdl2_render_suite
 
+RENDER_GL_SOURCES := \
+    $(SRC_DIR)/render_suite_gl/input.c \
+    $(SRC_DIR)/render_suite_gl/main.c \
+    $(SRC_DIR)/render_suite_gl/overlay.c \
+    $(SRC_DIR)/render_suite_gl/state.c \
+    $(SRC_DIR)/render_suite_gl/scenes/effects.c
+RENDER_GL_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(RENDER_GL_SOURCES))
+RENDER_GL_TARGET  := $(BIN_DIR)/sdl2_render_suite_gl
+
 AUDIO_SOURCES := \
     $(SRC_DIR)/audio_bench/audio_device.c \
     $(SRC_DIR)/audio_bench/input.c \
@@ -110,6 +125,7 @@ ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(SOFTWARE_OBJECTS) \
                  $(DOUBLE_OBJECTS) \
                  $(RENDER_OBJECTS) \
+                 $(RENDER_GL_OBJECTS) \
                  $(AUDIO_OBJECTS)
 DEPS          := $(ALL_OBJECTS:.o=.d)
 
@@ -137,8 +153,9 @@ CFLAGS       += -std=c11 -Wall -Wextra -D_REENTRANT -DMMIYOO $(ARM_CPU_FLAGS)
 CPPFLAGS     := $(filter-out $(ARM_NEON_DEFINE),$(CPPFLAGS))
 CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SYSROOT)/usr/include -I$(INC_DIR) -I$(SRC_DIR) -I$(NEON_DIR)/include $(ARM_NEON_DEFINE)
 LDFLAGS      += $(SYSROOT_FLAG) -L$(SDL_LIBDIR)
+LDFLAGS      += -L$(LOCAL_LIB_DIR) -L$(GL_ARTIFACT_DIR)
 LDFLAGS      += $(ARM_CPU_FLAGS) -Wl,--gc-sections
-LDLIBS       += -lSDL2 -lSDL2_ttf -lm -lpthread
+LDLIBS       += -lSDL2 -lSDL2_ttf -lGLESv2 -lm -lpthread
 LDLIBS       += $(NEON_LIB)
 
 # Shared objects to bundle next to the binary
@@ -170,6 +187,13 @@ $(RENDER_TARGET): $(COMMON_OBJECTS) $(RENDER_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(RENDER_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
+$(RENDER_GL_TARGET): $(COMMON_OBJECTS) $(RENDER_GL_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(RENDER_GL_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+sdl2_render_suite: $(RENDER_TARGET)
+
+sdl2_render_suite_gl: $(RENDER_GL_TARGET)
 $(AUDIO_TARGET): $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"

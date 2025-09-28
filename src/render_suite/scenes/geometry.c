@@ -247,14 +247,14 @@ static void rs_render_star_field(SDL_Renderer *renderer, const StarParticle *par
     }
 }
 
-static void rs_render_triangles(SDL_Renderer *renderer,
-                                const Triangle3D *triangles,
-                                int triangle_count,
-                                const RotationTrig *rotation_trig,
-                                float center_x,
-                                float center_y,
-                                float scale,
-                                BenchMetrics *metrics)
+static void rs_render_triangles_cpu(SDL_Renderer *renderer,
+                                    const Triangle3D *triangles,
+                                    int triangle_count,
+                                    const RotationTrig *rotation_trig,
+                                    float center_x,
+                                    float center_y,
+                                    float scale,
+                                    BenchMetrics *metrics)
 {
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
@@ -292,6 +292,40 @@ static void rs_render_triangles(SDL_Renderer *renderer,
     }
 
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+}
+
+static void rs_render_triangle_points(SDL_Renderer *renderer,
+                                      const Triangle3D *triangles,
+                                      int triangle_count,
+                                      const RotationTrig *rotation_trig,
+                                      float center_x,
+                                      float center_y,
+                                      float scale,
+                                      BenchMetrics *metrics)
+{
+    if (!renderer || !triangles || triangle_count <= 0) {
+        return;
+    }
+
+    for (int i = 0; i < triangle_count; ++i) {
+        const Triangle3D *tri = &triangles[i];
+        SDL_SetRenderDrawColor(renderer, tri->r, tri->g, tri->b, tri->a);
+
+        for (int j = 0; j < 3; ++j) {
+            Vector3 rotated = tri->vertices[j];
+            rs_rotate_vector(&rotated, rotation_trig);
+
+            float x2d = 0.0f;
+            float y2d = 0.0f;
+            rs_project_vertex(&rotated, &x2d, &y2d, center_x, center_y, scale);
+            SDL_RenderDrawPointF(renderer, x2d, y2d);
+
+            if (metrics) {
+                metrics->draw_calls++;
+                metrics->vertices_rendered++;
+            }
+        }
+    }
 }
 
 void rs_scene_geometry(RenderSuiteState *state,
@@ -346,40 +380,52 @@ void rs_scene_geometry(RenderSuiteState *state,
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_ADD);
     rs_render_star_field(renderer, star_particles, particle_count, metrics);
 
-    // Render rotating cube
     const float scale = 80.0f + 40.0f * rs_state_sin(state, state->geometry_phase * 10.0f);
     RotationTrig rotation_trig = rs_build_rotation_trig(state,
                                                        state->geometry_rotation,
                                                        state->geometry_rotation * 0.7f,
                                                        state->geometry_rotation * 0.3f);
-    rs_render_triangles(renderer,
-                        cached_triangles,
-                        triangle_count,
-                        &rotation_trig,
-                        center_x,
-                        center_y,
-                        scale,
-                        metrics);
 
-    // Additional geometry complexity - wireframe overlay
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 128);
 
-    for (int i = 0; i < triangle_count; i++) {
-        const Triangle3D *tri = &cached_triangles[i];
-        Vector3 rotated[3];
+    const RSGeometryRenderMode render_mode =
+        (RSGeometryRenderMode)(state->geometry_render_mode % RS_GEOMETRY_RENDER_MODE_MAX);
 
-        for (int j = 0; j < 3; j++) {
-            rotated[j] = tri->vertices[j];
-            rs_rotate_vector(&rotated[j], &rotation_trig);
-        }
+    if (render_mode == RS_GEOMETRY_RENDER_FILLED) {
+        rs_render_triangles_cpu(renderer,
+                                cached_triangles,
+                                triangle_count,
+                                &rotation_trig,
+                                center_x,
+                                center_y,
+                                scale,
+                                metrics);
+    } else if (render_mode == RS_GEOMETRY_RENDER_POINTS) {
+        rs_render_triangle_points(renderer,
+                                   cached_triangles,
+                                   triangle_count,
+                                   &rotation_trig,
+                                   center_x,
+                                   center_y,
+                                   scale,
+                                   metrics);
+    } else { // wireframe as default fallback
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 128);
 
-        float x[3], y[3];
-        for (int j = 0; j < 3; j++) {
-            rs_project_vertex(&rotated[j], &x[j], &y[j], center_x, center_y, scale);
-        }
+        for (int i = 0; i < triangle_count; i++) {
+            const Triangle3D *tri = &cached_triangles[i];
+            Vector3 rotated[3];
 
-        // Draw wireframe
+            for (int j = 0; j < 3; j++) {
+                rotated[j] = tri->vertices[j];
+                rs_rotate_vector(&rotated[j], &rotation_trig);
+            }
+
+            float x[3], y[3];
+            for (int j = 0; j < 3; j++) {
+                rs_project_vertex(&rotated[j], &x[j], &y[j], center_x, center_y, scale);
+            }
+
         SDL_RenderDrawLineF(renderer, x[0], y[0], x[1], y[1]);
         SDL_RenderDrawLineF(renderer, x[1], y[1], x[2], y[2]);
         SDL_RenderDrawLineF(renderer, x[2], y[2], x[0], y[0]);
@@ -391,4 +437,5 @@ void rs_scene_geometry(RenderSuiteState *state,
     }
 
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+}
 }

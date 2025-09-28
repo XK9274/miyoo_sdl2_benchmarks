@@ -8,6 +8,7 @@
 #include "audio_bench/overlay.h"
 #include "audio_bench/waveform.h"
 #include "bench_common.h"
+#include "common/loading_screen.h"
 #include "controller_input.h"
 
 #define SCREEN_W BENCH_SCREEN_W
@@ -56,9 +57,21 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    BenchLoadingScreen loading;
+    SDL_bool loading_active = bench_loading_begin(&loading,
+                                                  window,
+                                                  renderer,
+                                                  BENCH_LOADING_STYLE_RECT);
+    if (loading_active) {
+        bench_loading_step(&loading, 0.1f, "Setting up overlay");
+    }
+
     BenchOverlay *overlay = bench_overlay_create(renderer, SCREEN_W, 16, 12);
     if (!overlay) {
         printf("Overlay creation failed\n");
+        if (loading_active) {
+            bench_loading_abort(&loading);
+        }
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         TTF_Quit();
@@ -66,7 +79,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    if (loading_active) {
+        bench_loading_step(&loading, 0.25f, "Initialising audio device");
+    }
     if (!audio_device_init()) {
+        if (loading_active) {
+            bench_loading_abort(&loading);
+        }
         bench_overlay_destroy(overlay);
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
@@ -81,6 +100,12 @@ int main(int argc, char *argv[])
     audio_overlay_start(overlay, &metrics);
 
     audio_device_play();
+    if (loading_active) {
+        bench_loading_step(&loading, 1.0f, "Audio bench ready");
+        bench_loading_mark_idle(&loading, "GL modules idle - audio focus");
+        bench_loading_finish(&loading);
+        loading_active = SDL_FALSE;
+    }
     printf("SDL2 audio bench started\n");
 
     SDL_bool running = SDL_TRUE;
