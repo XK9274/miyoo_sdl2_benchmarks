@@ -7,6 +7,7 @@
 #include "space_bench/overlay.h"
 #include "space_bench/render.h"
 #include "space_bench/state.h"
+#include "common/loading_screen.h"
 
 int main(int argc, char *argv[])
 {
@@ -47,8 +48,20 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    BenchLoadingScreen loading;
+    SDL_bool loading_active = bench_loading_begin(&loading,
+                                                  window,
+                                                  renderer,
+                                                  BENCH_LOADING_STYLE_RECT);
+    if (loading_active) {
+        bench_loading_step(&loading, 0.15f, "Initialising overlay");
+    }
+
     BenchOverlay *overlay = bench_overlay_create(renderer, SPACE_SCREEN_W, 16, 12);
     if (!overlay) {
+        if (loading_active) {
+            bench_loading_abort(&loading);
+        }
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         SDL_Quit();
@@ -57,10 +70,18 @@ int main(int argc, char *argv[])
 
     SpaceBenchState state;
     space_state_init(&state);
+    if (loading_active) {
+        bench_loading_step(&loading, 0.35f, "Preparing state");
+    }
 
     BenchMetrics metrics;
     bench_reset_metrics(&metrics);
     space_overlay_submit(overlay, &state, &metrics);
+    if (loading_active) {
+        bench_loading_mark_idle(&loading, "GL modules idle - starfield");
+        bench_loading_finish(&loading);
+        loading_active = SDL_FALSE;
+    }
 
     printf("SDL2 star wing bench started\n");
 

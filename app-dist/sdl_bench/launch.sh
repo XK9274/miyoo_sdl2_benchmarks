@@ -20,6 +20,7 @@ fi
 
 # Execute freemma if available
 # The current SDL2 doesn't correctly release MI_SYS resources, causing OOM and screen flip on exit
+# Not actually needed now as backend is fixed.
 exe_freemma() {
     if [ -f "$freemma" ]; then
         echo "Running memory cleanup..."
@@ -56,7 +57,7 @@ run_benchmark() {
         return 1
     fi
     
-    exe_freemma
+    # exe_freemma # Not needed now, fixed the SDL backend 
 }
 
 cd "$bench_dir"
@@ -70,6 +71,7 @@ echo "Directory: $bench_dir"
 # Run benchmarks
 exe_cpuclock
 run_benchmark "SDL2 Render Suite" "bin/sdl2_render_suite"
+run_benchmark "SDL2 Render Suite GL" "bin/sdl2_render_suite_gl"
 run_benchmark "SDL2 Software Double Buffer Benchmark" "bin/sdl2_bench_software_double_buf"
 run_benchmark "SDL2 Double Buffer Benchmark" "bin/sdl2_bench_double_buf"
 run_benchmark "SDL2 Interactive Demo" "bin/sdl2_space_bench"

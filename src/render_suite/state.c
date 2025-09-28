@@ -33,6 +33,8 @@ void rs_state_init(RenderSuiteState *state)
     state->lines_cursor_index = 0;
     state->pixel_texture = NULL;
     state->has_neon = RS_HAS_NEON ? SDL_TRUE : SDL_FALSE;
+
+    state->geometry_render_mode = RS_GEOMETRY_RENDER_FILLED;
 }
 
 void rs_state_update_layout(RenderSuiteState *state, BenchOverlay *overlay)

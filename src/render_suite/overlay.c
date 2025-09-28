@@ -4,6 +4,12 @@
 
 #include "common/overlay_grid.h"
 
+static const char *rs_geometry_mode_labels[RS_GEOMETRY_RENDER_MODE_MAX] = {
+    "Filled Faces",
+    "Wireframe",
+    "Vertex Points"
+};
+
 void rs_overlay_submit(BenchOverlay *overlay,
                        const RenderSuiteState *state,
                        const BenchMetrics *metrics)
@@ -32,6 +38,11 @@ void rs_overlay_submit(BenchOverlay *overlay,
     OverlayGrid grid;
     overlay_grid_init(&grid, 2, 10);
     overlay_grid_set_background(&grid, (SDL_Color){0, 0, 0, 210});
+
+    const SDL_bool geometry_active = (state->active_scene == SCENE_GEOMETRY);
+    const int geometry_mode_index = (geometry_active && state->geometry_render_mode >= 0) ?
+        (state->geometry_render_mode % RS_GEOMETRY_RENDER_MODE_MAX) : 0;
+
 
     // Row 0 - Headers
     overlay_grid_set_cell(&grid, 0, 0, accent, 1, "SDL2 Render Suite");
@@ -69,10 +80,21 @@ void rs_overlay_submit(BenchOverlay *overlay,
                         (unsigned long long)metrics->draw_calls,
                         (unsigned long long)metrics->vertices_rendered,
                         (unsigned long long)metrics->triangles_rendered);
-    overlay_grid_set_cell(&grid, 4, 1, primary, 0, "X - Reset Metrics");
+    if (geometry_active) {
+        overlay_grid_set_cell(&grid, 4, 1, primary, 0, "X - Cycle Mode | SELECT - Reset Metrics");
+    } else {
+        overlay_grid_set_cell(&grid, 4, 1, primary, 0, "X / SELECT - Reset Metrics");
+    }
 
     // Row 5 - Render type left, exit control right
-    overlay_grid_set_cell(&grid, 5, 0, amber, 0, "Single-threaded Hardware Rendering");
+    if (geometry_active) {
+        overlay_grid_set_cell(&grid, 5, 0, amber, 0,
+                              "Geometry Mode: %s",
+                              rs_geometry_mode_labels[geometry_mode_index]);
+    } else {
+        overlay_grid_set_cell(&grid, 5, 0, amber, 0,
+                              "Single-threaded Hardware Rendering");
+    }
     overlay_grid_set_cell(&grid, 5, 1, info, 0, "START/ESC - Exit");
 
     // Row 6 - Extended metrics: Memory and Resource stats

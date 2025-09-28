@@ -12,6 +12,7 @@ What’s inside this folder (sdl_bench/)
   • sdl2_bench_software_double_buf  – Software backbuffer rendering test
   • sdl2_bench_double_buf            – Hardware double buffering test (mmiyoo backend)
   • sdl2_render_suite                – Comprehensive rendering suite (fills, lines, textures)
+  • sdl2_render_suite_gl             – Lightweight OpenGL ES effect sampler
   • sdl2_audio_bench                 – Audio device/sample/buffer tests
   • space_bench                     – Star Wing space shooter with metrics
 
@@ -45,6 +46,12 @@ Render Suite - 7 Test Scenes:
 5. Resolution Scaling - Multi-resolution performance tests
 6. Memory Management - Dynamic texture allocation stress testing
 7. Pixel Operations - Direct pixel manipulation effects
+
+Render Suite GL - Effect Modes:
+
+1. Sunrise Gradient – animated gradient with subtle sun bloom
+2. Soft Waves – low-cost sine wave field
+3. Scanline Glow – retro scanline pulse effect
 
 Audio Benchmark - 4 Visualization Modes:
 

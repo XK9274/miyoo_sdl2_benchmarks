@@ -19,6 +19,13 @@ typedef enum {
     SCENE_MAX
 } SceneKind;
 
+typedef enum {
+    RS_GEOMETRY_RENDER_FILLED = 0,
+    RS_GEOMETRY_RENDER_WIREFRAME,
+    RS_GEOMETRY_RENDER_POINTS,
+    RS_GEOMETRY_RENDER_MODE_MAX
+} RSGeometryRenderMode;
+
 typedef struct {
     SceneKind active_scene;
     SDL_bool auto_cycle;
@@ -38,10 +45,10 @@ typedef struct {
     float lines_cursor_progress;
     int lines_cursor_index;
 
-    // New benchmark state variables
     float geometry_rotation;
     int geometry_triangle_count;
     float geometry_phase;
+    int geometry_render_mode;
 
     int scaling_current_width;
     int scaling_current_height;
