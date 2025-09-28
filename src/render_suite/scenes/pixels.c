@@ -1,8 +1,10 @@
 #include "render_suite/scenes/pixels.h"
+#include "render_suite/render_neon.h"
 
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include "common/memory_opt.h"
 
 #define RS_PI 3.14159265358979323846f
 #define PIXEL_SURFACE_WIDTH 160
@@ -324,17 +326,28 @@ static void rs_generate_cellular(Pixel32 *pixels, int width, int height, float p
 
 void rs_scene_pixels_init(RenderSuiteState *state, SDL_Renderer *renderer)
 {
-    (void)renderer; // Unused parameter
     if (!state) return;
 
     rs_init_sin_table();
 
-    // Create surface for pixel manipulation
-    state->pixel_surface = SDL_CreateRGBSurface(0, PIXEL_SURFACE_WIDTH, PIXEL_SURFACE_HEIGHT, 32,
-                                               0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+    // Create surface for pixel manipulation (kept for compatibility)
+    state->pixel_surface = SDL_CreateRGBSurface(0,
+                                               PIXEL_SURFACE_WIDTH,
+                                               PIXEL_SURFACE_HEIGHT,
+                                               32,
+                                               0x00FF0000,
+                                               0x0000FF00,
+                                               0x000000FF,
+                                               0xFF000000);
 
-    if (state->pixel_surface) {
-        state->pixel_buffer = malloc(PIXEL_SURFACE_WIDTH * PIXEL_SURFACE_HEIGHT * sizeof(Pixel32));
+    state->pixel_buffer = malloc(PIXEL_SURFACE_WIDTH * PIXEL_SURFACE_HEIGHT * sizeof(Pixel32));
+
+    if (renderer) {
+        state->pixel_texture = SDL_CreateTexture(renderer,
+                                                SDL_PIXELFORMAT_RGBA8888,
+                                                SDL_TEXTUREACCESS_STREAMING,
+                                                PIXEL_SURFACE_WIDTH,
+                                                PIXEL_SURFACE_HEIGHT);
     }
 
     state->pixel_phase = 0.0f;
@@ -354,6 +367,11 @@ void rs_scene_pixels_cleanup(RenderSuiteState *state)
         free(state->pixel_buffer);
         state->pixel_buffer = NULL;
     }
+
+    if (state->pixel_texture) {
+        SDL_DestroyTexture(state->pixel_texture);
+        state->pixel_texture = NULL;
+    }
 }
 
 void rs_scene_pixels(RenderSuiteState *state,
@@ -361,7 +379,7 @@ void rs_scene_pixels(RenderSuiteState *state,
                      BenchMetrics *metrics,
                      double delta_seconds)
 {
-    if (!state || !renderer || !state->pixel_surface || !state->pixel_buffer) {
+    if (!state || !renderer || !state->pixel_buffer) {
         return;
     }
 
@@ -381,12 +399,11 @@ void rs_scene_pixels(RenderSuiteState *state,
     for (int op = 0; op < operations_per_frame; op++) {
         Uint64 start_time = SDL_GetPerformanceCounter();
 
-        // Lock surface for pixel access
-        if (SDL_LockSurface(state->pixel_surface) < 0) {
+        Pixel32 *pixels = (Pixel32 *)state->pixel_buffer;
+        if (!pixels) {
             continue;
         }
 
-        Pixel32 *pixels = (Pixel32 *)state->pixel_buffer;
         static int fire_buffer[FIRE_HEIGHT * FIRE_WIDTH] = {0};
 
         float op_phase = state->pixel_phase + (float)op * 0.1f;
@@ -407,10 +424,23 @@ void rs_scene_pixels(RenderSuiteState *state,
                 break;
         }
 
-        // Copy pixel data to surface
-        memcpy(state->pixel_surface->pixels, pixels, PIXEL_SURFACE_WIDTH * PIXEL_SURFACE_HEIGHT * sizeof(Pixel32));
+        // Upload to streaming texture using NEON copy path when available
+        if (state->pixel_texture) {
+            void *tex_pixels = NULL;
+            int pitch = 0;
+            if (SDL_LockTexture(state->pixel_texture, NULL, &tex_pixels, &pitch) == 0) {
+                (void)pitch;
+                const size_t pixel_count = (size_t)PIXEL_SURFACE_WIDTH * (size_t)PIXEL_SURFACE_HEIGHT;
+                rs_neon_copy_u32((uint32_t *)tex_pixels, (uint32_t *)pixels, pixel_count);
+                SDL_UnlockTexture(state->pixel_texture);
+            }
+        }
 
-        SDL_UnlockSurface(state->pixel_surface);
+        if (state->pixel_surface) {
+            memcpy(state->pixel_surface->pixels,
+                   pixels,
+                   PIXEL_SURFACE_WIDTH * PIXEL_SURFACE_HEIGHT * sizeof(Pixel32));
+        }
 
         Uint64 end_time = SDL_GetPerformanceCounter();
         if (metrics) {
@@ -421,10 +451,8 @@ void rs_scene_pixels(RenderSuiteState *state,
         }
     }
 
-    // Create texture from surface and render it
-    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, state->pixel_surface);
-    if (texture) {
-        // Render a single, clearly visible copy
+    // Render the cached pixel texture
+    if (state->pixel_texture) {
         const float scale = 2.0f + rs_fast_sin(state->pixel_phase * 0.5f) * 0.5f;
 
         SDL_FRect dest = {
@@ -434,7 +462,7 @@ void rs_scene_pixels(RenderSuiteState *state,
             PIXEL_SURFACE_HEIGHT * scale
         };
 
-        SDL_RenderCopyF(renderer, texture, NULL, &dest);
+        SDL_RenderCopyF(renderer, state->pixel_texture, NULL, &dest);
 
         if (metrics) {
             metrics->draw_calls++;
@@ -442,8 +470,6 @@ void rs_scene_pixels(RenderSuiteState *state,
             metrics->triangles_rendered += 2;
             metrics->texture_switches++;
         }
-
-        SDL_DestroyTexture(texture);
     }
 
     // Draw mode indicator

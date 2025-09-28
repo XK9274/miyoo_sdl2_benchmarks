@@ -23,6 +23,21 @@ typedef struct {
     float life;
 } StarParticle;
 
+typedef struct {
+    float sx, cx;
+    float sy, cy;
+    float sz, cz;
+} RotationTrig;
+
+typedef struct {
+    SDL_bool valid;
+    int subdivisions;
+    int triangle_count;
+    Triangle3D triangles[MAX_TRIANGLES];
+} TriangleCache;
+
+static TriangleCache g_triangle_cache[6];
+
 static inline float rs_clampf(float value, float min_val, float max_val)
 {
     if (value < min_val) return min_val;
@@ -45,28 +60,40 @@ static void rs_project_vertex(const Vector3 *v3d, float *x2d, float *y2d,
     *y2d = center_y + v3d->y * scale * perspective;
 }
 
-static void rs_rotate_vector(Vector3 *v, float rx, float ry, float rz)
+static RotationTrig rs_build_rotation_trig(const RenderSuiteState *state,
+                                           float rx,
+                                           float ry,
+                                           float rz)
+{
+    RotationTrig trig;
+    trig.sx = rs_state_sin_rad(state, rx);
+    trig.cx = rs_state_cos_rad(state, rx);
+    trig.sy = rs_state_sin_rad(state, ry);
+    trig.cy = rs_state_cos_rad(state, ry);
+    trig.sz = rs_state_sin_rad(state, rz);
+    trig.cz = rs_state_cos_rad(state, rz);
+    return trig;
+}
+
+static void rs_rotate_vector(Vector3 *v, const RotationTrig *rot)
 {
     float x = v->x, y = v->y, z = v->z;
 
-    // Rotate around X axis
-    float cos_rx = cosf(rx), sin_rx = sinf(rx);
-    float new_y = y * cos_rx - z * sin_rx;
-    float new_z = y * sin_rx + z * cos_rx;
+    // Rotate around X axis (uses precomputed trig)
+    float new_y = y * rot->cx - z * rot->sx;
+    float new_z = y * rot->sx + z * rot->cx;
     y = new_y;
     z = new_z;
 
     // Rotate around Y axis
-    float cos_ry = cosf(ry), sin_ry = sinf(ry);
-    float new_x = x * cos_ry + z * sin_ry;
-    new_z = -x * sin_ry + z * cos_ry;
+    float new_x = x * rot->cy + z * rot->sy;
+    new_z = -x * rot->sy + z * rot->cy;
     x = new_x;
     z = new_z;
 
     // Rotate around Z axis
-    float cos_rz = cosf(rz), sin_rz = sinf(rz);
-    new_x = x * cos_rz - y * sin_rz;
-    new_y = x * sin_rz + y * cos_rz;
+    new_x = x * rot->cz - y * rot->sz;
+    new_y = x * rot->sz + y * rot->cz;
 
     v->x = new_x;
     v->y = new_y;
@@ -154,8 +181,26 @@ static void rs_create_cube_triangles(Triangle3D *triangles, int *triangle_count,
     *triangle_count = count;
 }
 
+static const Triangle3D *rs_get_cached_cube(int subdivisions, int *triangle_count)
+{
+    int clamped = rs_clampi(subdivisions, 1, 6);
+    TriangleCache *cache = &g_triangle_cache[clamped - 1];
+
+    if (!cache->valid || cache->subdivisions != clamped) {
+        rs_create_cube_triangles(cache->triangles, &cache->triangle_count, 50.0f, clamped);
+        cache->subdivisions = clamped;
+        cache->valid = SDL_TRUE;
+    }
+
+    if (triangle_count) {
+        *triangle_count = cache->triangle_count;
+    }
+    return cache->triangles;
+}
+
 static void rs_update_star_field(StarParticle *particles, int particle_count,
-                                 float delta_seconds, float center_x, float center_y)
+                                 float delta_seconds, float center_x, float center_y,
+                                 const RenderSuiteState *state)
 {
     for (int i = 0; i < particle_count; i++) {
         StarParticle *p = &particles[i];
@@ -173,8 +218,8 @@ static void rs_update_star_field(StarParticle *particles, int particle_count,
 
             float angle = (float)rand() / RAND_MAX * 2.0f * RS_PI;
             float speed = 20.0f + (float)rand() / RAND_MAX * 80.0f;
-            p->dx = cosf(angle) * speed;
-            p->dy = sinf(angle) * speed;
+            p->dx = rs_state_cos_rad(state, angle) * speed;
+            p->dy = rs_state_sin_rad(state, angle) * speed;
 
             p->r = (Uint8)(200 + rand() % 56);
             p->g = (Uint8)(200 + rand() % 56);
@@ -202,9 +247,13 @@ static void rs_render_star_field(SDL_Renderer *renderer, const StarParticle *par
     }
 }
 
-static void rs_render_triangles(SDL_Renderer *renderer, const Triangle3D *triangles,
-                                int triangle_count, float rotation,
-                                float center_x, float center_y, float scale,
+static void rs_render_triangles(SDL_Renderer *renderer,
+                                const Triangle3D *triangles,
+                                int triangle_count,
+                                const RotationTrig *rotation_trig,
+                                float center_x,
+                                float center_y,
+                                float scale,
                                 BenchMetrics *metrics)
 {
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
@@ -216,7 +265,7 @@ static void rs_render_triangles(SDL_Renderer *renderer, const Triangle3D *triang
         Vector3 rotated[3];
         for (int j = 0; j < 3; j++) {
             rotated[j] = tri->vertices[j];
-            rs_rotate_vector(&rotated[j], rotation, rotation * 0.7f, rotation * 0.3f);
+            rs_rotate_vector(&rotated[j], rotation_trig);
         }
 
         // Project to 2D
@@ -270,11 +319,9 @@ void rs_scene_geometry(RenderSuiteState *state,
 
     // Create cube with tessellation based on triangle count
     const int subdivisions = rs_clampi((int)sqrtf((float)max_triangles / 12.0f), 1, 6);
-    static Triangle3D triangles[MAX_TRIANGLES];
-    int triangle_count = 0;
-
-    rs_create_cube_triangles(triangles, &triangle_count, 50.0f, subdivisions);
-    triangle_count = rs_clampi(triangle_count, 0, max_triangles);
+    int cached_triangle_count = 0;
+    const Triangle3D *cached_triangles = rs_get_cached_cube(subdivisions, &cached_triangle_count);
+    const int triangle_count = rs_clampi(cached_triangle_count, 0, max_triangles);
 
     // Create and update star field
     static StarParticle star_particles[MAX_STAR_PARTICLES];
@@ -288,7 +335,12 @@ void rs_scene_geometry(RenderSuiteState *state,
     }
 
     const int particle_count = rs_clampi((int)(50 + factor * 150), 50, MAX_STAR_PARTICLES);
-    rs_update_star_field(star_particles, particle_count, (float)delta_seconds, center_x, center_y);
+    rs_update_star_field(star_particles,
+                         particle_count,
+                         (float)delta_seconds,
+                         center_x,
+                         center_y,
+                         state);
 
     // Render star field background
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_ADD);
@@ -296,21 +348,30 @@ void rs_scene_geometry(RenderSuiteState *state,
 
     // Render rotating cube
     const float scale = 80.0f + 40.0f * rs_state_sin(state, state->geometry_phase * 10.0f);
-    rs_render_triangles(renderer, triangles, triangle_count, state->geometry_rotation,
-                       center_x, center_y, scale, metrics);
+    RotationTrig rotation_trig = rs_build_rotation_trig(state,
+                                                       state->geometry_rotation,
+                                                       state->geometry_rotation * 0.7f,
+                                                       state->geometry_rotation * 0.3f);
+    rs_render_triangles(renderer,
+                        cached_triangles,
+                        triangle_count,
+                        &rotation_trig,
+                        center_x,
+                        center_y,
+                        scale,
+                        metrics);
 
     // Additional geometry complexity - wireframe overlay
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 128);
 
     for (int i = 0; i < triangle_count; i++) {
-        const Triangle3D *tri = &triangles[i];
+        const Triangle3D *tri = &cached_triangles[i];
         Vector3 rotated[3];
 
         for (int j = 0; j < 3; j++) {
             rotated[j] = tri->vertices[j];
-            rs_rotate_vector(&rotated[j], state->geometry_rotation,
-                           state->geometry_rotation * 0.7f, state->geometry_rotation * 0.3f);
+            rs_rotate_vector(&rotated[j], &rotation_trig);
         }
 
         float x[3], y[3];

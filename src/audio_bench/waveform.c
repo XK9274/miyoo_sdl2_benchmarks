@@ -4,6 +4,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_atomic.h>
+#include "common/memory_opt.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -305,7 +306,7 @@ static float waveform_sample_from_bytes(const Uint8 *src,
     const int bits = SDL_AUDIO_BITSIZE(format);
     if (SDL_AUDIO_ISFLOAT(format) && bits == 32) {
         float sample;
-        SDL_memcpy(&sample, src, sizeof(sample));
+        rs_memcpy(&sample, src, sizeof(sample));
         return sample;
     }
 

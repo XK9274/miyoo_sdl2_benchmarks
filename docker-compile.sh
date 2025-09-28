@@ -57,6 +57,9 @@ cp -f "$SCRIPT_DIR/compile.sh" "$WORKSPACE_DIR/"
 cp -f "$SCRIPT_DIR/Makefile" "$WORKSPACE_DIR/"
 cp -rf "$SCRIPT_DIR/src" "$WORKSPACE_DIR/"
 cp -rf "$SCRIPT_DIR/include" "$WORKSPACE_DIR/"
+if [ -d "$SCRIPT_DIR/neon-arm-library" ]; then
+    cp -rf "$SCRIPT_DIR/neon-arm-library" "$WORKSPACE_DIR/"
+fi
 if [ -d "$SCRIPT_DIR/build_artifacts" ]; then
     mkdir -p "$WORKSPACE_DIR/build_artifacts"
     cp -a "$SCRIPT_DIR/build_artifacts/." "$WORKSPACE_DIR/build_artifacts/"

@@ -38,14 +38,15 @@ static inline float rs_wrap_angle(float value)
     return value;
 }
 
-static Uint8 rs_color_component(float n)
+static Uint8 rs_color_component(const RenderSuiteState *state, float n)
 {
-    const float v = 0.5f + 0.5f * sinf(n);
+    const float v = 0.5f + 0.5f * rs_state_sin_rad(state, n);
     const float clamped = (v < 0.0f) ? 0.0f : (v > 1.0f ? 1.0f : v);
     return (Uint8)(clamped * 255.0f);
 }
 
-static void rs_draw_radial_fan(SDL_Renderer *renderer,
+static void rs_draw_radial_fan(const RenderSuiteState *state,
+                               SDL_Renderer *renderer,
                                float center_x,
                                float center_y,
                                float radius_min,
@@ -59,15 +60,15 @@ static void rs_draw_radial_fan(SDL_Renderer *renderer,
     for (int i = 0; i < segments; ++i) {
         const float t = (float)i / (float)segments;
         const float angle = rs_wrap_angle(t * RS_PI * 2.0f + phase);
-        const float wobble = sinf(phase * 0.6f + t * 14.0f) * 0.5f + 0.5f;
+        const float wobble = rs_state_sin_rad(state, phase * 0.6f + t * 14.0f) * 0.5f + 0.5f;
         const float radius = radius_min + wobble * (radius_max - radius_min);
-        const float x1 = center_x + cosf(angle) * radius;
-        const float y1 = center_y + sinf(angle) * radius;
+        const float x1 = center_x + rs_state_cos_rad(state, angle) * radius;
+        const float y1 = center_y + rs_state_sin_rad(state, angle) * radius;
 
         const float hue = phase * 0.35f + t * 6.0f;
-        const Uint8 r = rs_color_component(hue);
-        const Uint8 g = rs_color_component(hue + RS_PI * 0.66f);
-        const Uint8 b = rs_color_component(hue + RS_PI * 1.33f);
+        const Uint8 r = rs_color_component(state, hue);
+        const Uint8 g = rs_color_component(state, hue + RS_PI * 0.66f);
+        const Uint8 b = rs_color_component(state, hue + RS_PI * 1.33f);
 
         SDL_SetRenderDrawColor(renderer, r, g, b, 220);
         SDL_RenderDrawLineF(renderer, center_x, center_y, x1, y1);
@@ -80,7 +81,8 @@ static void rs_draw_radial_fan(SDL_Renderer *renderer,
     }
 }
 
-static void rs_draw_sweeps(SDL_Renderer *renderer,
+static void rs_draw_sweeps(const RenderSuiteState *state,
+                           SDL_Renderer *renderer,
                            int start_x,
                            int start_y,
                            int length,
@@ -101,7 +103,7 @@ static void rs_draw_sweeps(SDL_Renderer *renderer,
 
     for (int i = 0; i < rows; ++i) {
         const float t = (float)i / (float)(rows - 1 ? rows - 1 : 1);
-        const float oscillate = sinf(phase + t * RS_PI * 2.0f);
+        const float oscillate = rs_state_sin_rad(state, phase + t * RS_PI * 2.0f);
         Uint8 r = (Uint8)rs_clampi((int)base_r + (int)(oscillate * 40.0f), 0, 255);
         Uint8 g = (Uint8)rs_clampi((int)base_g + (int)(oscillate * 40.0f), 0, 255);
         Uint8 b = (Uint8)rs_clampi((int)base_b + (int)(oscillate * 40.0f), 0, 255);
@@ -167,11 +169,12 @@ void rs_scene_lines(RenderSuiteState *state,
     const int radial_segments = rs_clampi((int)(stress_scale * 96.0f), 32, 240);
     const float radius_min = (float)SDL_min(BENCH_SCREEN_W, region_height) * 0.18f;
     const float radius_max = (float)SDL_min(BENCH_SCREEN_W, region_height) * (0.25f + stress_scale * 0.12f);
-    rs_draw_radial_fan(renderer, center_x, center_y, radius_min, radius_max, phase, radial_segments, metrics);
+    rs_draw_radial_fan(state, renderer, center_x, center_y, radius_min, radius_max, phase, radial_segments, metrics);
 
     /* horizontal sweeps */
     const int horizontal_rows = rs_clampi((int)(stress_scale * 40.0f), 12, 160);
-    rs_draw_sweeps(renderer,
+    rs_draw_sweeps(state,
+                   renderer,
                    0,
                    (int)state->top_margin,
                    region_height,
@@ -186,7 +189,8 @@ void rs_scene_lines(RenderSuiteState *state,
 
     /* vertical sweeps */
     const int vertical_rows = rs_clampi((int)(stress_scale * 36.0f), 10, 140);
-    rs_draw_sweeps(renderer,
+    rs_draw_sweeps(state,
+                   renderer,
                    0,
                    (int)state->top_margin,
                    region_height,

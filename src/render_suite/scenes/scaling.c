@@ -43,8 +43,12 @@ static inline int rs_clampi(int value, int min_val, int max_val)
     return value;
 }
 
-static void rs_draw_test_content(SDL_Renderer *renderer, int width, int height,
-                                 float phase, BenchMetrics *metrics)
+static void rs_draw_test_content(const RenderSuiteState *state,
+                                 SDL_Renderer *renderer,
+                                 int width,
+                                 int height,
+                                 float phase,
+                                 BenchMetrics *metrics)
 {
     // Draw gradient background
     const int bar_count = 8; // Reduced from 16
@@ -52,7 +56,7 @@ static void rs_draw_test_content(SDL_Renderer *renderer, int width, int height,
 
     for (int i = 0; i < bar_count; i++) {
         float t = (float)i / (float)(bar_count - 1);
-        float wave = sinf(phase + t * RS_PI * 4.0f) * 0.5f + 0.5f;
+        float wave = rs_state_sin_rad(state, phase + t * RS_PI * 4.0f) * 0.5f + 0.5f;
 
         Uint8 r = (Uint8)(128 + wave * 127);
         Uint8 g = (Uint8)(64 + t * 191);
@@ -76,9 +80,9 @@ static void rs_draw_test_content(SDL_Renderer *renderer, int width, int height,
     for (int i = 0; i < shape_count; i++) {
         float angle = phase + (float)i * RS_PI * 2.0f / (float)shape_count;
         float radius = (float)SDL_min(width, height) * 0.2f;
-        int cx = (int)((float)width * 0.5f + cosf(angle) * radius * 0.5f);
-        int cy = (int)((float)height * 0.5f + sinf(angle) * radius * 0.5f);
-        int size = (int)(8.0f + 8.0f * sinf(phase * 2.0f + (float)i));
+        int cx = (int)((float)width * 0.5f + rs_state_cos_rad(state, angle) * radius * 0.5f);
+        int cy = (int)((float)height * 0.5f + rs_state_sin_rad(state, angle) * radius * 0.5f);
+        int size = (int)(8.0f + 8.0f * rs_state_sin_rad(state, phase * 2.0f + (float)i));
 
         // Draw simple rectangles instead of filled circles
         SDL_Rect rect = {cx - size/2, cy - size/2, size, size};
@@ -92,8 +96,12 @@ static void rs_draw_test_content(SDL_Renderer *renderer, int width, int height,
     }
 }
 
-static void rs_test_logical_scaling(SDL_Renderer *renderer, int target_width, int target_height,
-                                    float phase, BenchMetrics *metrics)
+static void rs_test_logical_scaling(const RenderSuiteState *state,
+                                    SDL_Renderer *renderer,
+                                    int target_width,
+                                    int target_height,
+                                    float phase,
+                                    BenchMetrics *metrics)
 {
     Uint64 start_time = SDL_GetPerformanceCounter();
 
@@ -101,7 +109,7 @@ static void rs_test_logical_scaling(SDL_Renderer *renderer, int target_width, in
     SDL_RenderSetLogicalSize(renderer, target_width, target_height);
 
     // Draw test content
-    rs_draw_test_content(renderer, target_width, target_height, phase, metrics);
+    rs_draw_test_content(state, renderer, target_width, target_height, phase, metrics);
 
     // Reset logical size
     SDL_RenderSetLogicalSize(renderer, BENCH_SCREEN_W, BENCH_SCREEN_H);
@@ -114,8 +122,14 @@ static void rs_test_logical_scaling(SDL_Renderer *renderer, int target_width, in
     }
 }
 
-static void rs_test_viewport_scaling(SDL_Renderer *renderer, int target_width, int target_height,
-                                     float center_x, float center_y, float phase, BenchMetrics *metrics)
+static void rs_test_viewport_scaling(const RenderSuiteState *state,
+                                     SDL_Renderer *renderer,
+                                     int target_width,
+                                     int target_height,
+                                     float center_x,
+                                     float center_y,
+                                     float phase,
+                                     BenchMetrics *metrics)
 {
     Uint64 start_time = SDL_GetPerformanceCounter();
 
@@ -144,7 +158,7 @@ static void rs_test_viewport_scaling(SDL_Renderer *renderer, int target_width, i
     }
 
     SDL_RenderSetViewport(renderer, &viewport);
-    rs_draw_test_content(renderer, viewport.w, viewport.h, phase, metrics);
+    rs_draw_test_content(state, renderer, viewport.w, viewport.h, phase, metrics);
     SDL_RenderSetViewport(renderer, NULL);
 
     Uint64 end_time = SDL_GetPerformanceCounter();
@@ -188,7 +202,7 @@ static void rs_test_texture_target_scaling(SDL_Renderer *renderer, RenderSuiteSt
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    rs_draw_test_content(renderer, target_width, target_height, phase, metrics);
+    rs_draw_test_content(state, renderer, target_width, target_height, phase, metrics);
 
     SDL_SetRenderTarget(renderer, NULL);
 
@@ -296,11 +310,11 @@ void rs_scene_scaling(RenderSuiteState *state,
 
         switch (current_mode) {
             case SCALING_MODE_LOGICAL:
-                rs_test_logical_scaling(renderer, test_width, test_height, test_phase, metrics);
+                rs_test_logical_scaling(state, renderer, test_width, test_height, test_phase, metrics);
                 break;
 
             case SCALING_MODE_VIEWPORT:
-                rs_test_viewport_scaling(renderer, test_width, test_height,
+                rs_test_viewport_scaling(state, renderer, test_width, test_height,
                                        center_x, center_y, test_phase, metrics);
                 break;
 

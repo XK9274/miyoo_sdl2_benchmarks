@@ -27,6 +27,7 @@ typedef struct {
     float top_margin;
     TTF_Font *font;
     SDL_Texture *checker_texture;
+    SDL_Texture *pixel_texture;
 
     float sin_table[RS_SIN_TABLE_SIZE];
     int sin_table_size;
@@ -57,6 +58,8 @@ typedef struct {
     void *pixel_buffer;
     float pixel_phase;
     int pixel_plasma_offset;
+
+    SDL_bool has_neon;
 } RenderSuiteState;
 
 void rs_state_init(RenderSuiteState *state);
@@ -66,5 +69,7 @@ void rs_state_destroy(RenderSuiteState *state, SDL_Renderer *renderer);
 float rs_state_stress_factor(const RenderSuiteState *state);
 float rs_state_sin(const RenderSuiteState *state, float units);
 float rs_state_cos(const RenderSuiteState *state, float units);
+float rs_state_sin_rad(const RenderSuiteState *state, float radians);
+float rs_state_cos_rad(const RenderSuiteState *state, float radians);
 
 #endif /* RENDER_SUITE_STATE_H */

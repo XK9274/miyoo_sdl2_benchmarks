@@ -10,6 +10,7 @@
 #include <SDL2/SDL_mutex.h>
 #include <SDL2/SDL_thread.h>
 
+#include "common/memory_opt.h"
 #include "common/metrics.h"
 
 static const char *g_font_paths[] = {
@@ -110,7 +111,7 @@ static int bench_overlay_thread(void *userdata)
         SDL_Color background = overlay->background;
         const int line_count = SDL_min(overlay->line_count, overlay->max_lines);
         if (line_count > 0) {
-            SDL_memcpy(lines, overlay->pending_lines, (size_t)line_count * sizeof(BenchOverlayLine));
+            rs_memcpy(lines, overlay->pending_lines, (size_t)line_count * sizeof(BenchOverlayLine));
         }
         overlay->dirty = SDL_FALSE;
         SDL_UnlockMutex(overlay->mutex);
@@ -203,7 +204,7 @@ static int bench_overlay_thread(void *userdata)
             overlay->visible_buffer = (Uint8 *)SDL_malloc(bytes);
         }
         if (overlay->pixel_buffer && overlay->visible_buffer) {
-            SDL_memcpy(overlay->pixel_buffer, surface->pixels, bytes);
+            rs_memcpy(overlay->pixel_buffer, surface->pixels, bytes);
             overlay->has_pixels = SDL_TRUE;
         }
         SDL_UnlockMutex(overlay->mutex);
@@ -340,9 +341,9 @@ void bench_overlay_submit(BenchOverlay *overlay,
     SDL_LockMutex(overlay->mutex);
     overlay->line_count = SDL_min(line_count, overlay->max_lines);
     if (overlay->line_count > 0) {
-        SDL_memcpy(overlay->pending_lines,
-                   lines,
-                   (size_t)overlay->line_count * sizeof(BenchOverlayLine));
+        rs_memcpy(overlay->pending_lines,
+                  lines,
+                  (size_t)overlay->line_count * sizeof(BenchOverlayLine));
     }
     overlay->background = background;
     if (overlay->refresh_divisor <= 1) {
@@ -375,9 +376,9 @@ void bench_overlay_present(BenchOverlay *overlay,
     SDL_LockMutex(overlay->mutex);
     if (overlay->has_pixels && overlay->pixel_buffer && overlay->visible_buffer) {
         if (overlay->buffer_bytes > 0) {
-            SDL_memcpy(overlay->visible_buffer,
-                       overlay->pixel_buffer,
-                       overlay->buffer_bytes);
+            rs_memcpy(overlay->visible_buffer,
+                      overlay->pixel_buffer,
+                      overlay->buffer_bytes);
             pixels = overlay->visible_buffer;
             pitch = overlay->pitch;
         }
