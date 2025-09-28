@@ -46,6 +46,8 @@ void space_handle_bullet_missile_collisions(SpaceBenchState *state);
 void space_spawn_explosion(SpaceBenchState *state, float x, float y, float radius);
 void space_spawn_layer_explosion(SpaceBenchState *state, float x, float y, float radius, int particles);
 void space_spawn_firing_particles(SpaceBenchState *state, float x, float y, SDL_bool is_laser);
+void space_spawn_laser_charge_particles(SpaceBenchState *state, float x, float y, float charge_progress);
+void space_spawn_laser_firing_particles(SpaceBenchState *state, float x, float y);
 void space_update_particles(SpaceBenchState *state, float dt);
 void space_spawn_enemy_missile_trail(SpaceBenchState *state,
                                      float x,

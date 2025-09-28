@@ -12,7 +12,8 @@
 
 void space_reset_input_triggers(SpaceBenchState *state)
 {
-    state->input.fire_gun = SDL_FALSE;
+    // fire_gun is now a held state like fire_laser, no reset needed
+    (void)state;
 }
 
 void space_update_stars(SpaceBenchState *state, float dt)
@@ -69,6 +70,7 @@ void space_state_init(SpaceBenchState *state)
     state->laser_cooldown = 0.0f;
     state->laser_hold_timer = 0.0f;
     state->laser_recharge_timer = 0.0f;
+    state->laser_charge_timer = 0.0f;
 
     state->anomaly_cooldown_timer = 20.0f;
     state->anomaly_wall_timer = 0.0f;
@@ -137,6 +139,7 @@ void space_state_init(SpaceBenchState *state)
     state->weapon_upgrades.thumper_active = SDL_FALSE;
     state->weapon_upgrades.thumper_pulse_timer = 0.0f;
     state->weapon_upgrades.thumper_wave_timer = 0.0f;
+    state->weapon_upgrades.minigun_active = SDL_FALSE;
 
     for (int i = 0; i < SPACE_MAX_DRONES; ++i) {
         state->drones[i].active = SDL_FALSE;
@@ -269,9 +272,8 @@ void space_state_update(SpaceBenchState *state, float dt)
     if (state->laser_cooldown > 0.0f) {
         state->laser_cooldown -= dt;
     }
-    if (state->laser_hold_timer > 0.0f) {
-        state->laser_hold_timer -= dt;
-    }
+    // laser_hold_timer now counts UP while holding B button
+    // laser_charge_timer is no longer used
 
     if (state->input.fire_gun && state->gun_cooldown <= 0.0f) {
         const float base_speed = SPACE_BULLET_SPEED + state->scroll_speed * 0.25f;
@@ -300,7 +302,7 @@ void space_state_update(SpaceBenchState *state, float dt)
             space_spawn_bullet(state, ship->x + 16.0f, ship->y, base_speed * 0.9f, ship->z * 0.08f);
         }
 
-        state->gun_cooldown = 0.12f;
+        state->gun_cooldown = state->weapon_upgrades.minigun_active ? 0.053f : 0.16f;
         space_spawn_firing_particles(state, state->player_x + 18.0f, state->player_y, SDL_FALSE);
     }
 
@@ -309,30 +311,33 @@ void space_state_update(SpaceBenchState *state, float dt)
         state->laser_recharge_timer -= dt;
     }
 
-    // Handle laser hold timer
-    if (state->laser_hold_timer > 0.0f) {
-        state->laser_hold_timer -= dt;
-
-        // When laser timer expires, start 10-second recharge
-        if (state->laser_hold_timer <= 0.0f) {
-            state->laser_recharge_timer = 10.0f;
-        }
+    // When laser finishes firing, start 10-second recharge
+    if (state->laser_hold_timer >= 4.0f) {  // 1s charge + 3s firing = 4s total
+        state->laser_recharge_timer = 10.0f;
+        state->laser_hold_timer = 0.0f;
     }
 
     if (state->input.fire_laser && state->laser_recharge_timer <= 0.0f) {
-        // Start 3-second timer when first pressed
-        if (state->laser_hold_timer <= 0.0f) {
-            state->laser_hold_timer = 3.0f;
-        }
+        // Count up how long B is held
+        state->laser_hold_timer += dt;
     } else if (!state->input.fire_laser) {
-        // Reset timer when button released (only if not in recharge)
+        // Reset when button released (only if not in recharge)
         if (state->laser_recharge_timer <= 0.0f) {
             state->laser_hold_timer = 0.0f;
         }
     }
 
-    // Activate continuous laser beams while held and timer > 0
-    if (state->input.fire_laser && state->laser_hold_timer > 0.0f && state->laser_recharge_timer <= 0.0f) {
+    // Handle charge-up particle effects (first 1 second)
+    if (state->input.fire_laser && state->laser_hold_timer > 0.0f && state->laser_hold_timer < 1.0f && state->laser_recharge_timer <= 0.0f) {
+        const float charge_progress = state->laser_hold_timer / 1.0f;
+        if (state->laser_cooldown <= 0.0f) {
+            space_spawn_laser_charge_particles(state, state->player_x, state->player_y, charge_progress);
+            state->laser_cooldown = 0.05f;  // Spawn charge particles frequently
+        }
+    }
+
+    // Activate continuous laser beams after 1 second of holding
+    if (state->input.fire_laser && state->laser_hold_timer >= 1.0f && state->laser_recharge_timer <= 0.0f) {
         // Player laser beam
         state->player_laser.is_firing = SDL_TRUE;
         state->player_laser.origin_x = state->player_x + 18.0f;
@@ -341,10 +346,10 @@ void space_state_update(SpaceBenchState *state, float dt)
         // Update pulsing intensity
         state->player_laser.intensity = 0.7f + 0.3f * sinf(state->time_accumulator * 8.0f);
 
-        // Spawn firing particles
+        // Spawn enhanced firing particles
         if (state->laser_cooldown <= 0.0f) {
-            space_spawn_firing_particles(state, state->player_x + 18.0f, state->player_y, SDL_TRUE);
-            state->laser_cooldown = 0.1f;  // Particle spawn rate
+            space_spawn_laser_firing_particles(state, state->player_x + 18.0f, state->player_y);
+            state->laser_cooldown = 0.08f;  // Faster particle spawn rate for more intense effect
         }
 
         // Drone laser beams

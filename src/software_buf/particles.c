@@ -29,54 +29,78 @@ void sb_particles_draw(SoftwareBenchState *state,
         return;
     }
 
-    SDL_FPoint points[SB_MAX_PARTICLES];
-    int point_count = 0;
-    Uint32 current_color = 0;
-    int batch_start = 0;
+    static SDL_FPoint point_buffer[SB_MAX_PARTICLES];
+    const SDL_Color *palette = sb_state_particle_palette();
+    const int alpha_bucket_size = SB_ALPHA_BUCKETS ? 256 / SB_ALPHA_BUCKETS : 256;
+    int total_points = 0;
+    int run_start = 0;
+    int current_color_index = -1;
+    int current_bucket = -1;
 
     for (int i = 0; i < state->particle_count; ++i) {
         BenchParticle *p = &state->particles[i];
+        const Uint8 palette_index = (i < SB_MAX_PARTICLES) ? state->particle_color_index[i] : 0;
+        if (palette_index >= SB_PARTICLE_PALETTE_SIZE) {
+            continue;
+        }
+
         Uint8 alpha = (Uint8)(p->a * p->life);
-        Uint32 particle_color = ((Uint32)p->r << 24) | ((Uint32)p->g << 16) |
-                               ((Uint32)p->b << 8) | alpha;
+        int bucket = alpha_bucket_size ? (alpha / alpha_bucket_size) : 0;
+        if (bucket >= SB_ALPHA_BUCKETS) {
+            bucket = SB_ALPHA_BUCKETS - 1;
+        }
 
-        // If color changed and we have points to draw, flush the batch
-        if (particle_color != current_color && point_count > 0) {
-            Uint8 r = (current_color >> 24) & 0xFF;
-            Uint8 g = (current_color >> 16) & 0xFF;
-            Uint8 b = (current_color >> 8) & 0xFF;
-            Uint8 a = current_color & 0xFF;
+        if (current_color_index != -1 &&
+            (palette_index != current_color_index || bucket != current_bucket) &&
+            total_points > run_start) {
+            const SDL_Color color = palette[current_color_index % SB_PARTICLE_PALETTE_SIZE];
+            Uint8 flush_alpha = 255;
+            if (alpha_bucket_size > 0) {
+                int base = current_bucket * alpha_bucket_size + alpha_bucket_size / 2;
+                if (base > 255) {
+                    base = 255;
+                }
+                flush_alpha = (Uint8)base;
+            }
 
-            SDL_SetRenderDrawColor(renderer, r, g, b, a);
-            SDL_RenderDrawPointsF(renderer, &points[batch_start], point_count - batch_start);
+            SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, flush_alpha);
+            SDL_RenderDrawPointsF(renderer, &point_buffer[run_start], total_points - run_start);
 
             if (metrics) {
                 metrics->draw_calls++;
-                metrics->vertices_rendered += (point_count - batch_start);
+                metrics->vertices_rendered += (total_points - run_start);
             }
 
-            batch_start = point_count;
+            run_start = total_points;
         }
 
-        current_color = particle_color;
-        points[point_count].x = p->x;
-        points[point_count].y = p->y;
-        point_count++;
+        current_color_index = palette_index;
+        current_bucket = bucket;
+
+        if (total_points < SB_MAX_PARTICLES) {
+            point_buffer[total_points].x = p->x;
+            point_buffer[total_points].y = p->y;
+            total_points++;
+        }
     }
 
-    // Draw the final batch
-    if (point_count > batch_start) {
-        Uint8 r = (current_color >> 24) & 0xFF;
-        Uint8 g = (current_color >> 16) & 0xFF;
-        Uint8 b = (current_color >> 8) & 0xFF;
-        Uint8 a = current_color & 0xFF;
+    if (total_points > run_start && current_color_index != -1 && current_bucket != -1) {
+        const SDL_Color color = palette[current_color_index % SB_PARTICLE_PALETTE_SIZE];
+        Uint8 flush_alpha = 255;
+        if (alpha_bucket_size > 0) {
+            int base = current_bucket * alpha_bucket_size + alpha_bucket_size / 2;
+            if (base > 255) {
+                base = 255;
+            }
+            flush_alpha = (Uint8)base;
+        }
 
-        SDL_SetRenderDrawColor(renderer, r, g, b, a);
-        SDL_RenderDrawPointsF(renderer, &points[batch_start], point_count - batch_start);
+        SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, flush_alpha);
+        SDL_RenderDrawPointsF(renderer, &point_buffer[run_start], total_points - run_start);
 
         if (metrics) {
             metrics->draw_calls++;
-            metrics->vertices_rendered += (point_count - batch_start);
+            metrics->vertices_rendered += (total_points - run_start);
         }
     }
 }

@@ -13,7 +13,7 @@
 #define SPACE_MAX_BULLETS 128
 #define SPACE_MAX_LASERS 16
 #define SPACE_MAX_ENEMIES 40
-#define SPACE_MAX_EXPLOSIONS 64
+#define SPACE_MAX_EXPLOSIONS 32
 #define SPACE_MAX_ENEMY_SHOTS 128
 #define SPACE_MAX_UPGRADES 10
 #define SPACE_MAX_DRONES 2
@@ -66,6 +66,7 @@ typedef enum {
     SPACE_UPGRADE_BEAM_FOCUS,
     SPACE_UPGRADE_SHIELD,
     SPACE_UPGRADE_THUMPER,
+    SPACE_UPGRADE_MINIGUN,
     SPACE_UPGRADE_COUNT
 } SpaceUpgradeType;
 
@@ -122,6 +123,7 @@ typedef struct {
     SDL_bool thumper_active;
     float thumper_pulse_timer;
     float thumper_wave_timer;
+    SDL_bool minigun_active;
 } SpaceWeaponUpgrades;
 
 typedef struct {
@@ -274,6 +276,7 @@ typedef struct {
     float laser_cooldown;
     float laser_hold_timer;
     float laser_recharge_timer;
+    float laser_charge_timer;
 
     float spawn_timer;
     float spawn_interval;
