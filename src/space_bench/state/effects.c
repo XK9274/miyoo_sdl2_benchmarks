@@ -70,6 +70,63 @@ void space_spawn_firing_particles(SpaceBenchState *state, float x, float y, SDL_
     }
 }
 
+void space_spawn_laser_charge_particles(SpaceBenchState *state, float x, float y, float charge_progress)
+{
+    const int spawn_count = (int)(charge_progress * 6.0f) + 2;
+    for (int i = 0; i < spawn_count; ++i) {
+        for (int p = 0; p < SPACE_MAX_PARTICLES; ++p) {
+            SpaceParticle *particle = &state->particles[p];
+            if (!particle->active) {
+                particle->active = SDL_TRUE;
+                // Spawn particles around the player and suck them towards the front
+                const float angle = space_rand_range(state, 0.0f, (float)(M_PI * 2.0));
+                const float dist = space_rand_range(state, 20.0f, 40.0f);
+                particle->x = x + cosf(angle) * dist;
+                particle->y = y + sinf(angle) * dist;
+
+                // Calculate velocity towards front of ship with some attraction
+                const float target_x = x + 24.0f; // Front of ship
+                const float target_y = y;
+                const float dx = target_x - particle->x;
+                const float dy = target_y - particle->y;
+                const float speed = 120.0f + charge_progress * 80.0f;
+                const float len = SDL_max(1.0f, SDL_sqrtf(dx * dx + dy * dy));
+
+                particle->vx = (dx / len) * speed - state->scroll_speed * 0.5f;
+                particle->vy = (dy / len) * speed;
+                particle->life = particle->max_life = 0.5f;
+                particle->r = 100 + (Uint8)(charge_progress * 155.0f);
+                particle->g = 150 + (Uint8)(charge_progress * 105.0f);
+                particle->b = 255;
+                break;
+            }
+        }
+    }
+}
+
+void space_spawn_laser_firing_particles(SpaceBenchState *state, float x, float y)
+{
+    const int spawn_count = 8;
+    for (int i = 0; i < spawn_count; ++i) {
+        for (int p = 0; p < SPACE_MAX_PARTICLES; ++p) {
+            SpaceParticle *particle = &state->particles[p];
+            if (!particle->active) {
+                particle->active = SDL_TRUE;
+                particle->x = x + space_rand_range(state, -4.0f, 8.0f);
+                particle->y = y + space_rand_range(state, -6.0f, 6.0f);
+                // Fire particles forward with high velocity
+                particle->vx = space_rand_range(state, 150.0f, 300.0f) - state->scroll_speed * 0.3f;
+                particle->vy = space_rand_range(state, -50.0f, 50.0f);
+                particle->life = particle->max_life = 0.4f;
+                particle->r = 255;
+                particle->g = 200;
+                particle->b = 255;
+                break;
+            }
+        }
+    }
+}
+
 void space_update_particles(SpaceBenchState *state, float dt)
 {
     (void)state;

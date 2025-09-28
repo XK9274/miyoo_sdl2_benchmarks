@@ -73,9 +73,7 @@ SDL_bool space_handle_input(SpaceBenchState *state, BenchMetrics *metrics)
                     state->input.right = pressed;
                     break;
                 case BTN_A:
-                    if (pressed) {
-                        state->input.fire_gun = SDL_TRUE;
-                    }
+                    state->input.fire_gun = pressed;
                     break;
                 case BTN_B:
                     state->input.fire_laser = pressed;

@@ -39,8 +39,15 @@ SpaceUpgradeType space_random_upgrade(SpaceBenchState *state)
                                        !state->thumper_dropped &&
                                        (state->anomaly_pending || state->anomaly.active));
 
+    const SDL_bool can_drop_minigun = (state->weapon_upgrades.split_level >= 2 &&
+                                       !state->weapon_upgrades.minigun_active);
+
     if (can_drop_thumper && space_rand_float(state) < 0.18f) {
         return SPACE_UPGRADE_THUMPER;
+    }
+
+    if (can_drop_minigun && space_rand_float(state) < 0.6f) {
+        return SPACE_UPGRADE_MINIGUN;
     }
 
     for (int attempt = 0; attempt < 4; ++attempt) {
@@ -49,6 +56,9 @@ SpaceUpgradeType space_random_upgrade(SpaceBenchState *state)
             continue;
         }
         if (choice == SPACE_UPGRADE_THUMPER && state->weapon_upgrades.thumper_active) {
+            continue;
+        }
+        if (choice == SPACE_UPGRADE_MINIGUN && !can_drop_minigun) {
             continue;
         }
         return (SpaceUpgradeType)choice;
@@ -96,6 +106,9 @@ void space_apply_upgrade(SpaceBenchState *state, SpaceUpgradeType type)
             state->weapon_upgrades.thumper_pulse_timer = 0.0f;
             state->weapon_upgrades.thumper_wave_timer = 0.0f;
             state->thumper_dropped = SDL_TRUE;
+            break;
+        case SPACE_UPGRADE_MINIGUN:
+            state->weapon_upgrades.minigun_active = SDL_TRUE;
             break;
         case SPACE_UPGRADE_COUNT:
         default:
