@@ -22,9 +22,7 @@ int main(int argc, char *argv[])
         SDL_setenv("SDL_AUDIODRIVER", "mmiyoo", 0);
     }
 
-    if (SDL_getenv("SDL_MMIYOO_DOUBLE_BUFFER") == NULL) {
-        SDL_setenv("SDL_MMIYOO_DOUBLE_BUFFER", "0", 1);
-    }
+    SDL_setenv("SDL_MMIYOO_DOUBLE_BUFFER", "1", 1);
 
     Uint64 perf_freq = SDL_GetPerformanceFrequency();
     Uint64 last_counter = SDL_GetPerformanceCounter();
@@ -49,7 +47,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE);
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!renderer) {
         printf("Renderer creation failed: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);
@@ -58,29 +56,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    SDL_Texture *backbuffer = SDL_CreateTexture(renderer,
-                                                SDL_PIXELFORMAT_RGBA8888,
-                                                SDL_TEXTUREACCESS_TARGET,
-                                                SCREEN_W,
-                                                SCREEN_H);
-    SDL_bool backbuffer_ready = SDL_FALSE;
-    if (backbuffer) {
-        if (SDL_SetRenderTarget(renderer, backbuffer) == 0) {
-            SDL_SetRenderTarget(renderer, NULL);
-            SDL_SetTextureBlendMode(backbuffer, SDL_BLENDMODE_NONE);
-            backbuffer_ready = SDL_TRUE;
-        } else {
-            SDL_DestroyTexture(backbuffer);
-            backbuffer = NULL;
-        }
-    }
-
     BenchOverlay *overlay = bench_overlay_create(renderer, SCREEN_W, 16, 12);
     if (!overlay) {
         printf("Overlay creation failed\n");
-        if (backbuffer) {
-            SDL_DestroyTexture(backbuffer);
-        }
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         TTF_Quit();
@@ -90,9 +68,6 @@ int main(int argc, char *argv[])
 
     if (!audio_device_init()) {
         bench_overlay_destroy(overlay);
-        if (backbuffer) {
-            SDL_DestroyTexture(backbuffer);
-        }
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         TTF_Quit();
@@ -105,7 +80,6 @@ int main(int argc, char *argv[])
 
     audio_overlay_start(overlay, &metrics);
 
-    const SDL_bool use_backbuffer = backbuffer_ready;
     audio_device_play();
     printf("SDL2 audio bench started\n");
 
@@ -144,10 +118,6 @@ int main(int argc, char *argv[])
         const int ui_area_y = overlay_height + margin;
         const int waveform_y = ui_area_y + ui_area_height + margin;
 
-        if (use_backbuffer) {
-            SDL_SetRenderTarget(renderer, backbuffer);
-        }
-
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
         SDL_SetRenderDrawColor(renderer, 8, 10, 18, 255);
         SDL_RenderClear(renderer);
@@ -174,12 +144,6 @@ int main(int argc, char *argv[])
         }
 
         bench_overlay_present(overlay, renderer, &metrics, 0, 0);
-
-        if (use_backbuffer) {
-            SDL_SetRenderTarget(renderer, NULL);
-            SDL_RenderCopy(renderer, backbuffer, NULL, NULL);
-        }
-
         SDL_RenderPresent(renderer);
 
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
@@ -190,9 +154,6 @@ int main(int argc, char *argv[])
     audio_device_shutdown();
 
     bench_overlay_destroy(overlay);
-    if (backbuffer) {
-        SDL_DestroyTexture(backbuffer);
-    }
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     TTF_Quit();
