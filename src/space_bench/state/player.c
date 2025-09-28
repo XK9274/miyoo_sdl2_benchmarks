@@ -166,27 +166,46 @@ void space_update_guided_bullets(SpaceBenchState *state, float dt)
 
 void space_spawn_thumper_wave(SpaceBenchState *state)
 {
-    const int ring_count = 28;
+    static SDL_bool lut_ready = SDL_FALSE;
+    static float lut_cos[SPACE_THUMPER_SEGMENTS];
+    static float lut_sin[SPACE_THUMPER_SEGMENTS];
+    if (!lut_ready) {
+        for (int i = 0; i < SPACE_THUMPER_SEGMENTS; ++i) {
+            const float angle = (float)(M_PI * 2.0f) * (float)i / (float)SPACE_THUMPER_SEGMENTS;
+            lut_cos[i] = cosf(angle);
+            lut_sin[i] = sinf(angle);
+        }
+        lut_ready = SDL_TRUE;
+    }
+
     const float speed = 180.0f;
     const float start_radius = state->player_radius + 6.0f;
-    for (int i = 0; i < ring_count; ++i) {
-        const float angle = (float)(M_PI * 2.0f) * (float)i / (float)ring_count;
-        for (int p = 0; p < SPACE_MAX_PARTICLES; ++p) {
-            SpaceParticle *particle = &state->particles[p];
+    int cursor = state->particle_cursor % SPACE_MAX_PARTICLES;
+
+    for (int i = 0; i < SPACE_THUMPER_SEGMENTS; ++i) {
+        const float dir_x = lut_cos[i];
+        const float dir_y = lut_sin[i];
+        const float spawn_x = state->player_x + dir_x * start_radius;
+        const float spawn_y = state->player_y + dir_y * start_radius;
+
+        for (int search = 0; search < SPACE_MAX_PARTICLES; ++search) {
+            const int idx = (cursor + search) % SPACE_MAX_PARTICLES;
+            SpaceParticle *particle = &state->particles[idx];
             if (!particle->active) {
-                const float dir_x = cosf(angle);
-                const float dir_y = sinf(angle);
                 particle->active = SDL_TRUE;
-                particle->x = state->player_x + dir_x * start_radius;
-                particle->y = state->player_y + dir_y * start_radius;
+                particle->x = spawn_x;
+                particle->y = spawn_y;
                 particle->vx = dir_x * speed + state->scroll_speed * 0.35f;
                 particle->vy = dir_y * speed;
-                particle->life = particle->max_life = 0.55f;
+                particle->life = particle->max_life = 0.45f;
                 particle->r = 180;
                 particle->g = 220;
                 particle->b = 255;
+                cursor = (idx + 1) % SPACE_MAX_PARTICLES;
                 break;
             }
         }
     }
+
+    state->particle_cursor = cursor;
 }

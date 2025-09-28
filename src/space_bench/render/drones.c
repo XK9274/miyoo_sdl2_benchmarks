@@ -43,11 +43,14 @@ void space_render_drones(const SpaceBenchState *state,
         const SpaceVec3 local_base_c = {-4.0f, 4.0f, 4.0f};
         const SpaceVec3 local_base_d = {-4.0f, -4.0f, 4.0f};
 
-        SpaceVec3 apex = space_rotate_roll(local_apex, roll);
-        SpaceVec3 base_a = space_rotate_roll(local_base_a, roll);
-        SpaceVec3 base_b = space_rotate_roll(local_base_b, roll);
-        SpaceVec3 base_c = space_rotate_roll(local_base_c, roll);
-        SpaceVec3 base_d = space_rotate_roll(local_base_d, roll);
+        const float sin_roll = sinf(roll);
+        const float cos_roll = cosf(roll);
+
+        SpaceVec3 apex = space_apply_roll_cached(local_apex, sin_roll, cos_roll);
+        SpaceVec3 base_a = space_apply_roll_cached(local_base_a, sin_roll, cos_roll);
+        SpaceVec3 base_b = space_apply_roll_cached(local_base_b, sin_roll, cos_roll);
+        SpaceVec3 base_c = space_apply_roll_cached(local_base_c, sin_roll, cos_roll);
+        SpaceVec3 base_d = space_apply_roll_cached(local_base_d, sin_roll, cos_roll);
 
         apex.z += ship->z * 0.08f;
         base_a.z += ship->z * 0.08f;

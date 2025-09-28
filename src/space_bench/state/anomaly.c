@@ -4,6 +4,50 @@
 
 #include <math.h>
 
+static void space_anomaly_cache_weapons(SpaceAnomaly *anomaly,
+                                        AnomalyWeaponPoint *points,
+                                        int count,
+                                        float rotation)
+{
+    const float base_x = anomaly->x;
+    const float base_y = anomaly->y;
+    for (int i = 0; i < count; ++i) {
+        AnomalyWeaponPoint *point = &points[i];
+        const float angle = point->angle + rotation;
+        const float s = sinf(angle);
+        const float c = cosf(angle);
+        point->cached_dir_x = c;
+        point->cached_dir_y = s;
+        point->cached_x = base_x + c * point->radius;
+        point->cached_y = base_y + s * point->radius;
+    }
+}
+
+static void space_anomaly_cache_all_weapons(SpaceAnomaly *anomaly)
+{
+    space_anomaly_cache_weapons(anomaly, anomaly->outer_points, 10, anomaly->outer_rotation);
+    space_anomaly_cache_weapons(anomaly, anomaly->mid2_points, 8, anomaly->mid2_rotation);
+    space_anomaly_cache_weapons(anomaly, anomaly->mid1_points, 6, anomaly->mid1_rotation);
+    space_anomaly_cache_weapons(anomaly, anomaly->inner_points, 4, anomaly->inner_rotation);
+    space_anomaly_cache_weapons(anomaly, anomaly->core_points, 20, anomaly->core_rotation);
+}
+
+static void space_anomaly_cache_orbitals(SpaceAnomaly *anomaly)
+{
+    const float base_x = anomaly->x;
+    const float base_y = anomaly->y;
+    for (int i = 0; i < 64; ++i) {
+        AnomalyOrbitalPoint *point = &anomaly->orbital_points[i];
+        if (!point->active) {
+            continue;
+        }
+        const float s = sinf(point->angle);
+        const float c = cosf(point->angle);
+        point->cached_x = base_x + c * point->radius;
+        point->cached_y = base_y + s * point->radius;
+    }
+}
+
 void space_activate_anomaly(SpaceBenchState *state)
 {
     if (state->anomaly.active) {
@@ -115,6 +159,9 @@ void space_activate_anomaly(SpaceBenchState *state)
 
     state->anomaly_wall_timer = 3.5f;
     state->anomaly_wall_phase = 0;
+
+    space_anomaly_cache_all_weapons(&state->anomaly);
+    space_anomaly_cache_orbitals(&state->anomaly);
 }
 
 void space_fire_anomaly_laser_shot(SpaceBenchState *state, float x, float y, float dx, float dy)
@@ -130,8 +177,7 @@ void space_fire_anomaly_laser_shot(SpaceBenchState *state, float x, float y, flo
             shot->vy = dy * 300.0f;
             shot->life = 2.0f;
             shot->is_missile = SDL_FALSE;
-            shot->trail_count = 0;
-            shot->trail_timer = 0.0f;
+            shot->trail_emit_timer = 0.0f;
             shot->damage = 6.0f;
             return;
         }
@@ -166,9 +212,11 @@ void space_update_anomaly(SpaceBenchState *state, float dt)
     // Update layer rotations
     anomaly->core_rotation += 5.0f * dt;
     anomaly->inner_rotation -= 1.0f * dt;
-    anomaly->mid1_rotation += 1.0f * dt;
-    anomaly->mid2_rotation -= 1.8f * dt;
-    anomaly->outer_rotation += 1.5f * dt;
+   anomaly->mid1_rotation += 1.0f * dt;
+   anomaly->mid2_rotation -= 1.8f * dt;
+   anomaly->outer_rotation += 1.5f * dt;
+
+    space_anomaly_cache_all_weapons(anomaly);
 
     // Update shield pulse animation
     if (anomaly->shield_active) {
@@ -197,9 +245,8 @@ void space_update_anomaly(SpaceBenchState *state, float dt)
             if (!point->active) continue;
             point->fire_timer -= dt;
 
-            const float angle = point->angle + anomaly->outer_rotation;
-            const float gun_x = anomaly->x + cosf(angle) * point->radius;
-            const float gun_y = anomaly->y + sinf(angle) * point->radius;
+            const float gun_x = point->cached_x;
+            const float gun_y = point->cached_y;
 
             if (point->fire_timer <= 0.0f && state->player_alive) {
                 const float dx = state->player_x - gun_x;
@@ -221,9 +268,8 @@ void space_update_anomaly(SpaceBenchState *state, float dt)
             if (!point->active) continue;
             point->fire_timer -= dt;
 
-            const float angle = point->angle + anomaly->mid2_rotation;
-            const float gun_x = anomaly->x + cosf(angle) * point->radius;
-            const float gun_y = anomaly->y + sinf(angle) * point->radius;
+            const float gun_x = point->cached_x;
+            const float gun_y = point->cached_y;
 
             if (point->fire_timer <= 0.0f && state->player_alive) {
                 for (int s = 0; s < SPACE_MAX_ENEMY_SHOTS; ++s) {
@@ -308,15 +354,16 @@ void space_update_anomaly(SpaceBenchState *state, float dt)
             if (!point->active) continue;
             point->laser_timer -= dt;
 
-            const float angle = point->angle + anomaly->outer_rotation;
-            const float gun_x = anomaly->x + cosf(angle) * point->radius;
-            const float gun_y = anomaly->y + sinf(angle) * point->radius;
+            const float gun_x = point->cached_x;
+            const float gun_y = point->cached_y;
 
             if (point->laser_timer <= 0.0f) {
                 // Fire radially outward in rotating pattern (not toward player)
-                const float dx = cosf(angle);
-                const float dy = sinf(angle);
-                space_fire_anomaly_laser_shot(state, gun_x, gun_y, dx, dy);
+                space_fire_anomaly_laser_shot(state,
+                                              gun_x,
+                                              gun_y,
+                                              point->cached_dir_x,
+                                              point->cached_dir_y);
                 point->laser_timer = space_rand_range(state, 0.5f, 0.9f);  // Moderate fire rate
             }
         }
@@ -328,9 +375,8 @@ void space_update_anomaly(SpaceBenchState *state, float dt)
                 if (!point->active) continue;
                 point->laser_timer -= dt;
 
-                const float angle = point->angle + anomaly->inner_rotation;
-                const float gun_x = anomaly->x + cosf(angle) * point->radius;
-                const float gun_y = anomaly->y + sinf(angle) * point->radius;
+                const float gun_x = point->cached_x;
+                const float gun_y = point->cached_y;
 
                 if (point->laser_timer <= 0.0f) {
                     const float dx = state->player_x - gun_x;
@@ -349,15 +395,16 @@ void space_update_anomaly(SpaceBenchState *state, float dt)
                 if (!point->active) continue;
                 point->laser_timer -= dt;
 
-                const float angle = point->angle + anomaly->core_rotation;
-                const float gun_x = anomaly->x + cosf(angle) * point->radius;
-                const float gun_y = anomaly->y + sinf(angle) * point->radius;
+                const float gun_x = point->cached_x;
+                const float gun_y = point->cached_y;
 
                 if (point->laser_timer <= 0.0f) {
                     // Fire radially outward from core
-                    const float dx = cosf(angle);
-                    const float dy = sinf(angle);
-                    space_fire_anomaly_laser_shot(state, gun_x, gun_y, dx, dy);
+                    space_fire_anomaly_laser_shot(state,
+                                                  gun_x,
+                                                  gun_y,
+                                                  point->cached_dir_x,
+                                                  point->cached_dir_y);
                     point->laser_timer = space_rand_range(state, 0.3f, 0.7f);  // Moderate fire rate
                 }
 
@@ -391,6 +438,8 @@ void space_update_anomaly(SpaceBenchState *state, float dt)
     }
 
     // Update orbital points
+    const float base_x = anomaly->x;
+    const float base_y = anomaly->y;
     for (int i = 0; i < 64; ++i) {
         AnomalyOrbitalPoint *point = &anomaly->orbital_points[i];
         if (!point->active) continue;
@@ -405,6 +454,11 @@ void space_update_anomaly(SpaceBenchState *state, float dt)
         // Add spiraling effect by slowly changing radius
         point->radius += sinf(anomaly->pulse + point->phase_offset) * 2.0f * dt;
         point->radius = SDL_max(anomaly->scale * 0.2f, SDL_min(anomaly->scale * 1.8f, point->radius));
+
+        const float s = sinf(point->angle);
+        const float c = cosf(point->angle);
+        point->cached_x = base_x + c * point->radius;
+        point->cached_y = base_y + s * point->radius;
     }
 
     // Update tracking lasers

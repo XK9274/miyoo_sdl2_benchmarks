@@ -20,6 +20,7 @@
 #define SPACE_TRAIL_POINTS 128
 #define SPACE_MAX_PARTICLES 64
 #define SPACE_ANOMALY_MID_LASER_COUNT 10
+#define SPACE_THUMPER_SEGMENTS 18
 
 #define SPACE_ANOMALY_LASER_DPS 32.0f
 #define SPACE_ANOMALY_LASER_THICKNESS 4.0f
@@ -76,9 +77,7 @@ typedef struct {
     float life;
     SDL_bool active;
     SDL_bool is_missile;  // Missile vs regular shot
-    float trail_points[16][2];  // Longer trail for missiles
-    int trail_count;
-    float trail_timer;  // Timer to add trail points
+    float trail_emit_timer;
     float damage;
 } SpaceEnemyShot;
 
@@ -132,6 +131,10 @@ typedef struct {
     float fire_timer;
     float laser_timer;
     SDL_bool active;
+    float cached_x;
+    float cached_y;
+    float cached_dir_x;
+    float cached_dir_y;
 } AnomalyWeaponPoint;
 
 typedef struct {
@@ -140,6 +143,8 @@ typedef struct {
     float angular_velocity;
     float phase_offset;
     SDL_bool active;
+    float cached_x;
+    float cached_y;
 } AnomalyOrbitalPoint;
 
 typedef struct {
@@ -304,6 +309,7 @@ typedef struct {
     SpaceExplosion explosions[SPACE_MAX_EXPLOSIONS];
     SpaceEnemyShot enemy_shots[SPACE_MAX_ENEMY_SHOTS];
     SpaceParticle particles[SPACE_MAX_PARTICLES];
+    int particle_cursor;
     SpaceUpgrade upgrades[SPACE_MAX_UPGRADES];
     SpaceDrone drones[SPACE_MAX_DRONES];
     SpaceTrail player_trail;
