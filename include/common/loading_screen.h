@@ -36,6 +36,9 @@ typedef struct BenchLoadingScreen {
     int gl_height;
     float gl_time_accum;
     SDL_bool gl_ready;
+    SDL_bool gl_init_pending;
+    SDL_bool gl_initializing;
+    SDL_bool gl_first_frame_presented;
     SDL_bool gl_library_loaded;
     SDL_bool gl_library_owned;
     SDL_bool gl_transferred;
