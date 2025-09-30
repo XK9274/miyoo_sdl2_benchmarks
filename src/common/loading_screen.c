@@ -137,6 +137,10 @@ static void bench_loading_destroy_gl(BenchLoadingScreen *screen)
         screen->gl_library_loaded = SDL_FALSE;
         screen->gl_library_owned = SDL_FALSE;
     }
+
+    screen->gl_init_pending = SDL_FALSE;
+    screen->gl_initializing = SDL_FALSE;
+    screen->gl_first_frame_presented = SDL_FALSE;
 }
 
 static Uint32 bench_loading_compile(GLenum type, const char *source)
@@ -340,6 +344,32 @@ static SDL_bool bench_loading_setup_gl(BenchLoadingScreen *screen)
     screen->gl_ready = SDL_TRUE;
     SDL_GL_MakeCurrent(screen->gl_window, NULL);
     return SDL_TRUE;
+}
+
+static void bench_loading_try_initialize_gl(BenchLoadingScreen *screen)
+{
+    if (!screen || screen->style != BENCH_LOADING_STYLE_GL) {
+        return;
+    }
+
+    if (!screen->gl_init_pending || screen->gl_ready || screen->gl_initializing) {
+        if (screen->gl_ready) {
+            screen->gl_init_pending = SDL_FALSE;
+        }
+        return;
+    }
+
+    screen->gl_initializing = SDL_TRUE;
+    if (!bench_loading_setup_gl(screen)) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "bench_loading: deferred GL setup failed, staying in rect style");
+        bench_loading_destroy_gl(screen);
+        screen->style = BENCH_LOADING_STYLE_RECT;
+        screen->gl_init_pending = SDL_FALSE;
+    } else {
+        screen->gl_init_pending = SDL_FALSE;
+    }
+    screen->gl_initializing = SDL_FALSE;
 }
 
 static void bench_loading_update_gl(BenchLoadingScreen *screen)
@@ -565,6 +595,14 @@ static void bench_loading_present(BenchLoadingScreen *screen)
     bench_loading_render_message(screen, w, h);
 
     SDL_RenderPresent(screen->renderer);
+
+    if (screen->style == BENCH_LOADING_STYLE_GL && screen->gl_init_pending) {
+        if (!screen->gl_first_frame_presented) {
+            screen->gl_first_frame_presented = SDL_TRUE;
+        } else {
+            bench_loading_try_initialize_gl(screen);
+        }
+    }
 }
 
 SDL_bool bench_loading_begin(BenchLoadingScreen *screen,
@@ -596,12 +634,8 @@ SDL_bool bench_loading_begin(BenchLoadingScreen *screen,
     screen->owns_font = (screen->font != NULL);
 
     if (style == BENCH_LOADING_STYLE_GL) {
-        if (!bench_loading_setup_gl(screen)) {
-            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                        "bench_loading_begin: falling back to rect style");
-            bench_loading_destroy_gl(screen);
-            screen->style = BENCH_LOADING_STYLE_RECT;
-        }
+        screen->gl_init_pending = SDL_TRUE;
+        screen->gl_first_frame_presented = SDL_FALSE;
     }
 
     bench_loading_present(screen);
@@ -686,7 +720,18 @@ SDL_bool bench_loading_obtain_gl(BenchLoadingScreen *screen,
                                  SDL_Window **out_window,
                                  SDL_GLContext *out_context)
 {
-    if (!screen || screen->style != BENCH_LOADING_STYLE_GL || !screen->gl_ready || screen->gl_transferred) {
+    if (!screen) {
+        return SDL_FALSE;
+    }
+
+    if (screen->style == BENCH_LOADING_STYLE_GL && screen->gl_init_pending) {
+        if (!screen->gl_first_frame_presented) {
+            screen->gl_first_frame_presented = SDL_TRUE;
+        }
+        bench_loading_try_initialize_gl(screen);
+    }
+
+    if (screen->style != BENCH_LOADING_STYLE_GL || !screen->gl_ready || screen->gl_transferred) {
         return SDL_FALSE;
     }
 
