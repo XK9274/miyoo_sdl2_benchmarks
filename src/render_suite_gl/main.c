@@ -162,6 +162,10 @@ int main(int argc, char *argv[])
         metrics.scaling_operations = 0;
         metrics.pixel_operations = 0;
 
+        if (state.fbo_dirty) {
+            rsgl_effects_apply_fbo_size(&state, renderer);
+        }
+
         rsgl_state_update_layout(&state, overlay);
 
         SDL_SetRenderDrawColor(renderer, 8, 10, 18, 255);
