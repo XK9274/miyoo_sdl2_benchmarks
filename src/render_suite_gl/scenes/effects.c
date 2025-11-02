@@ -5,8 +5,6 @@
 
 #include <math.h>
 
-#define RSGL_FBO_WIDTH 160
-#define RSGL_FBO_HEIGHT 120
 #define RSGL_POSITION_LOC 0
 #define RSGL_TEXCOORD_LOC 1
 
@@ -405,10 +403,17 @@ static SDL_bool rsgl_create_programs(void)
 
 static SDL_bool rsgl_allocate_pixels(RsglState *state)
 {
-    const size_t required = (size_t)RSGL_FBO_WIDTH * (size_t)RSGL_FBO_HEIGHT * 4u;
-    if (required == 0) {
+    if (!state) {
         return SDL_FALSE;
     }
+
+    const int width = state->fbo_width;
+    const int height = state->fbo_height;
+    if (width <= 0 || height <= 0) {
+        return SDL_FALSE;
+    }
+
+    const size_t required = (size_t)width * (size_t)height * 4u;
     if (state->pixel_buffer && state->pixel_capacity >= required) {
         return SDL_TRUE;
     }
@@ -428,6 +433,16 @@ static SDL_bool rsgl_allocate_pixels(RsglState *state)
 
 static SDL_bool rsgl_create_targets(RsglState *state)
 {
+    if (!state) {
+        return SDL_FALSE;
+    }
+
+    const int width = state->fbo_width;
+    const int height = state->fbo_height;
+    if (width <= 0 || height <= 0) {
+        return SDL_FALSE;
+    }
+
     glGenBuffers(1, &state->gl_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, state->gl_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(rsgl_quad), rsgl_quad, GL_STATIC_DRAW);
@@ -441,8 +456,8 @@ static SDL_bool rsgl_create_targets(RsglState *state)
     glTexImage2D(GL_TEXTURE_2D,
                  0,
                  GL_RGBA,
-                 RSGL_FBO_WIDTH,
-                 RSGL_FBO_HEIGHT,
+                 width,
+                 height,
                  0,
                  GL_RGBA,
                  GL_UNSIGNED_BYTE,
@@ -502,8 +517,8 @@ SDL_bool rsgl_effects_init(RsglState *state, SDL_Renderer *renderer)
         state->gl_window = SDL_CreateWindow("rsgl",
                                             SDL_WINDOWPOS_UNDEFINED,
                                             SDL_WINDOWPOS_UNDEFINED,
-                                            RSGL_FBO_WIDTH,
-                                            RSGL_FBO_HEIGHT,
+                                            state->fbo_width,
+                                            state->fbo_height,
                                             SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
         if (!state->gl_window) {
             SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
@@ -544,8 +559,8 @@ SDL_bool rsgl_effects_init(RsglState *state, SDL_Renderer *renderer)
     state->screen_texture = SDL_CreateTexture(renderer,
                                               SDL_PIXELFORMAT_ABGR8888,
                                               SDL_TEXTUREACCESS_STREAMING,
-                                              RSGL_FBO_WIDTH,
-                                              RSGL_FBO_HEIGHT);
+                                              state->fbo_width,
+                                              state->fbo_height);
     if (!state->screen_texture) {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                     "rsgl_effects_init: failed to create SDL texture (%s)",
@@ -554,6 +569,7 @@ SDL_bool rsgl_effects_init(RsglState *state, SDL_Renderer *renderer)
     }
 
     state->gl_ready = SDL_TRUE;
+    rsgl_state_commit_fbo_size(state);
     state->effect_count = rsgl_effect_total;
     if (state->effect_index >= state->effect_count) {
         state->effect_index = 0;
@@ -565,6 +581,12 @@ SDL_bool rsgl_effects_init(RsglState *state, SDL_Renderer *renderer)
 static void rsgl_render_effect(RsglState *state)
 {
     if (!state->gl_ready) {
+        return;
+    }
+
+    const int width = state->fbo_width;
+    const int height = state->fbo_height;
+    if (width <= 0 || height <= 0) {
         return;
     }
 
@@ -580,7 +602,7 @@ static void rsgl_render_effect(RsglState *state)
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, state->gl_fbo);
-    glViewport(0, 0, RSGL_FBO_WIDTH, RSGL_FBO_HEIGHT);
+    glViewport(0, 0, width, height);
     glClearColor(0.05f, 0.07f, 0.12f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -622,8 +644,8 @@ static void rsgl_render_effect(RsglState *state)
 
     glReadPixels(0,
                  0,
-                 RSGL_FBO_WIDTH,
-                 RSGL_FBO_HEIGHT,
+                 width,
+                 height,
                  GL_RGBA,
                  GL_UNSIGNED_BYTE,
                  state->pixel_buffer);
@@ -646,15 +668,123 @@ static void rsgl_upload_texture(RsglState *state)
 
     Uint8 *dst = (Uint8 *)pixels;
     const Uint8 *src = state->pixel_buffer;
-    const int src_stride = RSGL_FBO_WIDTH * 4;
+    const int width = state->fbo_width;
+    const int height = state->fbo_height;
+    if (width <= 0 || height <= 0) {
+        SDL_UnlockTexture(state->screen_texture);
+        return;
+    }
 
-    for (int y = 0; y < RSGL_FBO_HEIGHT; ++y) {
+    const int src_stride = width * 4;
+
+    for (int y = 0; y < height; ++y) {
         Uint8 *row = dst + y * pitch;
-        const Uint8 *src_row = src + (RSGL_FBO_HEIGHT - 1 - y) * src_stride;
+        const Uint8 *src_row = src + (height - 1 - y) * src_stride;
         SDL_memcpy(row, src_row, src_stride);
     }
 
     SDL_UnlockTexture(state->screen_texture);
+}
+
+SDL_bool rsgl_effects_apply_fbo_size(RsglState *state, SDL_Renderer *renderer)
+{
+    if (!state || !renderer) {
+        return SDL_FALSE;
+    }
+    if (!state->gl_ready) {
+        rsgl_state_commit_fbo_size(state);
+        return SDL_TRUE;
+    }
+
+    if (!rsgl_allocate_pixels(state)) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "rsgl_effects_apply_fbo_size: pixel allocation failed");
+        rsgl_state_revert_fbo_size(state);
+        return SDL_FALSE;
+    }
+
+    const int width = state->fbo_width;
+    const int height = state->fbo_height;
+    if (width <= 0 || height <= 0) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "rsgl_effects_apply_fbo_size: invalid target size %dx%d",
+                    width,
+                    height);
+        rsgl_state_revert_fbo_size(state);
+        return SDL_FALSE;
+    }
+
+    SDL_Texture *new_texture = SDL_CreateTexture(renderer,
+                                                 SDL_PIXELFORMAT_ABGR8888,
+                                                 SDL_TEXTUREACCESS_STREAMING,
+                                                 width,
+                                                 height);
+    if (!new_texture) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "rsgl_effects_apply_fbo_size: SDL texture creation failed (%s)",
+                    SDL_GetError());
+        rsgl_state_revert_fbo_size(state);
+        return SDL_FALSE;
+    }
+
+    if (!state->gl_window || !state->gl_context || !state->gl_color_texture || !state->gl_fbo) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "rsgl_effects_apply_fbo_size: GL targets not ready");
+        SDL_DestroyTexture(new_texture);
+        rsgl_state_revert_fbo_size(state);
+        return SDL_FALSE;
+    }
+
+    if (SDL_GL_MakeCurrent(state->gl_window, state->gl_context) != 0) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "rsgl_effects_apply_fbo_size: make current failed (%s)",
+                    SDL_GetError());
+        SDL_DestroyTexture(new_texture);
+        rsgl_state_revert_fbo_size(state);
+        return SDL_FALSE;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, state->gl_color_texture);
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 GL_RGBA,
+                 width,
+                 height,
+                 0,
+                 GL_RGBA,
+                 GL_UNSIGNED_BYTE,
+                 NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, state->gl_fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER,
+                           GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_2D,
+                           state->gl_color_texture,
+                           0);
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    SDL_GL_MakeCurrent(state->gl_window, NULL);
+
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "rsgl_effects_apply_fbo_size: framebuffer incomplete (0x%04x)",
+                    status);
+        SDL_DestroyTexture(new_texture);
+        rsgl_state_revert_fbo_size(state);
+        return SDL_FALSE;
+    }
+
+    if (state->screen_texture) {
+        SDL_DestroyTexture(state->screen_texture);
+    }
+    state->screen_texture = new_texture;
+
+    rsgl_state_commit_fbo_size(state);
+    return SDL_TRUE;
 }
 
 void rsgl_effects_render(RsglState *state,

@@ -27,7 +27,7 @@ SDL_bool rsgl_handle_input(RsglState *state, BenchMetrics *metrics)
                     }
                     break;
                 case BTN_X:
-                    bench_reset_metrics(metrics);
+                    rsgl_state_cycle_fbo_size(state);
                     break;
                 case BTN_SELECT:
                     bench_reset_metrics(metrics);
