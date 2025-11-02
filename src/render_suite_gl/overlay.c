@@ -26,6 +26,13 @@ void rsgl_overlay_submit(BenchOverlay *overlay,
     const int effect_count = state->effect_count;
     const int effect_index = (effect_count > 0) ? state->effect_index % effect_count : 0;
     const char *effect_name = rsgl_effect_name(effect_index);
+    const char *fbo_label = "N/A";
+    if (state->fbo_size_index >= 0 && state->fbo_size_index < RSGL_FBO_PRESET_COUNT) {
+        const RsglFboPreset *preset = &rsgl_fbo_presets[state->fbo_size_index];
+        if (preset && preset->label) {
+            fbo_label = preset->label;
+        }
+    }
 
     overlay_grid_set_cell(&grid, 0, 0, accent, 1, "SDL2 GL Effect Suite");
     overlay_grid_set_cell(&grid, 0, 1, accent, 1, "Controls");
@@ -54,12 +61,15 @@ void rsgl_overlay_submit(BenchOverlay *overlay,
                           (metrics->min_frame_time_ms == DBL_MAX) ? 0.0 : metrics->min_frame_time_ms,
                           metrics->max_frame_time_ms);
     overlay_grid_set_cell(&grid, 3, 1, primary, 0,
-                          "X/SELECT - Reset Metrics");
+                          "SELECT - Reset Metrics");
 
     overlay_grid_set_cell(&grid, 4, 0, green, 0,
                           "Draw Calls %llu | Texture Updates %llu",
                           (unsigned long long)metrics->draw_calls,
                           (unsigned long long)metrics->texture_switches);
+    overlay_grid_set_cell(&grid, 4, 1, primary, 0,
+                          "X - FBO Size %s",
+                          fbo_label);
 
     overlay_grid_set_cell(&grid, 5, 0, info, 0,
                           "Effect Timer %.2fs",
