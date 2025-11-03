@@ -68,7 +68,7 @@ app-dist/sdl_bench # Will contain the ready-to-use package w/ bin/lib/scripts.
 ### Direct Installation
 1. **Copy the app directory** to your Miyoo Mini SD card into "App", the directory path should be:
    ```bash
-   /mnt/SDCARD/App/
+   /mnt/SDCARD/App/sdl-bench
    ```
 
 2. **Restart MainUI** or reboot your Miyoo Mini (You can restart MainUI by briefly opening Search, Gameswitcher or similar; then closing it again)
