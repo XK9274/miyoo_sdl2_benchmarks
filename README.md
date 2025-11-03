@@ -107,7 +107,7 @@ app-dist/sdl_bench # Will contain the ready-to-use package w/ bin/lib/scripts.
 
 ### Docker Pipeline
 ```
-User runs ./compile.sh
+User runs ./docker-compile.sh
        ↓
 Clone union-miyoomini-toolchain
        ↓
