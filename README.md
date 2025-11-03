@@ -33,11 +33,11 @@
 
 ## Description
 
-This repository contains SDL2 benchmark tests that measure rendering performance on the Miyoo Mini handheld device. The benchmarks test various SDL2 rendering techniques including software/hardware double buffering, comprehensive rendering suites for SDL2 native rendering, and OpenGL ES, aswell as audio backend testing.
+This repository contains SDL2 benchmark tests that measure rendering performance on the Miyoo Mini handheld device using a new custom version of SDL2 libraries, originally based on Stewards but now completely rebuild w/ most stuibs implemented.. The benchmarks will give a good example of the baseline performance you can expect from these new liibs (Which are not yet on Github..) 
 
 ## Quick Start
 
-### Building from Source
+### Building from Source (Benchmark binaries only)
 
 ```bash
 # Clone the repository
@@ -66,13 +66,12 @@ app-dist/sdl_bench # Will contain the ready-to-use package w/ bin/lib/scripts.
 ## Installation on Miyoo Mini
 
 ### Direct Installation
-1. **Copy the app directory** to your Miyoo Mini SD card:
+1. **Copy the app directory** to your Miyoo Mini SD card into "App", the directory path should be:
    ```bash
-   # After building, copy the distribution package
-   cp -r app-dist/sdl_bench /mnt/SDCARD/App/
+   /mnt/SDCARD/App/
    ```
 
-2. **Restart MainUI** or reboot your Miyoo Mini
+2. **Restart MainUI** or reboot your Miyoo Mini (You can restart MainUI by briefly opening Search, Gameswitcher or similar; then closing it again)
 
 3. **Launch benchmarks** - Navigate to Apps → "SDL Benchmark"
 
@@ -166,34 +165,6 @@ miyoo_sdl2_benchmarks/
     ├── Dockerfile               # Toolchain container setup
     ├── Makefile                # Toolchain build system
     └── workspace/              # Docker build workspace
-```
-
-## Troubleshooting
-
-### Build Failures
-```bash
-# Check Docker is running
-docker --version && docker info
-
-# Force rebuild toolchain
-cd union-miyoomini-toolchain && make clean && make .build
-
-# Use local build mode (if toolchain already set up)
-./compile.sh --local
-
-# Enable verbose output for debugging
-./compile.sh --verbose
-./compile.sh --local --verbose
-```
-
-### Missing Binaries
-```bash
-# Check if compilation succeeded
-ls -la build/bin/
-ls -la app-dist/sdl_bench/bin/
-
-# Manually copy if needed
-cp build/bin/* app-dist/sdl_bench/bin/
 ```
 
 ## Assets used:
