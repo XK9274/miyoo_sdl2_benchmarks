@@ -76,7 +76,9 @@ void rsgl_overlay_submit(BenchOverlay *overlay,
                           state->elapsed_time);
 
     overlay_grid_set_cell(&grid, 6, 0, cyan, 0,
-                          "Back - START/ESC");
+                          "ESC - Exit");
+    overlay_grid_set_cell(&grid, 6, 1, primary, 0,
+                          "START - Toggle Input");
 
     overlay_grid_submit_to_overlay(&grid, overlay);
 }

@@ -57,6 +57,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    bench_driver_init(window);
+
     BenchLoadingScreen loading;
     SDL_bool loading_active = bench_loading_begin(&loading,
                                                   window,
@@ -178,6 +180,7 @@ int main(int argc, char *argv[])
     audio_device_stop(SDL_FALSE);
     audio_device_shutdown();
 
+    bench_driver_shutdown();
     bench_overlay_destroy(overlay);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

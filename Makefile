@@ -37,6 +37,7 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/metrics.c \
     $(SRC_DIR)/common/overlay.c \
     $(SRC_DIR)/common/overlay_grid.c \
+    $(SRC_DIR)/common/driver_support.c \
     $(SRC_DIR)/common/loading_screen.c
 COMMON_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(COMMON_SOURCES))
 

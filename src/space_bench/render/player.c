@@ -120,4 +120,36 @@ void space_render_player(const SpaceBenchState *state,
         metrics->draw_calls += 2;
         metrics->vertices_rendered += 4;
     }
+
+    // Stacked HP/shield bars above the ship
+    const float bar_width = 40.0f;
+    const float bar_height = 5.0f;
+    const float bar_gap = 2.0f;
+    const float hp_bar_y = origin_y - state->player_radius - 14.0f;
+
+    SDL_FRect hp_bg = {origin_x - bar_width * 0.5f, hp_bar_y, bar_width, bar_height};
+    SDL_SetRenderDrawColor(renderer, 40, 10, 10, 200);
+    SDL_RenderFillRectF(renderer, &hp_bg);
+    if (state->player_max_health > 0.0f) {
+        const float hp_frac = SDL_clamp(state->player_health / state->player_max_health, 0.0f, 1.0f);
+        SDL_FRect hp_fill = {hp_bg.x, hp_bg.y, bar_width * hp_frac, bar_height};
+        SDL_SetRenderDrawColor(renderer, 220, 60, 60, 230);
+        SDL_RenderFillRectF(renderer, &hp_fill);
+    }
+    if (metrics) {
+        metrics->draw_calls += 2;
+    }
+
+    if (state->shield_max_strength > 0.0f) {
+        SDL_FRect shield_bg = {origin_x - bar_width * 0.5f, hp_bar_y - bar_height - bar_gap, bar_width, bar_height};
+        SDL_SetRenderDrawColor(renderer, 10, 20, 40, 200);
+        SDL_RenderFillRectF(renderer, &shield_bg);
+        const float shield_frac = SDL_clamp(state->shield_strength / state->shield_max_strength, 0.0f, 1.0f);
+        SDL_FRect shield_fill = {shield_bg.x, shield_bg.y, bar_width * shield_frac, bar_height};
+        SDL_SetRenderDrawColor(renderer, 80, 180, 255, 230);
+        SDL_RenderFillRectF(renderer, &shield_fill);
+        if (metrics) {
+            metrics->draw_calls += 2;
+        }
+    }
 }
