@@ -4,6 +4,7 @@
 
 #include <SDL2/SDL_atomic.h>
 
+#include "common/driver_support.h"
 #include "common/format.h"
 #include "common/overlay_grid.h"
 #include "audio_bench/waveform.h"
@@ -57,11 +58,21 @@ static int overlay_thread_func(void *data)
 {
     (void)data;
 
+    int status_refresh_counter = 0;
+
     while (SDL_AtomicGet(&s_overlay_running)) {
         if (!s_overlay) {
             SDL_Delay(16);
             continue;
         }
+
+        if (status_refresh_counter <= 0) {
+            char status_line[192];
+            bench_driver_format_status_line(status_line, sizeof(status_line));
+            bench_overlay_set_status_line(s_overlay, status_line, (SDL_Color){255, 255, 255, 255});
+            status_refresh_counter = 9;
+        }
+        status_refresh_counter--;
 
         AudioSnapshot snapshot;
         audio_device_get_snapshot(&snapshot);
@@ -171,13 +182,13 @@ static int overlay_thread_func(void *data)
                                 "Cursor %s | Remaining %s",
                                 played_str,
                                 remaining_str);
-            overlay_grid_set_cell(&grid, 6, 1, info, 0, "START/ESC - Exit");
+            overlay_grid_set_cell(&grid, 6, 1, info, 0, "ESC - Exit | START - Input");
         } else {
             overlay_grid_set_cell(&grid, 4, 0, cyan, 0, "Audio device not initialised");
             overlay_grid_set_cell(&grid, 4, 1, primary, 0, "RIGHT/R2 - Seek +5s");
             // Clear rows 5-6 when no audio
             overlay_grid_clear_row(&grid, 5);
-            overlay_grid_set_cell(&grid, 6, 1, info, 0, "START/ESC - Exit");
+            overlay_grid_set_cell(&grid, 6, 1, info, 0, "ESC - Exit | START - Input");
         }
 
         // Row 7 - Volume and status info

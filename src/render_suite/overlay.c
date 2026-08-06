@@ -95,7 +95,7 @@ void rs_overlay_submit(BenchOverlay *overlay,
         overlay_grid_set_cell(&grid, 5, 0, amber, 0,
                               "Single-threaded Hardware Rendering");
     }
-    overlay_grid_set_cell(&grid, 5, 1, info, 0, "START/ESC - Exit");
+    overlay_grid_set_cell(&grid, 5, 1, info, 0, "ESC - Exit | START - Input");
 
     // Row 6 - Extended metrics: Memory and Resource stats
     overlay_grid_set_cell(&grid, 6, 0, cyan, 0,

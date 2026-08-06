@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 
 #include "controller_input.h"
+#include "common/driver_support.h"
 
 SDL_bool rs_handle_input(RenderSuiteState *state, BenchMetrics *metrics)
 {
@@ -11,12 +12,15 @@ SDL_bool rs_handle_input(RenderSuiteState *state, BenchMetrics *metrics)
         if (e.type == SDL_QUIT) {
             return SDL_FALSE;
         }
-        if (e.type == SDL_KEYDOWN) {
-            switch (e.key.keysym.sym) {
-                case BTN_START:
+        const SDL_Keycode sym = bench_driver_translate_event(&e);
+        if (sym != 0) {
+            switch (sym) {
                 case BTN_EXIT:
                 case SDLK_ESCAPE:
                     return SDL_FALSE;
+                case BTN_START:
+                    bench_driver_toggle_input_mode();
+                    break;
                 case BTN_L2:
                     state->active_scene = (SceneKind)((state->active_scene + 1) % SCENE_MAX);
                     state->auto_cycle = SDL_FALSE;

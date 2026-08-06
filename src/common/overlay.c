@@ -44,6 +44,10 @@ struct BenchOverlay {
     BenchOverlayLine pending_lines[BENCH_OVERLAY_MAX_LINES];
     int line_count;
 
+    char status_text[192];
+    SDL_Color status_color;
+    SDL_bool has_status;
+
     Uint8 *pixel_buffer;
     Uint8 *visible_buffer;
     size_t buffer_bytes;
@@ -113,6 +117,10 @@ static int bench_overlay_thread(void *userdata)
         if (line_count > 0) {
             rs_memcpy(lines, overlay->pending_lines, (size_t)line_count * sizeof(BenchOverlayLine));
         }
+        char status_text[sizeof(overlay->status_text)];
+        SDL_Color status_color = overlay->status_color;
+        const SDL_bool has_status = overlay->has_status;
+        rs_memcpy(status_text, overlay->status_text, sizeof(status_text));
         overlay->dirty = SDL_FALSE;
         SDL_UnlockMutex(overlay->mutex);
 
@@ -131,8 +139,25 @@ static int bench_overlay_thread(void *userdata)
             const int line_adv = overlay->line_height;
             const int column_width = overlay->width / 2;
             const int divider_x = column_width;
-            int left_y = 4;
-            int right_y = 4;
+            const int status_band_height = overlay->line_height;
+            int left_y = status_band_height + 4;
+            int right_y = status_band_height + 4;
+
+            if (has_status && status_text[0] != '\0') {
+                SDL_Surface *status_surface = TTF_RenderUTF8_Blended(font, status_text, status_color);
+                if (status_surface) {
+                    SDL_Rect dst = {(overlay->width - status_surface->w) / 2,
+                                    (status_band_height - status_surface->h) / 2,
+                                    status_surface->w, status_surface->h};
+                    SDL_SetSurfaceBlendMode(status_surface, SDL_BLENDMODE_BLEND);
+                    SDL_BlitSurface(status_surface, NULL, surface, &dst);
+                    SDL_FreeSurface(status_surface);
+                }
+
+                SDL_Rect status_divider = {4, status_band_height, overlay->width - 8, 1};
+                SDL_FillRect(surface, &status_divider,
+                             SDL_MapRGBA(surface->format, 60, 80, 120, 140));
+            }
 
             for (int i = 0; i < line_count; ++i) {
                 if (lines[i].text[0] == '\0') {
@@ -188,7 +213,7 @@ static int bench_overlay_thread(void *userdata)
             }
 
             // Draw column divider
-            SDL_Rect divider = {divider_x - 1, 4, 2, overlay->height - 8};
+            SDL_Rect divider = {divider_x - 1, status_band_height + 4, 2, overlay->height - status_band_height - 8};
             SDL_FillRect(surface, &divider,
                          SDL_MapRGBA(surface->format, 60, 80, 120, 180));
         }
@@ -244,7 +269,7 @@ BenchOverlay *bench_overlay_create(SDL_Renderer *renderer,
     if (overlay->max_lines <= 0) {
         overlay->max_lines = SDL_min(2, BENCH_OVERLAY_MAX_LINES);
     }
-    overlay->height = overlay->line_height * overlay->max_rows;
+    overlay->height = overlay->line_height * overlay->max_rows + overlay->line_height;
     overlay->background = (SDL_Color){0, 0, 0, 255};
     overlay->running = SDL_TRUE;
     overlay->refresh_divisor = 10;
@@ -356,6 +381,38 @@ void bench_overlay_submit(BenchOverlay *overlay,
             overlay->dirty = SDL_TRUE;
             SDL_CondSignal(overlay->cond);
         }
+    }
+    SDL_UnlockMutex(overlay->mutex);
+}
+
+void bench_overlay_set_status_line(BenchOverlay *overlay,
+                                   const char *text,
+                                   SDL_Color color)
+{
+    if (!overlay) {
+        return;
+    }
+
+    /* Only force an immediate repaint when the text actually changed --
+     * unconditionally forcing one every call fights the normal throttled
+     * repaint cadence and flickers; never forcing one makes real changes
+     * wait up to a full refresh_divisor cycle to become visible. */
+    SDL_LockMutex(overlay->mutex);
+    const SDL_bool text_changed = (text && text[0] != '\0')
+        ? (strncmp(overlay->status_text, text, sizeof(overlay->status_text) - 1) != 0)
+        : overlay->has_status;
+    if (text && text[0] != '\0') {
+        strncpy(overlay->status_text, text, sizeof(overlay->status_text) - 1);
+        overlay->status_text[sizeof(overlay->status_text) - 1] = '\0';
+        overlay->has_status = SDL_TRUE;
+    } else {
+        overlay->status_text[0] = '\0';
+        overlay->has_status = SDL_FALSE;
+    }
+    overlay->status_color = color;
+    if (text_changed) {
+        overlay->dirty = SDL_TRUE;
+        SDL_CondSignal(overlay->cond);
     }
     SDL_UnlockMutex(overlay->mutex);
 }

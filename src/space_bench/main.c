@@ -48,35 +48,23 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    bench_driver_init(window);
+
     BenchLoadingScreen loading;
     SDL_bool loading_active = bench_loading_begin(&loading,
                                                   window,
                                                   renderer,
                                                   BENCH_LOADING_STYLE_RECT);
     if (loading_active) {
-        bench_loading_step(&loading, 0.15f, "Initialising overlay");
-    }
-
-    BenchOverlay *overlay = bench_overlay_create(renderer, SPACE_SCREEN_W, 16, 12);
-    if (!overlay) {
-        if (loading_active) {
-            bench_loading_abort(&loading);
-        }
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
+        bench_loading_step(&loading, 0.15f, "Preparing state");
     }
 
     SpaceBenchState state;
     space_state_init(&state);
-    if (loading_active) {
-        bench_loading_step(&loading, 0.35f, "Preparing state");
-    }
+    space_state_update_layout(&state, SPACE_HUD_STRIP_HEIGHT);
 
     BenchMetrics metrics;
     bench_reset_metrics(&metrics);
-    space_overlay_submit(overlay, &state, &metrics);
     if (loading_active) {
         bench_loading_mark_idle(&loading, "GL modules idle - starfield");
         bench_loading_finish(&loading);
@@ -100,18 +88,16 @@ int main(int argc, char *argv[])
         metrics.vertices_rendered = 0;
         metrics.triangles_rendered = 0;
 
-        space_state_update_layout(&state, bench_overlay_height(overlay));
         space_state_update(&state, (float)delta_seconds);
 
         space_render_scene(&state, renderer, &metrics);
-        space_overlay_submit(overlay, &state, &metrics);
-        bench_overlay_present(overlay, renderer, &metrics, 0, 0);
+        space_hud_render(renderer, &state, &metrics);
         SDL_RenderPresent(renderer);
 
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
     }
 
-    bench_overlay_destroy(overlay);
+    bench_driver_shutdown();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     TTF_Quit();
