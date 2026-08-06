@@ -10,12 +10,13 @@
 
 /* Index matches the MMIYOO_Button bit position reported by the Miyoo SDL2
  * joystick backend (src/joystick/mmiyoo/SDL_joystick_mmiyoo.c). POWER/VOLUP/
- * VOLDOWN (indices 19-21) have no bench action, left as 0/unmapped. */
+ * VOLDOWN (indices 19-21) have no bench action, left as 0/unmapped. Keyboard-
+ * emulation equivalent: src/video/mmiyoo/SDL_event_mmiyoo.c. */
 static const SDL_Keycode g_joy_button_map[MMIYOO_JOY_BUTTON_SLOTS] = {
     BTN_UP, BTN_DOWN, BTN_LEFT, BTN_RIGHT,
     BTN_A, BTN_B, BTN_X, BTN_Y,
     BTN_L1, BTN_R1, BTN_L2, BTN_R2,
-    BTN_SELECT, BTN_START, BTN_MENU,
+    BTN_SELECT, BTN_START, SDLK_ESCAPE,
     BTN_QUICK_SAVE, BTN_QUICK_LOAD, BTN_FAST_FORWARD, BTN_EXIT,
     0, 0, 0
 };
