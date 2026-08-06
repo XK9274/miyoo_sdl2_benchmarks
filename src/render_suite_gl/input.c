@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 
 #include "controller_input.h"
+#include "common/driver_support.h"
 #include "render_suite_gl/scenes/effects.h"
 
 SDL_bool rsgl_handle_input(RsglState *state, BenchMetrics *metrics)
@@ -12,12 +13,15 @@ SDL_bool rsgl_handle_input(RsglState *state, BenchMetrics *metrics)
         if (e.type == SDL_QUIT) {
             return SDL_FALSE;
         }
-        if (e.type == SDL_KEYDOWN) {
-            switch (e.key.keysym.sym) {
-                case BTN_START:
+        const SDL_Keycode sym = bench_driver_translate_event(&e);
+        if (sym != 0) {
+            switch (sym) {
                 case BTN_EXIT:
                 case SDLK_ESCAPE:
                     return SDL_FALSE;
+                case BTN_START:
+                    bench_driver_toggle_input_mode();
+                    break;
                 case BTN_A:
                     state->auto_cycle = !state->auto_cycle;
                     break;

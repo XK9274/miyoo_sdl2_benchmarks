@@ -20,7 +20,7 @@ void sb_overlay_submit(BenchOverlay *overlay,
     const SDL_Color info = {255, 200, 0, 255};      // Info yellow for controls
 
     OverlayGrid grid;
-    overlay_grid_init(&grid, 2, 12);
+    overlay_grid_init(&grid, 2, OVERLAY_GRID_MAX_ROWS);
     overlay_grid_set_background(&grid, (SDL_Color){0, 0, 0, 210});
 
     // Row 0 - Headers
@@ -78,21 +78,19 @@ void sb_overlay_submit(BenchOverlay *overlay,
     overlay_grid_set_cell(&grid, 7, 0, primary, 0, "Single-threaded Software Rendering");
     overlay_grid_set_cell(&grid, 7, 1, primary, 0, "UP/DOWN - Change Shape");
 
-    // Row 8 - Rotation info left, control right
+    // Row 8 - Rotation info left, exit control right
     overlay_grid_set_cell(&grid, 8, 0, amber, 0,
                         "Rotation %.2f rad",
                         state->cube_rotation);
-    overlay_grid_set_cell(&grid, 8, 1, info, 0, "");
+    overlay_grid_set_cell(&grid, 8, 1, info, 0, "ESC - Exit | START - Input");
 
     // Row 9 - Empty left, reset control right
     overlay_grid_set_cell(&grid, 9, 0, primary, 0, "");
     overlay_grid_set_cell(&grid, 9, 1, info, 0, "SELECT - Reset Metrics");
 
-    // Row 10 - Empty left, exit control right
-    overlay_grid_set_cell(&grid, 10, 0, primary, 0, "");
-    overlay_grid_set_cell(&grid, 10, 1, info, 0, "START/ESC - Exit");
-
-    // Row 11 remains empty for future expansion
+    // Rows 10-11 are past OVERLAY_GRID_MAX_ROWS (10) and never rendered --
+    // grid is capped at 2x10, leave unused rather than calling into rows
+    // overlay_grid_init already clamped away.
 
     overlay_grid_submit_to_overlay(&grid, overlay);
 }

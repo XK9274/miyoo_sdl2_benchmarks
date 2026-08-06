@@ -75,6 +75,8 @@ int main(int argc, char *argv[])
     }
     SDL_SetTextureBlendMode(backbuffer, SDL_BLENDMODE_NONE);
 
+    bench_driver_init(window);
+
     BenchOverlay *overlay = bench_overlay_create(renderer, SB_SCREEN_W, 16, 12);
     if (!overlay) {
         if (loading_active) {
@@ -104,6 +106,8 @@ int main(int argc, char *argv[])
 
     printf("SDL2 software double buffer benchmark started\n");
 
+    double next_status_refresh_ms = 0.0;
+
     SDL_bool running = SDL_TRUE;
     while (running) {
         running = sb_handle_input(&state, &metrics);
@@ -129,9 +133,18 @@ int main(int argc, char *argv[])
         SDL_RenderPresent(renderer);
 
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
+
+        if (metrics.accumulated_frame_time_ms >= next_status_refresh_ms) {
+            char status_line[192];
+            bench_driver_format_status_line(status_line, sizeof(status_line));
+            bench_overlay_set_status_line(overlay, status_line, (SDL_Color){255, 255, 255, 255});
+            next_status_refresh_ms = metrics.accumulated_frame_time_ms + 150.0;
+        }
+
         sb_overlay_submit(overlay, &state, &metrics);
     }
 
+    bench_driver_shutdown();
     bench_overlay_destroy(overlay);
     SDL_DestroyTexture(backbuffer);
     SDL_DestroyRenderer(renderer);

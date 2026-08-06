@@ -21,6 +21,12 @@ void bench_overlay_submit(BenchOverlay *overlay,
                           const BenchOverlayLine *lines,
                           int line_count,
                           SDL_Color background);
+
+/* Sets a full-width status strip drawn above the metrics/controls grid, e.g.
+ * driver/system status from driver_support.h. Pass text=NULL to clear it. */
+void bench_overlay_set_status_line(BenchOverlay *overlay,
+                                   const char *text,
+                                   SDL_Color color);
 void bench_overlay_present(BenchOverlay *overlay,
                            SDL_Renderer *renderer,
                            BenchMetrics *metrics,

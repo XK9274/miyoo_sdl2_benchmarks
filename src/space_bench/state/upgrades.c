@@ -1,6 +1,8 @@
 #include "space_bench/state/internal.h"
 #include "space_bench/state/constants.h"
 
+#include "common/driver_support.h"
+
 void space_spawn_upgrade(SpaceBenchState *state,
                          SpaceUpgradeType type,
                          float x,
@@ -106,6 +108,7 @@ void space_apply_upgrade(SpaceBenchState *state, SpaceUpgradeType type)
             state->weapon_upgrades.thumper_pulse_timer = 0.0f;
             state->weapon_upgrades.thumper_wave_timer = 0.0f;
             state->thumper_dropped = SDL_TRUE;
+            bench_driver_rumble_pulse(1.0f, 400);
             break;
         case SPACE_UPGRADE_MINIGUN:
             state->weapon_upgrades.minigun_active = SDL_TRUE;

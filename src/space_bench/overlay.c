@@ -1,96 +1,104 @@
 #include "space_bench/overlay.h"
 
 #include <float.h>
+#include <string.h>
 
-#include "common/overlay_grid.h"
+typedef struct {
+    char text[192];
+    SDL_Texture *texture;
+    int w;
+    int h;
+} HudLineCache;
 
-void space_overlay_submit(BenchOverlay *overlay,
-                          const SpaceBenchState *state,
-                          const BenchMetrics *metrics)
+static void draw_hud_line(SDL_Renderer *renderer,
+                          TTF_Font *font,
+                          HudLineCache *cache,
+                          const char *text,
+                          int y,
+                          SDL_Color color)
 {
-    if (!overlay || !state) {
+    if (!text || text[0] == '\0') {
         return;
     }
 
-    const SDL_Color title = {210, 235, 255, 255};
-    const SDL_Color info = {180, 210, 255, 255};
-    const SDL_Color accent = {255, 200, 120, 255};
-    const SDL_Color cyan = {160, 220, 255, 255};
+    if (cache->texture == NULL || strcmp(cache->text, text) != 0) {
+        if (cache->texture) {
+            SDL_DestroyTexture(cache->texture);
+            cache->texture = NULL;
+        }
 
-    OverlayGrid grid;
-    overlay_grid_init(&grid, 2, 10);
-    overlay_grid_set_background(&grid, (SDL_Color){0, 0, 0, 196});
+        if (font) {
+            SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
+            if (surface) {
+                cache->texture = SDL_CreateTextureFromSurface(renderer, surface);
+                if (cache->texture) {
+                    SDL_SetTextureBlendMode(cache->texture, SDL_BLENDMODE_BLEND);
+                    cache->w = surface->w;
+                    cache->h = surface->h;
+                }
+                SDL_FreeSurface(surface);
+            }
+        }
 
-    overlay_grid_set_cell(&grid, 0, 0, title, 0, "Interactive space bench");
-    overlay_grid_set_cell(&grid, 0, 1, info, 0, "START/ESC - Exit");
+        strncpy(cache->text, text, sizeof(cache->text) - 1);
+        cache->text[sizeof(cache->text) - 1] = '\0';
+    }
 
-    overlay_grid_set_cell(&grid, 1, 0, info, 0,
-                          "Score %d | Enemies %d | Missed %d",
-                          state->score,
-                          state->total_enemies_killed,
-                          state->player_hits);
+    if (cache->texture) {
+        SDL_Rect dst = {8, y, cache->w, cache->h};
+        SDL_RenderCopy(renderer, cache->texture, NULL, &dst);
+    }
+}
+
+void space_hud_render(SDL_Renderer *renderer,
+                      const SpaceBenchState *state,
+                      const BenchMetrics *metrics)
+{
+    if (!renderer || !state) {
+        return;
+    }
+
+    static TTF_Font *font = NULL;
+    static HudLineCache perf_cache;
+    static HudLineCache status_cache;
+    static char perf_line[64] = "FPS -- | Frame --";
+    static int perf_update_counter = 0;
+    if (!font) {
+        font = bench_load_font(SPACE_HUD_LINE_HEIGHT - 4);
+    }
+
+    SDL_Rect strip = {0, 0, SPACE_SCREEN_W, SPACE_HUD_STRIP_HEIGHT};
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
+    SDL_RenderFillRect(renderer, &strip);
+
+    const SDL_Color perf_color = {180, 220, 255, 255};
+    const SDL_Color status_color = {220, 220, 220, 255};
+
+    /* Only reformat the FPS text a few times a second -- it changes almost
+     * every frame, which would defeat draw_hud_line's texture cache and
+     * re-rasterize text at full frame rate for no visible benefit. */
+    if (metrics && perf_update_counter <= 0) {
+        SDL_snprintf(perf_line, sizeof(perf_line), "FPS %.1f | Frame %.2fms",
+                     metrics->current_fps, metrics->frame_time_ms);
+        perf_update_counter = 6;
+    }
+    if (perf_update_counter > 0) {
+        perf_update_counter--;
+    }
+    draw_hud_line(renderer, font, &perf_cache, perf_line, 2, perf_color);
 
     const char *guidance = state->weapon_upgrades.guidance_active ? "ON" : "--";
     const char *thumper = state->weapon_upgrades.thumper_active ? "ON" : "--";
-    char shield_status[16] = "--";
-    if (state->shield_active && state->shield_strength > 0.0f) {
-        SDL_snprintf(shield_status, sizeof(shield_status), "%.0f", state->shield_strength);
-    }
-
-    char laser_status[16] = "READY";
-    if (state->laser_recharge_timer > 0.0f) {
-        SDL_snprintf(laser_status, sizeof(laser_status), "%.0fs", state->laser_recharge_timer);
-    } else if (state->laser_hold_timer > 0.0f) {
-        SDL_snprintf(laser_status, sizeof(laser_status), "%.1fs", state->laser_hold_timer);
-    }
-
-    overlay_grid_set_cell(&grid, 1, 1, info, 0,
-                          "HP %.0f/%.0f | Shield %s | Split %d | G %s | Drones %d | Laser %s | Thumper %s",
-                          state->player_health,
-                          state->player_max_health,
-                          shield_status,
-                          state->weapon_upgrades.split_level,
-                          guidance,
-                          state->weapon_upgrades.drone_count,
-                          laser_status,
-                          thumper);
-
-    if (metrics) {
-        overlay_grid_set_cell(&grid, 2, 1, info, 0,
-                              "FPS %.1f | Frame %.2f ms",
-                              metrics->current_fps,
-                              metrics->frame_time_ms);
-        overlay_grid_set_cell(&grid, 3, 1, cyan, 0,
-                              "Frame min %.2f / max %.2f",
-                              (metrics->min_frame_time_ms == DBL_MAX) ? 0.0 : metrics->min_frame_time_ms,
-                              metrics->max_frame_time_ms);
-    } else {
-        overlay_grid_set_cell(&grid, 2, 1, info, 0, "FPS -- | Frame --");
-        overlay_grid_set_cell(&grid, 3, 1, cyan, 0, "Frame min -- / max --");
-    }
-
-    overlay_grid_set_cell(&grid, 2, 0, accent, 0,
-                          "Scroll %.0f u/s | Spawn %.2f s | Beam x%.1f",
-                          state->scroll_speed,
-                          state->spawn_interval,
-                          state->weapon_upgrades.beam_scale);
-
-    overlay_grid_set_cell(&grid, 3, 0, info, 0,
-                          "Enemies killed: %d | Total score: %d",
-                          state->total_enemies_killed,
-                          state->score);
-
-    overlay_grid_set_cell(&grid, 4, 0, info, 0,
-                          "Controls: D-PAD Move | A Gun | B Laser");
-    overlay_grid_set_cell(&grid, 4, 1, accent, 0,
-                          "Lasers pierce harder with beam focus");
-
-    overlay_grid_set_cell(&grid, 5, 0, info, 0,
-                          "Scroll target %.0f | Spawn min %.2f",
-                          state->target_scroll_speed,
-                          state->min_spawn_interval);
-    overlay_grid_set_cell(&grid, 5, 1, info, 0,
-                          "SELECT - Reset Metrics");
-
-    overlay_grid_submit_to_overlay(&grid, overlay);
+    char status_line[192];
+    SDL_snprintf(status_line, sizeof(status_line),
+                "Score %d | Enemies %d | Missed %d | Split %d | Guide %s | Drones %d | Thumper %s",
+                state->score,
+                state->total_enemies_killed,
+                state->player_hits,
+                state->weapon_upgrades.split_level,
+                guidance,
+                state->weapon_upgrades.drone_count,
+                thumper);
+    draw_hud_line(renderer, font, &status_cache, status_line, SPACE_HUD_LINE_HEIGHT + 4, status_color);
 }

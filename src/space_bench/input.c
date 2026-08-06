@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 
 #include "controller_input.h"
+#include "common/driver_support.h"
 
 SDL_bool space_handle_input(SpaceBenchState *state, BenchMetrics *metrics)
 {
@@ -12,13 +13,14 @@ SDL_bool space_handle_input(SpaceBenchState *state, BenchMetrics *metrics)
             return SDL_FALSE;
         }
 
-        if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
-            const SDL_bool pressed = (e.type == SDL_KEYDOWN) ? SDL_TRUE : SDL_FALSE;
+        SDL_Keycode sym = 0;
+        SDL_bool pressed = SDL_FALSE;
+        if (bench_driver_translate_button_event(&e, &sym, &pressed)) {
 
             // Handle game over input
             if (state->game_state == SPACE_GAME_OVER) {
                 if (pressed) {
-                    switch (e.key.keysym.sym) {
+                    switch (sym) {
                         case BTN_LEFT:
                             state->gameover_selected = SPACE_GAMEOVER_RETRY;
                             break;
@@ -37,22 +39,27 @@ SDL_bool space_handle_input(SpaceBenchState *state, BenchMetrics *metrics)
                                 }
                             }
                             break;
-                        case BTN_START:
                         case BTN_EXIT:
                         case SDLK_ESCAPE:
                             return SDL_FALSE;
+                        case BTN_START:
+                            bench_driver_toggle_input_mode();
                             break;
                     }
                 }
                 continue; // Skip normal game input when in game over
             }
 
-            switch (e.key.keysym.sym) {
-                case BTN_START:
+            switch (sym) {
                 case BTN_EXIT:
                 case SDLK_ESCAPE:
                     if (pressed) {
                         return SDL_FALSE;
+                    }
+                    break;
+                case BTN_START:
+                    if (pressed) {
+                        bench_driver_toggle_input_mode();
                     }
                     break;
                 case BTN_SELECT:
