@@ -6,7 +6,8 @@
 
 typedef enum {
     BENCH_LOADING_STYLE_RECT = 0,
-    BENCH_LOADING_STYLE_GL = 1
+    BENCH_LOADING_STYLE_GL = 1,
+    BENCH_LOADING_STYLE_SHIP = 2
 } BenchLoadingStyle;
 
 typedef struct BenchLoadingScreen {
@@ -51,6 +52,8 @@ typedef struct BenchLoadingScreen {
     Uint32 gl_color_texture;
     int gl_uniform_time;
     int gl_uniform_progress;
+
+    float ship_angle; /* BENCH_LOADING_STYLE_SHIP: current Z-axis spin, radians */
 } BenchLoadingScreen;
 
 SDL_bool bench_loading_begin(BenchLoadingScreen *screen,

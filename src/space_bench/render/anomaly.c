@@ -1,4 +1,5 @@
 #include "space_bench/render/internal.h"
+#include "space_bench/gl_effects.h"
 
 #include <math.h>
 
@@ -259,21 +260,34 @@ void space_render_anomaly(const SpaceBenchState *state,
 
     // Render anomaly shield
     if (anomaly->shield_active && anomaly->shield_strength > 0.0f) {
-        space_anomaly_prepare_shield_lut();
         const float shield_radius = anomaly->scale * 2.0f;
-        const float pulse_factor = 0.7f + 0.3f * sinf(anomaly->shield_pulse);
-        const float shield_alpha = (anomaly->shield_strength / anomaly->shield_max_strength) * 120.0f * pulse_factor;
+        const float strength_frac = anomaly->shield_strength / anomaly->shield_max_strength;
+        SDL_Texture *shield_texture = space_gl_effect_shield_texture();
 
-        SDL_FPoint shield_points[SPACE_ANOMALY_SHIELD_SEGMENTS + 1];
-        for (int i = 0; i <= SPACE_ANOMALY_SHIELD_SEGMENTS; ++i) {
-            shield_points[i].x = anomaly->x + g_shield_cos[i] * shield_radius;
-            shield_points[i].y = anomaly->y + g_shield_sin[i] * shield_radius;
+        if (shield_texture) {
+            SDL_SetTextureColorMod(shield_texture, 100, 200, 255);
+            SDL_SetTextureAlphaMod(shield_texture, (Uint8)SDL_clamp(255.0f * strength_frac, 0.0f, 255.0f));
+            const float size = shield_radius * 3.0f;
+            const SDL_FRect dst = {anomaly->x - size * 0.5f, anomaly->y - size * 0.5f, size, size};
+            SDL_RenderCopyF(renderer, shield_texture, NULL, &dst);
+            draw_calls++;
+            vertices += 4;
+        } else {
+            space_anomaly_prepare_shield_lut();
+            const float pulse_factor = 0.7f + 0.3f * sinf(anomaly->shield_pulse);
+            const float shield_alpha = strength_frac * 120.0f * pulse_factor;
+
+            SDL_FPoint shield_points[SPACE_ANOMALY_SHIELD_SEGMENTS + 1];
+            for (int i = 0; i <= SPACE_ANOMALY_SHIELD_SEGMENTS; ++i) {
+                shield_points[i].x = anomaly->x + g_shield_cos[i] * shield_radius;
+                shield_points[i].y = anomaly->y + g_shield_sin[i] * shield_radius;
+            }
+
+            SDL_SetRenderDrawColor(renderer, 100, 200, 255, (Uint8)shield_alpha);
+            SDL_RenderDrawLinesF(renderer, shield_points, SPACE_ANOMALY_SHIELD_SEGMENTS + 1);
+            draw_calls++;
+            vertices += SPACE_ANOMALY_SHIELD_SEGMENTS + 1;
         }
-
-        SDL_SetRenderDrawColor(renderer, 100, 200, 255, (Uint8)shield_alpha);
-        SDL_RenderDrawLinesF(renderer, shield_points, SPACE_ANOMALY_SHIELD_SEGMENTS + 1);
-        draw_calls++;
-        vertices += SPACE_ANOMALY_SHIELD_SEGMENTS + 1;
     }
 
     if (metrics) {

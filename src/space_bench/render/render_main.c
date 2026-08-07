@@ -1,4 +1,5 @@
 #include "space_bench/render/internal.h"
+#include "space_bench/gl_effects.h"
 
 #include <math.h>
 
@@ -9,6 +10,35 @@ void space_render_scene(SpaceBenchState *state,
     if (!state || !renderer) {
         return;
     }
+
+    /* Once per frame, not per-instance -- see gl_effects.h. Each *_active
+     * flag skips that effect's GL render entirely when nothing on screen
+     * needs it this frame, rather than re-rendering an unused texture.
+     * Thumper progress mirrors the same calculation used in
+     * render/player.c's ring. */
+    SpaceGLEffectsFrameInput gl_input = {0};
+    gl_input.time_accumulator = state->time_accumulator;
+
+    for (int i = 0; i < SPACE_MAX_BULLETS; ++i) {
+        if (state->bullets[i].active) {
+            gl_input.bolts_active = SDL_TRUE;
+            break;
+        }
+    }
+    for (int i = 0; i < SPACE_MAX_UPGRADES; ++i) {
+        if (state->upgrades[i].active) {
+            gl_input.pickups_active = SDL_TRUE;
+            break;
+        }
+    }
+    gl_input.thumper_progress = -1.0f;
+    if (state->weapon_upgrades.thumper_active && state->weapon_upgrades.thumper_pulse_timer < 0.45f) {
+        gl_input.thumper_progress = SDL_clamp(state->weapon_upgrades.thumper_pulse_timer / 0.3f, 0.0f, 1.0f);
+    }
+    gl_input.shield_active = (state->shield_active && state->shield_strength > 0.0f) ||
+                             (state->anomaly.shield_active && state->anomaly.shield_strength > 0.0f);
+
+    space_gl_effects_update(&gl_input);
 
     const int overlay_height = (int)state->play_area_top;
     const int game_height = (int)(state->play_area_bottom - state->play_area_top);

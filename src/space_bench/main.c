@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 
+#include "space_bench/gl_effects.h"
 #include "space_bench/input.h"
 #include "space_bench/overlay.h"
 #include "space_bench/render.h"
@@ -54,7 +55,7 @@ int main(int argc, char *argv[])
     SDL_bool loading_active = bench_loading_begin(&loading,
                                                   window,
                                                   renderer,
-                                                  BENCH_LOADING_STYLE_RECT);
+                                                  BENCH_LOADING_STYLE_SHIP);
     if (loading_active) {
         bench_loading_step(&loading, 0.15f, "Preparing state");
     }
@@ -63,10 +64,37 @@ int main(int argc, char *argv[])
     space_state_init(&state);
     space_state_update_layout(&state, SPACE_HUD_STRIP_HEIGHT);
 
+    if (loading_active) {
+        bench_loading_step(&loading, 0.4f, "Compiling effect shaders");
+    }
+    /* Best-effort: the GL glow effects gracefully fall back to the plain
+     * primitive draws (see the render/ directory) if this fails, so a GL
+     * init problem never blocks the bench itself. All shaders are compiled
+     * here, up front, rather than lazily on first use -- and warmed up with
+     * one real draw each (space_gl_effects_warmup) so the driver's first-use
+     * cold path happens here too, not on whichever frame first needs an
+     * effect in gameplay. */
+    if (!space_gl_effects_init(renderer)) {
+        printf("space_gl_effects_init failed, continuing without GL effects\n");
+    } else {
+        space_gl_effects_warmup();
+    }
+    if (loading_active) {
+        bench_loading_step(&loading, 0.9f, "Starfield ready");
+
+        /* Small manual hold so the loading screen (spinning ship, bar,
+         * text -- all full-screen, drawn every iteration) stays up for a
+         * beat instead of flashing straight into gameplay. */
+        const Uint64 hold_until = SDL_GetTicks64() + 2000;
+        while (SDL_GetTicks64() < hold_until) {
+            bench_loading_step(&loading, 1.0f, "Ready");
+            SDL_Delay(16);
+        }
+    }
+
     BenchMetrics metrics;
     bench_reset_metrics(&metrics);
     if (loading_active) {
-        bench_loading_mark_idle(&loading, "GL modules idle - starfield");
         bench_loading_finish(&loading);
         loading_active = SDL_FALSE;
     }
@@ -98,6 +126,7 @@ int main(int argc, char *argv[])
     }
 
     bench_driver_shutdown();
+    space_gl_effects_shutdown();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     TTF_Quit();

@@ -457,6 +457,55 @@ static void bench_loading_update_gl(BenchLoadingScreen *screen)
     SDL_GL_MakeCurrent(screen->gl_window, NULL);
 }
 
+/* BENCH_LOADING_STYLE_SHIP: a slow Z-axis (screen-plane) spin of the same
+ * apex + swept-wings silhouette the space_bench player ship draws in
+ * src/space_bench/render/player.c -- a plain 2D rotation, not that ship's
+ * roll (X-axis) mechanic, so it stays a clean, non-degenerate shape at any
+ * spin angle. No GL involved; this is just line draws, which is why it's
+ * cheap enough to run *before* the GL effect shaders finish compiling. */
+static void bench_loading_render_ship(BenchLoadingScreen *screen,
+                                      int renderer_w,
+                                      int renderer_h)
+{
+    const Uint64 now = SDL_GetPerformanceCounter();
+    double delta = 0.0;
+    if (screen->last_counter != 0 && screen->perf_freq > 0) {
+        delta = (double)(now - screen->last_counter) / (double)screen->perf_freq;
+    }
+    screen->last_counter = now;
+    screen->ship_angle += (float)delta * 1.0f;
+
+    const float scale = 3.4f;
+    const float apex_x = 14.0f * scale;
+    const float wing_x = -8.0f * scale;
+    const float wing_y = 8.0f * scale;
+
+    const SDL_FPoint local[4] = {
+        {apex_x, 0.0f},           /* apex */
+        {wing_x, -wing_y},        /* left wingtip */
+        {wing_x, wing_y},         /* right wingtip */
+        {wing_x * 0.55f, 0.0f},   /* rear spine point */
+    };
+
+    const float c = cosf(screen->ship_angle);
+    const float s = sinf(screen->ship_angle);
+    const float origin_x = (float)renderer_w * 0.5f;
+    const float origin_y = (float)renderer_h * 0.34f;
+
+    SDL_FPoint p[4];
+    for (int i = 0; i < 4; ++i) {
+        p[i].x = origin_x + local[i].x * c - local[i].y * s;
+        p[i].y = origin_y + local[i].x * s + local[i].y * c;
+    }
+
+    SDL_SetRenderDrawBlendMode(screen->renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(screen->renderer, 255, 150, 40, 255);
+    SDL_RenderDrawLineF(screen->renderer, p[0].x, p[0].y, p[1].x, p[1].y);
+    SDL_RenderDrawLineF(screen->renderer, p[0].x, p[0].y, p[2].x, p[2].y);
+    SDL_RenderDrawLineF(screen->renderer, p[1].x, p[1].y, p[2].x, p[2].y);
+    SDL_RenderDrawLineF(screen->renderer, p[0].x, p[0].y, p[3].x, p[3].y);
+}
+
 static void bench_loading_render_message(BenchLoadingScreen *screen,
                                          int renderer_w,
                                          int renderer_h)
@@ -588,6 +637,8 @@ static void bench_loading_present(BenchLoadingScreen *screen)
         bench_loading_update_gl(screen);
         SDL_Rect dst = {0, 0, w, h};
         SDL_RenderCopy(screen->renderer, screen->gl_stage_texture, NULL, &dst);
+    } else if (screen->style == BENCH_LOADING_STYLE_SHIP) {
+        bench_loading_render_ship(screen, w, h);
     }
 
     bench_loading_render_bar(screen, w, h);
