@@ -1,4 +1,5 @@
 #include "space_bench/render/internal.h"
+#include "space_bench/gl_effects.h"
 
 #include <math.h>
 
@@ -215,6 +216,50 @@ void space_render_bullets(const SpaceBenchState *state,
                           SDL_Renderer *renderer,
                           BenchMetrics *metrics)
 {
+    SDL_Texture *bolt_texture = space_gl_effect_bolt_texture();
+    if (bolt_texture) {
+        const float bolt_size = 22.0f;
+        const float trail_size = bolt_size * 0.55f;
+        const float trail_offset = 9.0f;
+        int draw_calls = 0;
+
+        for (int i = 0; i < SPACE_MAX_BULLETS; ++i) {
+            const SpaceBullet *bullet = &state->bullets[i];
+            if (!bullet->active) {
+                continue;
+            }
+
+            float dir_x = 0.0f;
+            float dir_y = -1.0f;
+            const float speed_sq = bullet->vx * bullet->vx + bullet->vy * bullet->vy;
+            if (speed_sq > 0.01f) {
+                const float inv_speed = 1.0f / SDL_sqrtf(speed_sq);
+                dir_x = bullet->vx * inv_speed;
+                dir_y = bullet->vy * inv_speed;
+            }
+
+            // Single small, faded trail segment behind the bolt.
+            const float trail_x = bullet->x - dir_x * trail_offset;
+            const float trail_y = bullet->y - dir_y * trail_offset;
+            SDL_SetTextureColorMod(bolt_texture, 255, 255, 160);
+            SDL_SetTextureAlphaMod(bolt_texture, 110);
+            const SDL_FRect trail_dst = {trail_x - trail_size * 0.5f, trail_y - trail_size * 0.5f, trail_size, trail_size};
+            SDL_RenderCopyF(renderer, bolt_texture, NULL, &trail_dst);
+
+            SDL_SetTextureAlphaMod(bolt_texture, 255);
+            const SDL_FRect dst = {bullet->x - bolt_size * 0.5f, bullet->y - bolt_size * 0.5f, bolt_size, bolt_size};
+            SDL_RenderCopyF(renderer, bolt_texture, NULL, &dst);
+
+            draw_calls += 2;
+        }
+        if (metrics && draw_calls > 0) {
+            metrics->draw_calls += draw_calls;
+            metrics->vertices_rendered += draw_calls * 4;
+        }
+        return;
+    }
+
+    /* Fallback if GL effects failed to initialise. */
     SDL_FRect bullet_rects[SPACE_MAX_BULLETS];
     int bullet_count = 0;
 

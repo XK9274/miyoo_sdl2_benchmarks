@@ -38,13 +38,15 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/overlay.c \
     $(SRC_DIR)/common/overlay_grid.c \
     $(SRC_DIR)/common/driver_support.c \
-    $(SRC_DIR)/common/loading_screen.c
+    $(SRC_DIR)/common/loading_screen.c \
+    $(SRC_DIR)/common/gl_effect.c
 COMMON_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(COMMON_SOURCES))
 
 SPACE_SOURCES := \
     $(SRC_DIR)/space_bench/input.c \
     $(SRC_DIR)/space_bench/main.c \
     $(SRC_DIR)/space_bench/overlay.c \
+    $(SRC_DIR)/space_bench/gl_effects.c \
     $(SRC_DIR)/space_bench/render/render_main.c \
     $(SRC_DIR)/space_bench/render/util.c \
     $(SRC_DIR)/space_bench/render/background.c \
