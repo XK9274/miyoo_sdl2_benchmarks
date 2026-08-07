@@ -7,16 +7,22 @@ set -e  # Exit on any error
 
 # Parse command line arguments
 VERBOSE=false
+DEBUG=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         -v|--verbose)
             VERBOSE=true
             shift
             ;;
+        -d|--debug)
+            DEBUG=true
+            shift
+            ;;
         -h|--help)
             echo "Usage: $0 [OPTIONS]"
             echo "Options:"
             echo "  -v, --verbose    Enable verbose output"
+            echo "  -d, --debug      Build benchmarks with -g -Og -fno-omit-frame-pointer (make DEBUG=1), for gdbserver"
             echo "  -h, --help       Show this help message"
             exit 0
             ;;
@@ -135,6 +141,12 @@ if [ "$VERBOSE" = "true" ]; then
     verbose_env="VERBOSE=true"
 fi
 
+make_debug_arg=""
+if [ "$DEBUG" = "true" ]; then
+    make_debug_arg="DEBUG=1"
+    echo "🐛 Debug build requested: benchmarks will be built with $make_debug_arg (symbols, no frame-pointer omission)"
+fi
+
 echo "🐳 Running compilation inside Docker container..."
 
 # Run Docker with automatic SDL2 compilation
@@ -153,9 +165,9 @@ docker_cmd="
 
     echo '🎯 Compiling SDL2 benchmarks...'
     if [ \"$VERBOSE\" = \"true\" ]; then
-        make clean && make
+        make clean && make $make_debug_arg
     else
-        make clean > /dev/null 2>&1 && make > /dev/null 2>&1
+        make clean > /dev/null 2>&1 && make $make_debug_arg > /dev/null 2>&1
     fi
 
     if [ \$? -eq 0 ]; then

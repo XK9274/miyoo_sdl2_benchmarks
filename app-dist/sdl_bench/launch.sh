@@ -62,6 +62,36 @@ run_benchmark() {
 
 cd "$bench_dir"
 
+# TEMP DIAGNOSTIC (universal segfault investigation): launch a single
+# benchmark directly under gdbserver instead of running the full suite, so
+# gdb attaches before the process runs rather than racing a fast crash.
+# Usage: ./launch.sh --gdb <bin-name-under-bin/> [port]
+#   e.g. ./launch.sh --gdb sdl2_render_suite 2345
+# On the host: gdb-multiarch -> target remote <device-ip>:<port>
+if [ "$1" = "--gdb" ]; then
+    gdbserver_bin="/mnt/SDCARD/.tmp_update/bin/gdbserver"
+    gdb_bench_name="$2"
+    gdb_port="${3:-2345}"
+    gdb_bench_path="bin/$gdb_bench_name"
+
+    if [ -z "$gdb_bench_name" ]; then
+        echo "Usage: $0 --gdb <bin-name-under-bin/> [port]"
+        exit 1
+    fi
+    if [ ! -f "$gdbserver_bin" ]; then
+        echo "Error: gdbserver not found at $gdbserver_bin"
+        exit 1
+    fi
+    if [ ! -f "$gdb_bench_path" ]; then
+        echo "Error: $gdb_bench_path not found"
+        exit 1
+    fi
+
+    echo "Launching $gdb_bench_path under gdbserver on :$gdb_port"
+    echo "On host: gdb-multiarch, then 'target remote <device-ip>:$gdb_port'"
+    exec "$gdbserver_bin" ":$gdb_port" "$gdb_bench_path"
+fi
+
 echo "Starting SDL2 benchmark suite..."
 echo "Directory: $bench_dir"
 
@@ -71,7 +101,15 @@ echo "Directory: $bench_dir"
 # Run benchmarks
 exe_cpuclock
 run_benchmark "SDL2 Render Suite" "bin/sdl2_render_suite"
-run_benchmark "SDL2 Render Suite GL" "bin/sdl2_render_suite_gl"
+
+# TEMP DIAGNOSTIC (GL boot-failure investigation): capture render_suite_gl's
+# stdout/stderr + MMIYOO renderer debug logging to a file on the SD card,
+# since MainUI swallows console output otherwise. Remove this block and
+# restore the plain run_benchmark call once the failure is root-caused.
+echo "Running SDL2 Render Suite GL (debug capture to gl_debug.log)..."
+SDL_MMIYOO_DEBUG=1 SDL_MMIYOO_DEBUG_VERBOSE=1 run_benchmark "SDL2 Render Suite GL" "bin/sdl2_render_suite_gl" > "$bench_dir/gl_debug.log" 2>&1
+echo "SDL2 Render Suite GL run finished, see gl_debug.log for exit code and output"
+
 run_benchmark "SDL2 Software Double Buffer Benchmark" "bin/sdl2_bench_software_double_buf"
 run_benchmark "SDL2 Double Buffer Benchmark" "bin/sdl2_bench_double_buf"
 run_benchmark "SDL2 Interactive Demo" "bin/sdl2_space_bench"

@@ -148,9 +148,16 @@ ARM_NEON_DEFINE := -D__ARM_NEON
 ARM_CPU_FLAGS   := -mcpu=cortex-a7 -mfpu=neon -mfloat-abi=hard -ftree-vectorize -fomit-frame-pointer -fdata-sections -ffunction-sections
 
 # Flags ----------------------------------------------------------------------
+DEBUG        ?= 0
 CFLAGS       ?= -O2
 CFLAGS       := $(filter-out $(ARM_NEON_DEFINE),$(CFLAGS))
 CFLAGS       += -std=c11 -Wall -Wextra -D_REENTRANT -DMMIYOO $(ARM_CPU_FLAGS)
+ifeq ($(DEBUG),1)
+# -fomit-frame-pointer from ARM_CPU_FLAGS above breaks gdb's ability to
+# unwind the stack on this target -- -fno-omit-frame-pointer must come after
+# it to win. make DEBUG=1 for symbol-ed, gdbserver-friendly binaries.
+CFLAGS       := $(filter-out -O2,$(CFLAGS)) -Og -g -fno-omit-frame-pointer
+endif
 CPPFLAGS     := $(filter-out $(ARM_NEON_DEFINE),$(CPPFLAGS))
 CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SYSROOT)/usr/include -I$(INC_DIR) -I$(SRC_DIR) -I$(NEON_DIR)/include $(ARM_NEON_DEFINE)
 LDFLAGS      += $(SYSROOT_FLAG) -L$(SDL_LIBDIR)
