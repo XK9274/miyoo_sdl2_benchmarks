@@ -67,9 +67,9 @@ static int overlay_thread_func(void *data)
         }
 
         if (status_refresh_counter <= 0) {
-            char status_line[192];
-            bench_driver_format_status_line(status_line, sizeof(status_line));
-            bench_overlay_set_status_line(s_overlay, status_line, (SDL_Color){255, 255, 255, 255});
+            char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
+            bench_driver_format_status_grid(status_fields);
+            bench_overlay_set_status_grid(s_overlay, status_fields, (SDL_Color){255, 255, 255, 255});
             status_refresh_counter = 9;
         }
         status_refresh_counter--;

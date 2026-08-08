@@ -3,6 +3,8 @@
 
 #include <SDL2/SDL.h>
 
+#include "common/overlay.h"
+
 typedef enum {
     BENCH_INPUT_SOURCE_KEYBOARD = 0,
     BENCH_INPUT_SOURCE_JOYSTICK
@@ -83,9 +85,10 @@ void bench_driver_toggle_vsync_mode(void);
 /* Copies the current status snapshot out under lock. */
 void bench_driver_get_status(BenchDriverStatus *out_status);
 
-/* Formats a compact single-line summary of the current status, e.g.
- * "BAT 78% CHG | JOY: Miyoo Joystick | RUMBLE: OK | MODE: Joystick (START) |
- * SRC: Joystick (kb 0 / joy 12) | VSYNC: ON/Adaptive (VOL+/VOL-) | 640x480" */
-void bench_driver_format_status_line(char *buf, size_t buf_size);
+/* Fills an 8-cell (2 row x 4 col, row-major) status grid for
+ * bench_overlay_set_status_grid: battery, joystick, rumble, input mode,
+ * input source, event counts, vsync, and display resolution. Unused cells
+ * are left as empty strings. */
+void bench_driver_format_status_grid(char fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN]);
 
 #endif /* COMMON_DRIVER_SUPPORT_H */

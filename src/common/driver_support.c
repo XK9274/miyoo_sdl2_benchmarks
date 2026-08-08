@@ -317,41 +317,44 @@ void bench_driver_get_status(BenchDriverStatus *out_status)
     SDL_UnlockMutex(g_status_mutex);
 }
 
-void bench_driver_format_status_line(char *buf, size_t buf_size)
+void bench_driver_format_status_grid(char fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN])
 {
-    if (!buf || buf_size == 0) {
+    if (!fields) {
         return;
     }
 
     BenchDriverStatus status;
     bench_driver_get_status(&status);
 
-    char battery_part[32];
-    if (status.battery_percent >= 0) {
-        snprintf(battery_part, sizeof(battery_part), "BAT %d%%%s",
-                 status.battery_percent, status.charging ? " CHG" : "");
-    } else {
-        snprintf(battery_part, sizeof(battery_part), "BAT n/a");
-    }
-
     const char *current_hint = SDL_GetHint(BENCH_HINT_MMIYOO_INPUT_MODE);
     const SDL_bool forced_keyboard = (current_hint && strcmp(current_hint, BENCH_INPUT_MODE_KEYBOARD) == 0);
 
-    char vsync_part[24];
-    if (status.vsync_enabled) {
-        snprintf(vsync_part, sizeof(vsync_part), "ON/%s", status.vsync_adaptive ? "Adaptive" : "Strict");
+    if (status.battery_percent >= 0) {
+        snprintf(fields[0], BENCH_STATUS_FIELD_LEN, "BAT %d%%%s",
+                 status.battery_percent, status.charging ? " CHG" : "");
     } else {
-        snprintf(vsync_part, sizeof(vsync_part), "OFF");
+        snprintf(fields[0], BENCH_STATUS_FIELD_LEN, "BAT n/a");
     }
 
-    snprintf(buf, buf_size, "%s | JOY: %s | RUMBLE: %s | MODE: %s (START) | SRC: %s (kb %u / joy %u) | VSYNC: %s (VOL+/-) | %dx%d",
-             battery_part,
-             status.joystick_attached ? status.joystick_name : "none",
-             status.rumble_supported ? "OK" : "n/a",
-             forced_keyboard ? "Keyboard" : "Joystick",
-             status.input_source == BENCH_INPUT_SOURCE_JOYSTICK ? "Joystick" : "Keyboard",
-             status.keyboard_event_count,
-             status.joystick_event_count,
-             vsync_part,
-             status.display_w, status.display_h);
+    snprintf(fields[1], BENCH_STATUS_FIELD_LEN, "JOY: %s",
+             status.joystick_attached ? status.joystick_name : "none");
+
+    snprintf(fields[2], BENCH_STATUS_FIELD_LEN, "RUMBLE: %s", status.rumble_supported ? "OK" : "n/a");
+
+    snprintf(fields[3], BENCH_STATUS_FIELD_LEN, "MODE: %s (START)", forced_keyboard ? "Keyboard" : "Joystick");
+
+    snprintf(fields[4], BENCH_STATUS_FIELD_LEN, "SRC: %s",
+             status.input_source == BENCH_INPUT_SOURCE_JOYSTICK ? "Joystick" : "Keyboard");
+
+    snprintf(fields[5], BENCH_STATUS_FIELD_LEN, "EVT kb %u / joy %u",
+             status.keyboard_event_count, status.joystick_event_count);
+
+    if (status.vsync_enabled) {
+        snprintf(fields[6], BENCH_STATUS_FIELD_LEN, "VSYNC: ON/%s (SEL+X/A)",
+                 status.vsync_adaptive ? "Adaptive" : "Strict");
+    } else {
+        snprintf(fields[6], BENCH_STATUS_FIELD_LEN, "VSYNC: OFF (SEL+X)");
+    }
+
+    snprintf(fields[7], BENCH_STATUS_FIELD_LEN, "%dx%d", status.display_w, status.display_h);
 }

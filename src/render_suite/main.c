@@ -190,9 +190,9 @@ int main(int argc, char *argv[])
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
 
         if (metrics.accumulated_frame_time_ms >= next_status_refresh_ms) {
-            char status_line[192];
-            bench_driver_format_status_line(status_line, sizeof(status_line));
-            bench_overlay_set_status_line(overlay, status_line, (SDL_Color){255, 255, 255, 255});
+            char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
+            bench_driver_format_status_grid(status_fields);
+            bench_overlay_set_status_grid(overlay, status_fields, (SDL_Color){255, 255, 255, 255});
             next_status_refresh_ms = metrics.accumulated_frame_time_ms + 150.0;
         }
 
