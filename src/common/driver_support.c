@@ -9,21 +9,21 @@
 #define BENCH_DRIVER_REFRESH_INTERVAL_MS 2000
 
 /* Index matches the MMIYOO_Button bit position reported by the Miyoo SDL2
- * joystick backend (src/joystick/mmiyoo/SDL_joystick_mmiyoo.c). POWER/VOLUP/
- * VOLDOWN (indices 19-21) have no bench action, left as 0/unmapped. Keyboard-
- * emulation equivalent: src/video/mmiyoo/SDL_event_mmiyoo.c. */
+ * joystick backend. POWER (index 19) has no bench action. Keyboard-emulation
+ * equivalent: src/video/mmiyoo/SDL_event_mmiyoo.c. */
 static const SDL_Keycode g_joy_button_map[MMIYOO_JOY_BUTTON_SLOTS] = {
     BTN_UP, BTN_DOWN, BTN_LEFT, BTN_RIGHT,
     BTN_A, BTN_B, BTN_X, BTN_Y,
     BTN_L1, BTN_R1, BTN_L2, BTN_R2,
     BTN_SELECT, BTN_START, SDLK_ESCAPE,
     BTN_QUICK_SAVE, BTN_QUICK_LOAD, BTN_FAST_FORWARD, BTN_EXIT,
-    0, 0, 0
+    0, BTN_VSYNC_TOGGLE, BTN_VSYNC_MODE_TOGGLE
 };
 
 static SDL_Joystick *g_joystick = NULL;
 static SDL_Haptic *g_haptic = NULL;
 static SDL_Window *g_window = NULL;
+static SDL_Renderer *g_renderer = NULL;
 static BenchDriverStatus g_status;
 static SDL_mutex *g_status_mutex = NULL;
 
@@ -70,12 +70,15 @@ static int bench_driver_refresh_thread(void *userdata)
     return 0;
 }
 
-SDL_bool bench_driver_init(SDL_Window *window)
+SDL_bool bench_driver_init(SDL_Window *window, SDL_Renderer *renderer)
 {
     memset(&g_status, 0, sizeof(g_status));
     g_status.input_source = BENCH_INPUT_SOURCE_KEYBOARD;
     g_status.battery_percent = -1;
+    g_status.vsync_enabled = SDL_TRUE; /* forced on by SDL_CreateRenderer(-1, ...) */
+    g_status.vsync_adaptive = SDL_TRUE;
     g_window = window;
+    g_renderer = renderer;
     g_status_mutex = SDL_CreateMutex();
 
     if (SDL_InitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC) != 0) {
@@ -137,6 +140,7 @@ void bench_driver_shutdown(void)
         g_joystick = NULL;
     }
     g_window = NULL;
+    g_renderer = NULL;
 
     if (g_status_mutex) {
         SDL_DestroyMutex(g_status_mutex);
@@ -202,6 +206,38 @@ void bench_driver_toggle_input_mode(void)
                 is_keyboard ? BENCH_INPUT_MODE_JOYSTICK : BENCH_INPUT_MODE_KEYBOARD);
 }
 
+void bench_driver_toggle_vsync(void)
+{
+    if (!g_renderer) {
+        return;
+    }
+
+    SDL_LockMutex(g_status_mutex);
+    const SDL_bool want_enabled = !g_status.vsync_enabled;
+    SDL_UnlockMutex(g_status_mutex);
+
+    if (SDL_RenderSetVSync(g_renderer, want_enabled ? 1 : 0) == 0) {
+        SDL_LockMutex(g_status_mutex);
+        g_status.vsync_enabled = want_enabled;
+        SDL_UnlockMutex(g_status_mutex);
+    } else {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "bench_driver_toggle_vsync: SDL_RenderSetVSync failed: %s", SDL_GetError());
+    }
+}
+
+void bench_driver_toggle_vsync_mode(void)
+{
+    const char *current = SDL_GetHint(BENCH_HINT_MMIYOO_VSYNC_ADAPTIVE);
+    const SDL_bool is_adaptive = !(current && strcmp(current, "0") == 0);
+
+    SDL_SetHint(BENCH_HINT_MMIYOO_VSYNC_ADAPTIVE, is_adaptive ? "0" : "1");
+
+    SDL_LockMutex(g_status_mutex);
+    g_status.vsync_adaptive = !is_adaptive;
+    SDL_UnlockMutex(g_status_mutex);
+}
+
 void bench_driver_rumble_pulse(float strength, Uint32 duration_ms)
 {
     if (!g_haptic || !g_status.rumble_supported) {
@@ -251,7 +287,14 @@ void bench_driver_format_status_line(char *buf, size_t buf_size)
     const char *current_hint = SDL_GetHint(BENCH_HINT_MMIYOO_INPUT_MODE);
     const SDL_bool forced_keyboard = (current_hint && strcmp(current_hint, BENCH_INPUT_MODE_KEYBOARD) == 0);
 
-    snprintf(buf, buf_size, "%s | JOY: %s | RUMBLE: %s | MODE: %s (START) | SRC: %s (kb %u / joy %u) | %dx%d",
+    char vsync_part[24];
+    if (status.vsync_enabled) {
+        snprintf(vsync_part, sizeof(vsync_part), "ON/%s", status.vsync_adaptive ? "Adaptive" : "Strict");
+    } else {
+        snprintf(vsync_part, sizeof(vsync_part), "OFF");
+    }
+
+    snprintf(buf, buf_size, "%s | JOY: %s | RUMBLE: %s | MODE: %s (START) | SRC: %s (kb %u / joy %u) | VSYNC: %s (VOL+/-) | %dx%d",
              battery_part,
              status.joystick_attached ? status.joystick_name : "none",
              status.rumble_supported ? "OK" : "n/a",
@@ -259,5 +302,6 @@ void bench_driver_format_status_line(char *buf, size_t buf_size)
              status.input_source == BENCH_INPUT_SOURCE_JOYSTICK ? "Joystick" : "Keyboard",
              status.keyboard_event_count,
              status.joystick_event_count,
+             vsync_part,
              status.display_w, status.display_h);
 }

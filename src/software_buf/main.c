@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     }
     SDL_SetTextureBlendMode(backbuffer, SDL_BLENDMODE_NONE);
 
-    bench_driver_init(window);
+    bench_driver_init(window, renderer);
 
     BenchOverlay *overlay = bench_overlay_create(renderer, SB_SCREEN_W, 16, 12);
     if (!overlay) {

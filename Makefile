@@ -155,9 +155,7 @@ CFLAGS       ?= -O2
 CFLAGS       := $(filter-out $(ARM_NEON_DEFINE),$(CFLAGS))
 CFLAGS       += -std=c11 -Wall -Wextra -D_REENTRANT -DMMIYOO $(ARM_CPU_FLAGS)
 ifeq ($(DEBUG),1)
-# -fomit-frame-pointer from ARM_CPU_FLAGS above breaks gdb's ability to
-# unwind the stack on this target -- -fno-omit-frame-pointer must come after
-# it to win. make DEBUG=1 for symbol-ed, gdbserver-friendly binaries.
+# Must come after ARM_CPU_FLAGS to override its -fomit-frame-pointer.
 CFLAGS       := $(filter-out -O2,$(CFLAGS)) -Og -g -fno-omit-frame-pointer
 endif
 CPPFLAGS     := $(filter-out $(ARM_NEON_DEFINE),$(CPPFLAGS))

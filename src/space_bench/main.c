@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    bench_driver_init(window);
+    bench_driver_init(window, renderer);
 
     BenchLoadingScreen loading;
     SDL_bool loading_active = bench_loading_begin(&loading,
@@ -67,13 +67,7 @@ int main(int argc, char *argv[])
     if (loading_active) {
         bench_loading_step(&loading, 0.4f, "Compiling effect shaders");
     }
-    /* Best-effort: the GL glow effects gracefully fall back to the plain
-     * primitive draws (see the render/ directory) if this fails, so a GL
-     * init problem never blocks the bench itself. All shaders are compiled
-     * here, up front, rather than lazily on first use -- and warmed up with
-     * one real draw each (space_gl_effects_warmup) so the driver's first-use
-     * cold path happens here too, not on whichever frame first needs an
-     * effect in gameplay. */
+    /* Falls back to primitive draws in render/ if this fails. */
     if (!space_gl_effects_init(renderer)) {
         printf("space_gl_effects_init failed, continuing without GL effects\n");
     } else {
@@ -82,10 +76,7 @@ int main(int argc, char *argv[])
     if (loading_active) {
         bench_loading_step(&loading, 0.9f, "Starfield ready");
 
-        /* Small manual hold so the loading screen (spinning ship, bar,
-         * text -- all full-screen, drawn every iteration) stays up for a
-         * beat instead of flashing straight into gameplay. */
-        const Uint64 hold_until = SDL_GetTicks64() + 2000;
+        const Uint64 hold_until = SDL_GetTicks64() + 2000; /* keep loading screen up briefly */
         while (SDL_GetTicks64() < hold_until) {
             bench_loading_step(&loading, 1.0f, "Ready");
             SDL_Delay(16);
