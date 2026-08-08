@@ -1,6 +1,8 @@
 #include "space_bench/render/internal.h"
 #include "space_bench/gl_effects.h"
 
+#include "common/geometry/core.h"
+
 #include <math.h>
 
 static SDL_Color space_upgrade_color(SpaceUpgradeType type)
@@ -106,14 +108,30 @@ void space_render_upgrades(const SpaceBenchState *state,
         SDL_RenderCopyF(renderer, glow_texture, NULL, &glow_dst);
 
         // Small crisp core marker on top of the glow, for per-type identity.
-        SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
-        const float core_size = (upgrade->type == SPACE_UPGRADE_THUMPER) ? 4.0f : 3.0f;
-        SDL_FRect core = {upgrade->x - core_size * 0.5f, upgrade->y - core_size * 0.5f, core_size, core_size};
-        SDL_RenderFillRectF(renderer, &core);
+        const float core_size = (upgrade->type == SPACE_UPGRADE_THUMPER) ? 20.0f : 15.0f;
+        const float radius = core_size * 0.5f;
+        const SDL_Color core_color = {color.r, color.g, color.b, 255};
+        const int segments = 12;
+        SDL_Vertex core_verts[12 * 3];
+        for (int i = 0; i < segments; ++i) {
+            const float a0 = (float)(M_PI * 2.0) * (float)i / (float)segments;
+            const float a1 = (float)(M_PI * 2.0) * (float)(i + 1) / (float)segments;
+            const int base = i * 3;
+            core_verts[base + 0].position = (SDL_FPoint){upgrade->x, upgrade->y};
+            core_verts[base + 0].color = core_color;
+            core_verts[base + 0].tex_coord = (SDL_FPoint){0.0f, 0.0f};
+            core_verts[base + 1].position = (SDL_FPoint){upgrade->x + cosf(a0) * radius, upgrade->y + sinf(a0) * radius};
+            core_verts[base + 1].color = core_color;
+            core_verts[base + 1].tex_coord = (SDL_FPoint){0.0f, 0.0f};
+            core_verts[base + 2].position = (SDL_FPoint){upgrade->x + cosf(a1) * radius, upgrade->y + sinf(a1) * radius};
+            core_verts[base + 2].color = core_color;
+            core_verts[base + 2].tex_coord = (SDL_FPoint){0.0f, 0.0f};
+        }
+        bench_render_triangle_batch(renderer, core_verts, segments, metrics);
 
         if (metrics) {
-            metrics->draw_calls += 2;
-            metrics->vertices_rendered += 8;
+            metrics->draw_calls += 1;
+            metrics->vertices_rendered += 4;
         }
     }
 }
