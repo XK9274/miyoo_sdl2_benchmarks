@@ -22,10 +22,19 @@ void bench_overlay_submit(BenchOverlay *overlay,
                           int line_count,
                           SDL_Color background);
 
-/* Sets a full-width status strip drawn above the metrics/controls grid, e.g.
- * driver/system status from driver_support.h. Pass text=NULL to clear it. */
-void bench_overlay_set_status_line(BenchOverlay *overlay,
-                                   const char *text,
+#define BENCH_STATUS_GRID_COLS 4
+#define BENCH_STATUS_GRID_ROWS 2
+#define BENCH_STATUS_GRID_CELLS (BENCH_STATUS_GRID_COLS * BENCH_STATUS_GRID_ROWS)
+#define BENCH_STATUS_FIELD_LEN 40
+
+/* Sets the full-width status strip drawn above the metrics/controls grid,
+ * e.g. driver/system status from driver_support.h, laid out as a fixed
+ * BENCH_STATUS_GRID_ROWS x BENCH_STATUS_GRID_COLS grid (row-major, cell 0 is
+ * top-left). Each cell is independently clipped to its own bounds -- text
+ * that doesn't fit is truncated at the cell edge, never drawn into a
+ * neighboring cell. Pass an empty string ("") for unused cells. */
+void bench_overlay_set_status_grid(BenchOverlay *overlay,
+                                   const char fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN],
                                    SDL_Color color);
 void bench_overlay_present(BenchOverlay *overlay,
                            SDL_Renderer *renderer,

@@ -44,7 +44,7 @@ struct BenchOverlay {
     BenchOverlayLine pending_lines[BENCH_OVERLAY_MAX_LINES];
     int line_count;
 
-    char status_text[192];
+    char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
     SDL_Color status_color;
     SDL_bool has_status;
 
@@ -90,11 +90,6 @@ static int bench_overlay_thread(void *userdata)
     free(args);
 
     TTF_Font *font = bench_load_font(font_size);
-    const int status_font_size = SDL_max(8, font_size - 3); /* smaller, own font for the status line */
-    TTF_Font *status_font = bench_load_font(status_font_size);
-    if (!status_font) {
-        status_font = font;
-    }
     SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0,
                                                          overlay->width,
                                                          overlay->height,
@@ -122,10 +117,10 @@ static int bench_overlay_thread(void *userdata)
         if (line_count > 0) {
             rs_memcpy(lines, overlay->pending_lines, (size_t)line_count * sizeof(BenchOverlayLine));
         }
-        char status_text[sizeof(overlay->status_text)];
+        char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
         SDL_Color status_color = overlay->status_color;
         const SDL_bool has_status = overlay->has_status;
-        rs_memcpy(status_text, overlay->status_text, sizeof(status_text));
+        rs_memcpy(status_fields, overlay->status_fields, sizeof(status_fields));
         overlay->dirty = SDL_FALSE;
         SDL_UnlockMutex(overlay->mutex);
 
@@ -144,20 +139,42 @@ static int bench_overlay_thread(void *userdata)
             const int line_adv = overlay->line_height;
             const int column_width = overlay->width / 2;
             const int divider_x = column_width;
-            const int status_band_height = overlay->line_height;
+            const int status_band_height = overlay->line_height * 2;
             int left_y = status_band_height + 4;
             int right_y = status_band_height + 4;
 
-            if (has_status && status_text[0] != '\0') {
-                SDL_Surface *status_surface = TTF_RenderUTF8_Blended(status_font, status_text, status_color);
-                if (status_surface) {
-                    SDL_Rect dst = {(overlay->width - status_surface->w) / 2,
-                                    (status_band_height - status_surface->h) / 2,
-                                    status_surface->w, status_surface->h};
-                    SDL_SetSurfaceBlendMode(status_surface, SDL_BLENDMODE_BLEND);
-                    SDL_BlitSurface(status_surface, NULL, surface, &dst);
-                    SDL_FreeSurface(status_surface);
+            if (has_status) {
+                const int cell_w = overlay->width / BENCH_STATUS_GRID_COLS;
+                const int cell_h = overlay->line_height;
+                const int cell_pad = 4;
+
+                for (int cell = 0; cell < BENCH_STATUS_GRID_CELLS; ++cell) {
+                    if (status_fields[cell][0] == '\0') {
+                        continue;
+                    }
+
+                    const int col = cell % BENCH_STATUS_GRID_COLS;
+                    const int row = cell / BENCH_STATUS_GRID_COLS;
+                    const SDL_Rect cell_rect = {col * cell_w, row * cell_h, cell_w, cell_h};
+
+                    SDL_Surface *field_surface = TTF_RenderUTF8_Blended(font, status_fields[cell], status_color);
+                    if (!field_surface) {
+                        continue;
+                    }
+
+                    SDL_Rect dst = {cell_rect.x + cell_pad,
+                                    cell_rect.y + (cell_h - field_surface->h) / 2,
+                                    field_surface->w, field_surface->h};
+
+                    /* Clip to the cell's own bounds so overflowing text is
+                       truncated at the cell edge instead of drawing over the
+                       next cell. */
+                    SDL_SetClipRect(surface, &cell_rect);
+                    SDL_SetSurfaceBlendMode(field_surface, SDL_BLENDMODE_BLEND);
+                    SDL_BlitSurface(field_surface, NULL, surface, &dst);
+                    SDL_FreeSurface(field_surface);
                 }
+                SDL_SetClipRect(surface, NULL);
 
                 SDL_Rect status_divider = {4, status_band_height, overlay->width - 8, 1};
                 SDL_FillRect(surface, &status_divider,
@@ -240,9 +257,6 @@ static int bench_overlay_thread(void *userdata)
         SDL_UnlockMutex(overlay->mutex);
     }
 
-    if (status_font && status_font != font) {
-        TTF_CloseFont(status_font);
-    }
     if (font) {
         TTF_CloseFont(font);
     }
@@ -277,7 +291,7 @@ BenchOverlay *bench_overlay_create(SDL_Renderer *renderer,
     if (overlay->max_lines <= 0) {
         overlay->max_lines = SDL_min(2, BENCH_OVERLAY_MAX_LINES);
     }
-    overlay->height = overlay->line_height * overlay->max_rows + overlay->line_height;
+    overlay->height = overlay->line_height * overlay->max_rows + overlay->line_height * 2;
     overlay->background = (SDL_Color){0, 0, 0, 255};
     overlay->running = SDL_TRUE;
     overlay->refresh_divisor = 10;
@@ -393,32 +407,35 @@ void bench_overlay_submit(BenchOverlay *overlay,
     SDL_UnlockMutex(overlay->mutex);
 }
 
-void bench_overlay_set_status_line(BenchOverlay *overlay,
-                                   const char *text,
+void bench_overlay_set_status_grid(BenchOverlay *overlay,
+                                   const char fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN],
                                    SDL_Color color)
 {
     if (!overlay) {
         return;
     }
 
-    /* Only force an immediate repaint when the text actually changed --
+    /* Only force an immediate repaint when a field actually changed --
      * unconditionally forcing one every call fights the normal throttled
      * repaint cadence and flickers; never forcing one makes real changes
      * wait up to a full refresh_divisor cycle to become visible. */
     SDL_LockMutex(overlay->mutex);
-    const SDL_bool text_changed = (text && text[0] != '\0')
-        ? (strncmp(overlay->status_text, text, sizeof(overlay->status_text) - 1) != 0)
-        : overlay->has_status;
-    if (text && text[0] != '\0') {
-        strncpy(overlay->status_text, text, sizeof(overlay->status_text) - 1);
-        overlay->status_text[sizeof(overlay->status_text) - 1] = '\0';
-        overlay->has_status = SDL_TRUE;
-    } else {
-        overlay->status_text[0] = '\0';
-        overlay->has_status = SDL_FALSE;
+    SDL_bool any_set = SDL_FALSE;
+    SDL_bool changed = SDL_FALSE;
+    for (int i = 0; i < BENCH_STATUS_GRID_CELLS; ++i) {
+        const char *field = fields ? fields[i] : "";
+        if (field[0] != '\0') {
+            any_set = SDL_TRUE;
+        }
+        if (strncmp(overlay->status_fields[i], field, BENCH_STATUS_FIELD_LEN - 1) != 0) {
+            changed = SDL_TRUE;
+        }
+        strncpy(overlay->status_fields[i], field, BENCH_STATUS_FIELD_LEN - 1);
+        overlay->status_fields[i][BENCH_STATUS_FIELD_LEN - 1] = '\0';
     }
+    overlay->has_status = any_set;
     overlay->status_color = color;
-    if (text_changed) {
+    if (changed) {
         overlay->dirty = SDL_TRUE;
         SDL_CondSignal(overlay->cond);
     }
