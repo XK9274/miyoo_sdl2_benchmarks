@@ -53,13 +53,28 @@ typedef struct BenchLoadingScreen {
     int gl_uniform_time;
     int gl_uniform_progress;
 
-    float ship_angle; /* BENCH_LOADING_STYLE_SHIP: current Z-axis spin, radians */
+    float ship_angle; /* BENCH_LOADING_STYLE_SHIP: current Y-axis spin, radians */
+
+    /* BENCH_LOADING_STYLE_SHIP only: renders on its own thread so the ship
+       keeps spinning continuously instead of only advancing when the
+       caller's loading work happens to call bench_loading_step. Guards
+       progress/message, which the caller's thread also writes. */
+    SDL_Thread *render_thread;
+    SDL_mutex *state_mutex;
+    SDL_bool render_thread_running;
 } BenchLoadingScreen;
 
 SDL_bool bench_loading_begin(BenchLoadingScreen *screen,
                              SDL_Window *window,
                              SDL_Renderer *renderer,
                              BenchLoadingStyle style);
+
+/* Overrides the default text/bar-fill colors set by bench_loading_begin.
+   Safe to call any time after bench_loading_begin; takes effect on the
+   next present. */
+void bench_loading_set_colors(BenchLoadingScreen *screen,
+                              SDL_Color text_color,
+                              SDL_Color bar_fill_color);
 
 void bench_loading_step(BenchLoadingScreen *screen,
                         float progress,

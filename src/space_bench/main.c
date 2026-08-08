@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
                                                   renderer,
                                                   BENCH_LOADING_STYLE_SHIP);
     if (loading_active) {
+        bench_loading_set_colors(&loading, (SDL_Color){255, 150, 40, 255}, (SDL_Color){255, 150, 40, 255});
         bench_loading_step(&loading, 0.15f, "Preparing state");
     }
 
