@@ -35,18 +35,28 @@ exe_cpuclock() {
     "$cpuclock 1700"
 }
 
-# Function to run benchmark with error checking
+# Function to run benchmark with error checking. Captures stdout/stderr
+# (including MMIYOO_LOG_WARN/ERROR/DEBUG driver logging) to its own file
+# under logs/, since MainUI/interactive launch swallows console output.
 run_benchmark() {
     local bench_name="$1"
     local bench_path="$2"
-    
+    local log_name="$3"
+    local log_file="$bench_dir/logs/$log_name.log"
+
     echo "========================================="
     echo "Running $bench_name..."
     echo "========================================="
-    
+
     if [ -f "$bench_path" ]; then
-        "$bench_path"
+        echo "===== START $bench_name: $(date) =====" > "$log_file"
+        ps >> "$log_file"
+        echo "-----" >> "$log_file"
+        SDL_MMIYOO_DEBUG=1 SDL_MMIYOO_DEBUG_VERBOSE=1 "$bench_path" >> "$log_file" 2>&1
         local exit_code=$?
+        echo "-----" >> "$log_file"
+        ps >> "$log_file"
+        echo "===== END $bench_name: $(date) exit=$exit_code =====" >> "$log_file"
         if [ $exit_code -eq 0 ]; then
             echo "$bench_name completed successfully"
         else
@@ -56,8 +66,8 @@ run_benchmark() {
         echo "Error: $bench_path not found"
         return 1
     fi
-    
-    # exe_freemma # Not needed now, fixed the SDL backend 
+
+    # exe_freemma # Not needed now, fixed the SDL backend
 }
 
 cd "$bench_dir"
@@ -95,25 +105,16 @@ fi
 echo "Starting SDL2 benchmark suite..."
 echo "Directory: $bench_dir"
 
-# Uncomment to enable debug output to UART
-# export SDL_MMIYOO_DEBUG=1
+mkdir -p "$bench_dir/logs"
 
-# Run benchmarks
+# Run benchmarks (each captures its own log under logs/, see run_benchmark)
 exe_cpuclock
-run_benchmark "SDL2 Render Suite" "bin/sdl2_render_suite"
-
-# TEMP DIAGNOSTIC (GL boot-failure investigation): capture render_suite_gl's
-# stdout/stderr + MMIYOO renderer debug logging to a file on the SD card,
-# since MainUI swallows console output otherwise. Remove this block and
-# restore the plain run_benchmark call once the failure is root-caused.
-echo "Running SDL2 Render Suite GL (debug capture to gl_debug.log)..."
-SDL_MMIYOO_DEBUG=1 SDL_MMIYOO_DEBUG_VERBOSE=1 run_benchmark "SDL2 Render Suite GL" "bin/sdl2_render_suite_gl" > "$bench_dir/gl_debug.log" 2>&1
-echo "SDL2 Render Suite GL run finished, see gl_debug.log for exit code and output"
-
-run_benchmark "SDL2 Software Double Buffer Benchmark" "bin/sdl2_bench_software_double_buf"
-run_benchmark "SDL2 Double Buffer Benchmark" "bin/sdl2_bench_double_buf"
-run_benchmark "SDL2 Interactive Demo" "bin/sdl2_space_bench"
-run_benchmark "SDL2 Audio Benchmark" "bin/sdl2_audio_bench"
+run_benchmark "SDL2 Render Suite" "bin/sdl2_render_suite" "sdl2_render_suite"
+run_benchmark "SDL2 Render Suite GL" "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl"
+run_benchmark "SDL2 Software Double Buffer Benchmark" "bin/sdl2_bench_software_double_buf" "sdl2_bench_software_double_buf"
+run_benchmark "SDL2 Double Buffer Benchmark" "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf"
+run_benchmark "SDL2 Interactive Demo" "bin/sdl2_space_bench" "sdl2_space_bench"
+run_benchmark "SDL2 Audio Benchmark" "bin/sdl2_audio_bench" "sdl2_audio_bench"
 
 
 echo "========================================="
