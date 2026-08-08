@@ -4,13 +4,7 @@
 
 #include <SDL2/SDL_opengles2.h>
 
-/* Shaders output luminance in RGB and shape in alpha only -- no colour
- * uniform. Per-instance colour comes from SDL_SetTextureColorMod on the
- * shared screen_texture at blit time (see the render/ directory), so one GL
- * render per effect type per frame can serve any number of
- * differently-coloured on-screen instances cheaply. Effect textures are
- * kept small; on-screen size comes entirely from the destination rect at
- * blit time, not the FBO resolution. */
+/* Shaders output grayscale luminance; colour comes from SDL_SetTextureColorMod at blit time. */
 
 #define SPACE_GL_BOLT_SIZE 20
 #define SPACE_GL_PICKUP_SIZE 40
@@ -39,9 +33,9 @@ static const char *g_pickup_fragment_src =
     "    vec2 uv = v_uv - 0.5;\n"
     "    float d = length(uv) * 2.0;\n"
     "    float pulse = 0.6 + 0.4 * sin(u_time * 4.0);\n"
-    "    float core = smoothstep(0.3, 0.0, d);\n"
-    "    float ring = smoothstep(0.12, 0.0, abs(d - 0.55)) * pulse;\n"
-    "    float glow = smoothstep(1.0, 0.2, d) * 0.5 * pulse;\n"
+    "    float core = smoothstep(0.55, 0.35, d);\n"
+    "    float ring = smoothstep(0.1, 0.0, abs(d - 0.7)) * pulse * 0.6;\n"
+    "    float glow = smoothstep(1.0, 0.55, d) * 0.25;\n"
     "    float i = clamp(core + ring + glow, 0.0, 1.0);\n"
     "    gl_FragColor = vec4(vec3(i), i);\n"
     "}\n";
@@ -158,15 +152,6 @@ void space_gl_effects_warmup(void)
         return;
     }
 
-    /* Compiling shader source up front (space_gl_effects_init) is not
-     * enough on its own -- many GL drivers still defer real work (shader
-     * finalisation, FBO binding, first glReadPixels/texture upload) to the
-     * first actual draw with a given program/target. Since normal gameplay
-     * only renders each effect when something on screen needs it
-     * (space_gl_effects_update's *_active gating), that cold first-draw
-     * would otherwise land on whichever frame first fires a bolt/grabs a
-     * pickup/raises a shield, as a visible stutter. Force it here instead,
-     * once, while the loading screen is still up. */
     float time = 0.0f;
     float progress = 0.5f;
     gl_effect_render(&g_bolt.target, g_bolt.program, set_time_uniform, &time);

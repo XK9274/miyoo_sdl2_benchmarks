@@ -31,3 +31,6 @@ app-dist/sdl_bench/bin/
 # Release artifacts
 *.tar.gz
 release_notes.md
+
+# Local scratch notes
+TODO.md

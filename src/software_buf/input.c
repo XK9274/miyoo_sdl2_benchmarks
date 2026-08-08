@@ -22,6 +22,12 @@ SDL_bool sb_handle_input(SoftwareBenchState *state, BenchMetrics *metrics)
                 case BTN_START:
                     bench_driver_toggle_input_mode();
                     break;
+                case BTN_VSYNC_TOGGLE:
+                    bench_driver_toggle_vsync();
+                    break;
+                case BTN_VSYNC_MODE_TOGGLE:
+                    bench_driver_toggle_vsync_mode();
+                    break;
                 case BTN_A:
                     state->particle_count += 100;
                     if (state->particle_count > SB_MAX_PARTICLES) {

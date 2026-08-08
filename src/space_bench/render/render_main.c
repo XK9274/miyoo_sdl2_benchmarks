@@ -11,11 +11,6 @@ void space_render_scene(SpaceBenchState *state,
         return;
     }
 
-    /* Once per frame, not per-instance -- see gl_effects.h. Each *_active
-     * flag skips that effect's GL render entirely when nothing on screen
-     * needs it this frame, rather than re-rendering an unused texture.
-     * Thumper progress mirrors the same calculation used in
-     * render/player.c's ring. */
     SpaceGLEffectsFrameInput gl_input = {0};
     gl_input.time_accumulator = state->time_accumulator;
 
@@ -31,7 +26,7 @@ void space_render_scene(SpaceBenchState *state,
             break;
         }
     }
-    gl_input.thumper_progress = -1.0f;
+    gl_input.thumper_progress = -1.0f; /* keep in sync with render/player.c's ring */
     if (state->weapon_upgrades.thumper_active && state->weapon_upgrades.thumper_pulse_timer < 0.45f) {
         gl_input.thumper_progress = SDL_clamp(state->weapon_upgrades.thumper_pulse_timer / 0.3f, 0.0f, 1.0f);
     }

@@ -32,4 +32,8 @@
 #define BTN_FAST_FORWARD   SDLK_2
 #define BTN_EXIT           SDLK_3
 
+/* VOLUP/VOLDOWN: must match SDL_event_mmiyoo.c in sdl2_miyoo. */
+#define BTN_VSYNC_TOGGLE      SDLK_v
+#define BTN_VSYNC_MODE_TOGGLE SDLK_m
+
 #endif /* CONTROLLER_INPUT_H */

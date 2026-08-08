@@ -16,6 +16,9 @@ typedef enum {
 #define BENCH_INPUT_MODE_KEYBOARD "keyboard"
 #define BENCH_INPUT_MODE_JOYSTICK "joystick"
 
+/* Must match SDL_HINT_MMIYOO_VSYNC_ADAPTIVE in sdl2_miyoo's SDL_mmiyoo.h. */
+#define BENCH_HINT_MMIYOO_VSYNC_ADAPTIVE "SDL_MMIYOO_VSYNC_ADAPTIVE"
+
 typedef struct {
     SDL_bool joystick_attached;
     char joystick_name[64];
@@ -35,6 +38,9 @@ typedef struct {
 
     int display_w;
     int display_h;
+
+    SDL_bool vsync_enabled;
+    SDL_bool vsync_adaptive;
 } BenchDriverStatus;
 
 /* Opens joystick 0 and its haptic device if present, and spawns a background
@@ -42,8 +48,8 @@ typedef struct {
  * The power query can shell out on-device (axp_test) and block for tens of
  * milliseconds, so it must never run on the caller's render thread -- that
  * is why this is a background thread rather than a per-frame call. Call
- * once after SDL_Init/SDL_CreateWindow. */
-SDL_bool bench_driver_init(SDL_Window *window);
+ * once after SDL_Init/SDL_CreateWindow/SDL_CreateRenderer. */
+SDL_bool bench_driver_init(SDL_Window *window, SDL_Renderer *renderer);
 void bench_driver_shutdown(void);
 
 /* Maps an SDL_KEYDOWN or SDL_JOYBUTTONDOWN event onto the shared BTN_* keycode
@@ -68,11 +74,18 @@ void bench_driver_rumble_pulse(float strength, Uint32 duration_ms);
  * active, so this is a real switch, not just a display preference. */
 void bench_driver_toggle_input_mode(void);
 
+/* Toggles vsync on the renderer passed to bench_driver_init. */
+void bench_driver_toggle_vsync(void);
+
+/* Toggles adaptive vs strict vsync-wait mode. No effect if vsync is off. */
+void bench_driver_toggle_vsync_mode(void);
+
 /* Copies the current status snapshot out under lock. */
 void bench_driver_get_status(BenchDriverStatus *out_status);
 
 /* Formats a compact single-line summary of the current status, e.g.
- * "BAT 78% CHG | JOY: Miyoo Joystick | RUMBLE: OK | SRC: Joystick | 640x480" */
+ * "BAT 78% CHG | JOY: Miyoo Joystick | RUMBLE: OK | MODE: Joystick (START) |
+ * SRC: Joystick (kb 0 / joy 12) | VSYNC: ON/Adaptive (VOL+/VOL-) | 640x480" */
 void bench_driver_format_status_line(char *buf, size_t buf_size);
 
 #endif /* COMMON_DRIVER_SUPPORT_H */

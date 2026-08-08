@@ -22,6 +22,12 @@ SDL_bool rsgl_handle_input(RsglState *state, BenchMetrics *metrics)
                 case BTN_START:
                     bench_driver_toggle_input_mode();
                     break;
+                case BTN_VSYNC_TOGGLE:
+                    bench_driver_toggle_vsync();
+                    break;
+                case BTN_VSYNC_MODE_TOGGLE:
+                    bench_driver_toggle_vsync_mode();
+                    break;
                 case BTN_A:
                     state->auto_cycle = !state->auto_cycle;
                     break;

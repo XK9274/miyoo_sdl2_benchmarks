@@ -90,6 +90,11 @@ static int bench_overlay_thread(void *userdata)
     free(args);
 
     TTF_Font *font = bench_load_font(font_size);
+    const int status_font_size = SDL_max(8, font_size - 3); /* smaller, own font for the status line */
+    TTF_Font *status_font = bench_load_font(status_font_size);
+    if (!status_font) {
+        status_font = font;
+    }
     SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0,
                                                          overlay->width,
                                                          overlay->height,
@@ -144,7 +149,7 @@ static int bench_overlay_thread(void *userdata)
             int right_y = status_band_height + 4;
 
             if (has_status && status_text[0] != '\0') {
-                SDL_Surface *status_surface = TTF_RenderUTF8_Blended(font, status_text, status_color);
+                SDL_Surface *status_surface = TTF_RenderUTF8_Blended(status_font, status_text, status_color);
                 if (status_surface) {
                     SDL_Rect dst = {(overlay->width - status_surface->w) / 2,
                                     (status_band_height - status_surface->h) / 2,
@@ -235,6 +240,9 @@ static int bench_overlay_thread(void *userdata)
         SDL_UnlockMutex(overlay->mutex);
     }
 
+    if (status_font && status_font != font) {
+        TTF_CloseFont(status_font);
+    }
     if (font) {
         TTF_CloseFont(font);
     }

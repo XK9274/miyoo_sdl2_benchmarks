@@ -457,12 +457,7 @@ static void bench_loading_update_gl(BenchLoadingScreen *screen)
     SDL_GL_MakeCurrent(screen->gl_window, NULL);
 }
 
-/* BENCH_LOADING_STYLE_SHIP: a slow Z-axis (screen-plane) spin of the same
- * apex + swept-wings silhouette the space_bench player ship draws in
- * src/space_bench/render/player.c -- a plain 2D rotation, not that ship's
- * roll (X-axis) mechanic, so it stays a clean, non-degenerate shape at any
- * spin angle. No GL involved; this is just line draws, which is why it's
- * cheap enough to run *before* the GL effect shaders finish compiling. */
+/* BENCH_LOADING_STYLE_SHIP: 2D spin of the player ship's wireframe silhouette. */
 static void bench_loading_render_ship(BenchLoadingScreen *screen,
                                       int renderer_w,
                                       int renderer_h)

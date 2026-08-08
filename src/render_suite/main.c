@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    bench_driver_init(window);
+    bench_driver_init(window, renderer);
 
     BenchLoadingScreen loading;
     SDL_bool loading_active = bench_loading_begin(&loading,
