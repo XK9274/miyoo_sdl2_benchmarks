@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "common/overlay.h"
+#include "common/geometry/core.h"
 
 #define LOADING_GL_WIDTH 160
 #define LOADING_GL_HEIGHT 120
@@ -457,7 +458,32 @@ static void bench_loading_update_gl(BenchLoadingScreen *screen)
     SDL_GL_MakeCurrent(screen->gl_window, NULL);
 }
 
-/* BENCH_LOADING_STYLE_SHIP: 2D spin of the player ship's wireframe silhouette. */
+/* BENCH_LOADING_STYLE_SHIP: solid 3D dart geometry. */
+static const float ship_base[4][3] = {
+    { 1.00f,  0.00f,  0.42f},  /* nose */
+    {-0.55f, -0.62f, -0.10f},  /* left wingtip */
+    {-0.55f,  0.62f, -0.10f},  /* right wingtip */
+    {-0.30f,  0.00f, -0.48f},  /* tail */
+};
+
+static const int ship_faces[4][3] = {
+    {0, 1, 2},
+    {0, 1, 3},
+    {0, 2, 3},
+    {1, 2, 3},
+};
+
+static const int ship_edges[6][2] = {
+    {0, 1}, {0, 2}, {1, 2},
+    {0, 3}, {1, 3}, {2, 3},
+};
+
+/* BENCH_LOADING_STYLE_SHIP: solid 3D dart, rotated/projected the same way
+   the double/hardware-buffer suites spin their shapes (see
+   common/geometry/core.c: bench_update_rotation_cache + bench_project_vertex,
+   a single Y-axis rotation with a simple perspective divide). Faces are
+   filled with the screen background color so only the silhouette shows;
+   edges are drawn on top for readability. */
 static void bench_loading_render_ship(BenchLoadingScreen *screen,
                                       int renderer_w,
                                       int renderer_h)
@@ -468,37 +494,43 @@ static void bench_loading_render_ship(BenchLoadingScreen *screen,
         delta = (double)(now - screen->last_counter) / (double)screen->perf_freq;
     }
     screen->last_counter = now;
-    screen->ship_angle += (float)delta * 1.0f;
+    screen->ship_angle += (float)delta * 1.8f;  /* matches double-buffer suite's rotation speed */
 
-    const float scale = 3.4f;
-    const float apex_x = 14.0f * scale;
-    const float wing_x = -8.0f * scale;
-    const float wing_y = 8.0f * scale;
+    RotationCache rotation_cache = {.rotation = NAN};
+    bench_update_rotation_cache(&rotation_cache, screen->ship_angle);
 
-    const SDL_FPoint local[4] = {
-        {apex_x, 0.0f},           /* apex */
-        {wing_x, -wing_y},        /* left wingtip */
-        {wing_x, wing_y},         /* right wingtip */
-        {wing_x * 0.55f, 0.0f},   /* rear spine point */
-    };
-
-    const float c = cosf(screen->ship_angle);
-    const float s = sinf(screen->ship_angle);
     const float origin_x = (float)renderer_w * 0.5f;
-    const float origin_y = (float)renderer_h * 0.34f;
+    const float origin_y = (float)renderer_h * 0.5f;
+    const float size = SDL_min((float)renderer_w, (float)renderer_h) * 0.315f;  /* 0.42f, reduced 25% */
 
-    SDL_FPoint p[4];
+    BenchVertex vertices[4];
     for (int i = 0; i < 4; ++i) {
-        p[i].x = origin_x + local[i].x * c - local[i].y * s;
-        p[i].y = origin_y + local[i].x * s + local[i].y * c;
+        bench_project_vertex(ship_base[i], &rotation_cache, origin_x, origin_y, size, &vertices[i]);
+    }
+
+    SDL_Vertex triangle_vertices[4 * 3];
+    int triangle_count = 0;
+    for (int face = 0; face < 4; ++face) {
+        const int *indices = ship_faces[face];
+        const int base = triangle_count * 3;
+        bench_setup_sdl_vertex(&triangle_vertices[base + 0], &vertices[indices[0]], &screen->background);
+        bench_setup_sdl_vertex(&triangle_vertices[base + 1], &vertices[indices[1]], &screen->background);
+        bench_setup_sdl_vertex(&triangle_vertices[base + 2], &vertices[indices[2]], &screen->background);
+        triangle_count++;
     }
 
     SDL_SetRenderDrawBlendMode(screen->renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(screen->renderer, 255, 150, 40, 255);
-    SDL_RenderDrawLineF(screen->renderer, p[0].x, p[0].y, p[1].x, p[1].y);
-    SDL_RenderDrawLineF(screen->renderer, p[0].x, p[0].y, p[2].x, p[2].y);
-    SDL_RenderDrawLineF(screen->renderer, p[1].x, p[1].y, p[2].x, p[2].y);
-    SDL_RenderDrawLineF(screen->renderer, p[0].x, p[0].y, p[3].x, p[3].y);
+    bench_render_triangle_batch(screen->renderer, triangle_vertices, triangle_count, NULL);
+
+    static const SDL_Color ship_edge_color = {255, 150, 40, 255};
+    bench_render_edge_batch(screen->renderer,
+                            vertices,
+                            ship_edges,
+                            (int)(sizeof(ship_edges) / sizeof(ship_edges[0])),
+                            &ship_edge_color,
+                            1,
+                            0,
+                            NULL);
 }
 
 static void bench_loading_render_message(BenchLoadingScreen *screen,
@@ -526,7 +558,7 @@ static void bench_loading_render_message(BenchLoadingScreen *screen,
     dst.w = surface->w;
     dst.h = surface->h;
     dst.x = (renderer_w - dst.w) / 2;
-    dst.y = renderer_h / 2 - dst.h - 36;
+    dst.y = (int)((float)renderer_h * 0.75f);
 
     SDL_FreeSurface(surface);
 
@@ -543,7 +575,7 @@ static void bench_loading_render_bar(BenchLoadingScreen *screen,
     const int bar_height = 20;
     SDL_Rect outline = {
         (renderer_w - bar_width) / 2,
-        renderer_h - bar_height - 48,
+        (int)((float)renderer_h * 0.75f) + 76,
         bar_width,
         bar_height
     };
@@ -601,7 +633,7 @@ static void bench_loading_render_percent(BenchLoadingScreen *screen,
     dst.w = surface->w;
     dst.h = surface->h;
     dst.x = (renderer_w - dst.w) / 2;
-    dst.y = renderer_h - dst.h - 80;
+    dst.y = (int)((float)renderer_h * 0.75f) + 38;
 
     SDL_FreeSurface(surface);
 
@@ -614,6 +646,10 @@ static void bench_loading_present(BenchLoadingScreen *screen)
 {
     if (!screen || !screen->renderer) {
         return;
+    }
+
+    if (screen->state_mutex) {
+        SDL_LockMutex(screen->state_mutex);
     }
 
     int w = 0;
@@ -649,6 +685,32 @@ static void bench_loading_present(BenchLoadingScreen *screen)
             bench_loading_try_initialize_gl(screen);
         }
     }
+
+    if (screen->state_mutex) {
+        SDL_UnlockMutex(screen->state_mutex);
+    }
+}
+
+/* BENCH_LOADING_STYLE_SHIP only: keeps the ship spinning at a steady cadence
+   regardless of how often (or infrequently) the caller's loading work calls
+   bench_loading_step. */
+static int bench_loading_render_thread_fn(void *userdata)
+{
+    BenchLoadingScreen *screen = (BenchLoadingScreen *)userdata;
+
+    for (;;) {
+        SDL_LockMutex(screen->state_mutex);
+        const SDL_bool keep_running = screen->render_thread_running;
+        SDL_UnlockMutex(screen->state_mutex);
+        if (!keep_running) {
+            break;
+        }
+
+        bench_loading_present(screen);
+        SDL_Delay(16);
+    }
+
+    return 0;
 }
 
 SDL_bool bench_loading_begin(BenchLoadingScreen *screen,
@@ -676,7 +738,7 @@ SDL_bool bench_loading_begin(BenchLoadingScreen *screen,
     screen->perf_freq = SDL_GetPerformanceFrequency();
     screen->last_counter = SDL_GetPerformanceCounter();
 
-    screen->font = bench_load_font(14);
+    screen->font = bench_load_font(24);
     screen->owns_font = (screen->font != NULL);
 
     if (style == BENCH_LOADING_STYLE_GL) {
@@ -684,8 +746,41 @@ SDL_bool bench_loading_begin(BenchLoadingScreen *screen,
         screen->gl_first_frame_presented = SDL_FALSE;
     }
 
-    bench_loading_present(screen);
+    if (style == BENCH_LOADING_STYLE_SHIP) {
+        screen->state_mutex = SDL_CreateMutex();
+        if (screen->state_mutex) {
+            screen->render_thread_running = SDL_TRUE;
+            screen->render_thread = SDL_CreateThread(bench_loading_render_thread_fn, "bench_loading_ship", screen);
+            if (!screen->render_thread) {
+                screen->render_thread_running = SDL_FALSE;
+                SDL_DestroyMutex(screen->state_mutex);
+                screen->state_mutex = NULL;
+            }
+        }
+    }
+
+    if (!screen->render_thread) {
+        bench_loading_present(screen);
+    }
     return SDL_TRUE;
+}
+
+void bench_loading_set_colors(BenchLoadingScreen *screen,
+                              SDL_Color text_color,
+                              SDL_Color bar_fill_color)
+{
+    if (!screen || !screen->active) {
+        return;
+    }
+
+    if (screen->state_mutex) {
+        SDL_LockMutex(screen->state_mutex);
+    }
+    screen->text_color = text_color;
+    screen->bar_fill = bar_fill_color;
+    if (screen->state_mutex) {
+        SDL_UnlockMutex(screen->state_mutex);
+    }
 }
 
 void bench_loading_step(BenchLoadingScreen *screen,
@@ -696,12 +791,20 @@ void bench_loading_step(BenchLoadingScreen *screen,
         return;
     }
 
+    if (screen->state_mutex) {
+        SDL_LockMutex(screen->state_mutex);
+    }
     screen->progress = SDL_clamp(progress, 0.0f, 1.0f);
     if (label && label[0] != '\0') {
         SDL_strlcpy(screen->message, label, sizeof(screen->message));
     }
+    if (screen->state_mutex) {
+        SDL_UnlockMutex(screen->state_mutex);
+    }
 
-    bench_loading_present(screen);
+    if (!screen->render_thread) {
+        bench_loading_present(screen);
+    }
     SDL_PumpEvents();
 }
 
@@ -711,6 +814,10 @@ void bench_loading_mark_idle(BenchLoadingScreen *screen,
     if (!screen || !screen->active) {
         return;
     }
+
+    if (screen->state_mutex) {
+        SDL_LockMutex(screen->state_mutex);
+    }
     screen->progress = 1.0f;
     if (label && label[0] != '\0') {
         SDL_strlcpy(screen->message, label, sizeof(screen->message));
@@ -719,8 +826,33 @@ void bench_loading_mark_idle(BenchLoadingScreen *screen,
                     "GL modules idle - awaiting additional workloads",
                     sizeof(screen->message));
     }
-    bench_loading_present(screen);
+    if (screen->state_mutex) {
+        SDL_UnlockMutex(screen->state_mutex);
+    }
+
+    if (!screen->render_thread) {
+        bench_loading_present(screen);
+    }
     SDL_Delay(120);
+}
+
+/* Stops and joins the ship's render thread (if any) so nothing is still
+   touching screen->font/renderer/gl_* when the caller tears them down. */
+static void bench_loading_stop_render_thread(BenchLoadingScreen *screen)
+{
+    if (!screen->render_thread) {
+        return;
+    }
+
+    SDL_LockMutex(screen->state_mutex);
+    screen->render_thread_running = SDL_FALSE;
+    SDL_UnlockMutex(screen->state_mutex);
+
+    SDL_WaitThread(screen->render_thread, NULL);
+    screen->render_thread = NULL;
+
+    SDL_DestroyMutex(screen->state_mutex);
+    screen->state_mutex = NULL;
 }
 
 void bench_loading_finish(BenchLoadingScreen *screen)
@@ -728,6 +860,8 @@ void bench_loading_finish(BenchLoadingScreen *screen)
     if (!screen || !screen->active) {
         return;
     }
+
+    bench_loading_stop_render_thread(screen);
 
     screen->progress = 1.0f;
     if (screen->message[0] == '\0') {
@@ -751,6 +885,8 @@ void bench_loading_abort(BenchLoadingScreen *screen)
     if (!screen || !screen->active) {
         return;
     }
+
+    bench_loading_stop_render_thread(screen);
 
     if (screen->owns_font && screen->font) {
         TTF_CloseFont(screen->font);
