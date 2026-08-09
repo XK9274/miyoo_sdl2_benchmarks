@@ -1,3 +1,4 @@
+
 #include "space_bench/render/internal.h"
 #include "space_bench/gl_effects.h"
 
@@ -117,98 +118,131 @@ void space_render_laser_helix(const SpaceBenchState *state,
     }
 }
 
-void space_render_lasers(const SpaceBenchState *state,
-                         SDL_Renderer *renderer,
-                         BenchMetrics *metrics)
+/* Draws one cross-section texture tiled (not stretched) across [origin_x,
+ * end_x) at the given height, native tile width per tile. Stretching a
+ * near-1D gradient texture across a huge, wildly non-uniform destination
+ * rect is what produced the earlier "invisible/segmented" beam; tiling
+ * keeps every draw at a sane, native-ish scale. */
+static int space_render_laser_tile_strip(SDL_Renderer *renderer,
+                                         SDL_Texture *tex,
+                                         float origin_x,
+                                         float origin_y,
+                                         float end_x,
+                                         float height,
+                                         SDL_Color tint)
 {
-    if (!state->player_laser.is_firing) {
+    if (!tex || height <= 0.0f) {
+        return 0;
+    }
+    SDL_SetTextureColorMod(tex, tint.r, tint.g, tint.b);
+
+    int tiles = 0;
+    float x = origin_x;
+    while (x < end_x) {
+        const float tile_w = SDL_min((float)SPACE_GL_LASER_TILE_W, end_x - x + 1.0f);
+        const SDL_FRect dst = {x, origin_y - height * 0.5f, tile_w, height};
+        SDL_RenderCopyF(renderer, tex, NULL, &dst);
+        x += (float)SPACE_GL_LASER_TILE_W;
+        tiles++;
+    }
+    return tiles;
+}
+
+/* Elite-Dangerous-style beam laser: a tight white-hot core, a crisp colored
+ * edge/rim just outside it, and a soft colored glow bleeding further out --
+ * all three GL-shaded (additive), tiled along the beam's length rather than
+ * stretched (see space_render_laser_tile_strip). Plus a small muzzle flare
+ * at the hardpoint, reusing the bolt effect's texture. Falls back to flat
+ * lines if the GL effects failed to initialize. */
+static void space_render_laser_beam(SDL_Renderer *renderer,
+                                    BenchMetrics *metrics,
+                                    float origin_x,
+                                    float origin_y,
+                                    float end_x,
+                                    SDL_Color color,
+                                    float thickness_scale)
+{
+    const float length = end_x - origin_x;
+    if (length <= 0.5f) {
         return;
     }
 
-    SDL_Color core_color = {255, 255, 200, 255};
-    SDL_Color glow_color = {120, 220, 255, 180};
+    SDL_Texture *glow_tex = space_gl_effect_laser_glow_texture();
+    SDL_Texture *edge_tex = space_gl_effect_laser_edge_texture();
+    SDL_Texture *core_tex = space_gl_effect_laser_core_texture();
+
+    if (glow_tex && edge_tex && core_tex) {
+        int tiles = 0;
+        tiles += space_render_laser_tile_strip(renderer, glow_tex, origin_x, origin_y, end_x,
+                                               26.0f * thickness_scale, color);
+        tiles += space_render_laser_tile_strip(renderer, edge_tex, origin_x, origin_y, end_x,
+                                               12.0f * thickness_scale, color);
+        const SDL_Color white = {255, 255, 255, 255};
+        tiles += space_render_laser_tile_strip(renderer, core_tex, origin_x, origin_y, end_x,
+                                               4.0f * thickness_scale, white);
+
+        SDL_Texture *flare_tex = space_gl_effect_bolt_texture();
+        if (flare_tex) {
+            SDL_SetTextureColorMod(flare_tex, color.r, color.g, color.b);
+            SDL_SetTextureBlendMode(flare_tex, SDL_BLENDMODE_ADD);
+            const float flare_size = 28.0f * thickness_scale;
+            const SDL_FRect flare_dst = {origin_x - flare_size * 0.5f, origin_y - flare_size * 0.5f, flare_size, flare_size};
+            SDL_RenderCopyF(renderer, flare_tex, NULL, &flare_dst);
+            SDL_SetTextureBlendMode(flare_tex, SDL_BLENDMODE_BLEND);
+            tiles++;
+        }
+
+        if (metrics) {
+            metrics->draw_calls += tiles;
+            metrics->vertices_rendered += tiles * 4;
+        }
+        return;
+    }
+
+    /* Fallback: flat lines, as before GL effects existed. */
+    const SDL_Color glow_color = {color.r, color.g, color.b, 180};
+    const SDL_Color core_color = {255, 255, 220, 255};
+    const float half = 2.5f * thickness_scale;
 
     SDL_SetRenderDrawColor(renderer, glow_color.r, glow_color.g, glow_color.b, glow_color.a);
-    SDL_RenderDrawLineF(renderer,
-                        state->player_laser.origin_x,
-                        state->player_laser.origin_y - 2.5f,
-                        (float)SPACE_SCREEN_W,
-                        state->player_laser.origin_y - 2.5f);
-    SDL_RenderDrawLineF(renderer,
-                        state->player_laser.origin_x,
-                        state->player_laser.origin_y + 2.5f,
-                        (float)SPACE_SCREEN_W,
-                        state->player_laser.origin_y + 2.5f);
+    SDL_RenderDrawLineF(renderer, origin_x, origin_y - half, end_x, origin_y - half);
+    SDL_RenderDrawLineF(renderer, origin_x, origin_y + half, end_x, origin_y + half);
     SDL_SetRenderDrawColor(renderer, core_color.r, core_color.g, core_color.b, core_color.a);
-    SDL_RenderDrawLineF(renderer,
-                        state->player_laser.origin_x,
-                        state->player_laser.origin_y,
-                        (float)SPACE_SCREEN_W,
-                        state->player_laser.origin_y);
+    SDL_RenderDrawLineF(renderer, origin_x, origin_y, end_x, origin_y);
 
     if (metrics) {
         metrics->draw_calls += 3;
         metrics->vertices_rendered += 6;
     }
+}
 
-    const SDL_Color player_helix_a = {255, 210, 160, 160};
-    const SDL_Color player_helix_b = {180, 140, 255, 150};
-    space_render_laser_helix(state,
-                             renderer,
-                             metrics,
-                             state->player_laser.origin_x,
-                             state->player_laser.origin_y,
-                             (float)SPACE_SCREEN_W,
-                             state->player_laser.origin_y,
-                             1.4f * state->weapon_upgrades.beam_scale,
-                             0.8f,
-                             player_helix_a,
-                             player_helix_b);
+void space_render_lasers(const SpaceBenchState *state,
+                         SDL_Renderer *renderer,
+                         BenchMetrics *metrics)
+{
+    if (state->player_laser.is_firing) {
+        const SDL_Color player_color = {140, 220, 255, 255};
+        space_render_laser_beam(renderer, metrics,
+                                state->player_laser.origin_x,
+                                state->player_laser.origin_y,
+                                (float)SPACE_SCREEN_W,
+                                player_color,
+                                state->weapon_upgrades.beam_scale);
+    }
 
     for (int i = 0; i < state->weapon_upgrades.drone_count; ++i) {
         const SpaceLaserBeam *laser = &state->drone_lasers[i];
         if (!laser->is_firing) {
             continue;
         }
-        SDL_Color drone_core = {255, 180, 220, 220};
-        SDL_Color drone_glow = {180, 140, 255, 160};
 
-        SDL_SetRenderDrawColor(renderer, drone_glow.r, drone_glow.g, drone_glow.b, drone_glow.a);
-        SDL_RenderDrawLineF(renderer,
-                            laser->origin_x,
-                            laser->origin_y - 1.8f,
-                            (float)SPACE_SCREEN_W,
-                            laser->origin_y - 1.8f);
-        SDL_RenderDrawLineF(renderer,
-                            laser->origin_x,
-                            laser->origin_y + 1.8f,
-                            (float)SPACE_SCREEN_W,
-                            laser->origin_y + 1.8f);
-        SDL_SetRenderDrawColor(renderer, drone_core.r, drone_core.g, drone_core.b, drone_core.a);
-        SDL_RenderDrawLineF(renderer,
-                            laser->origin_x,
-                            laser->origin_y,
-                            (float)SPACE_SCREEN_W,
-                            laser->origin_y);
-
-        if (metrics) {
-            metrics->draw_calls += 3;
-            metrics->vertices_rendered += 6;
-        }
-
-        const SDL_Color drone_helix_a = {200, 160, 255, 140};
-        const SDL_Color drone_helix_b = {255, 200, 240, 140};
-        space_render_laser_helix(state,
-                                 renderer,
-                                 metrics,
-                                 laser->origin_x,
-                                 laser->origin_y,
-                                 (float)SPACE_SCREEN_W,
-                                 laser->origin_y,
-                                 1.0f,
-                                 1.0f,
-                                 drone_helix_a,
-                                 drone_helix_b);
+        const SDL_Color drone_color = {200, 160, 255, 255};
+        space_render_laser_beam(renderer, metrics,
+                                laser->origin_x,
+                                laser->origin_y,
+                                (float)SPACE_SCREEN_W,
+                                drone_color,
+                                0.75f);
     }
 }
 

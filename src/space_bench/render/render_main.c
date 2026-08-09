@@ -33,6 +33,16 @@ void space_render_scene(SpaceBenchState *state,
     gl_input.shield_active = (state->shield_active && state->shield_strength > 0.0f) ||
                              (state->anomaly.shield_active && state->anomaly.shield_strength > 0.0f);
 
+    gl_input.lasers_active = state->player_laser.is_firing;
+    if (!gl_input.lasers_active) {
+        for (int i = 0; i < state->weapon_upgrades.drone_count; ++i) {
+            if (state->drone_lasers[i].is_firing) {
+                gl_input.lasers_active = SDL_TRUE;
+                break;
+            }
+        }
+    }
+
     space_gl_effects_update(&gl_input);
 
     const int overlay_height = (int)state->play_area_top;
