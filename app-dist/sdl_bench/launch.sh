@@ -109,6 +109,7 @@ mkdir -p "$bench_dir/logs"
 
 # Run benchmarks (each captures its own log under logs/, see run_benchmark)
 exe_cpuclock
+run_benchmark "SDL2 Sprite Bench" "bin/sdl2_sprite_bench" "sdl2_sprite_bench"
 run_benchmark "SDL2 Render Suite" "bin/sdl2_render_suite" "sdl2_render_suite"
 run_benchmark "SDL2 Render Suite GL" "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl"
 run_benchmark "SDL2 Software Double Buffer Benchmark" "bin/sdl2_bench_software_double_buf" "sdl2_bench_software_double_buf"
@@ -121,7 +122,7 @@ echo "========================================="
 echo "All benchmarks completed!"
 echo "========================================="
 
-exe_freemma
+# exe_freemma
 
 if [ -f /mnt/SDCARD/.tmp_update/script/start_audioserver.sh ]; then
     echo "Restarting audio services..."

@@ -15,6 +15,7 @@ What’s inside this folder (sdl_bench/)
   • sdl2_render_suite_gl             – Lightweight OpenGL ES effect sampler
   • sdl2_audio_bench                 – Audio device/sample/buffer tests
   • space_bench                     – Star Wing space shooter with metrics
+  • sdl2_sprite_bench                 – Fullscreen morphing sprite stress test, no overlay, no vsync
 
 - lib/
   Required runtime libraries for the benchmarks (SDL2 and friends).
@@ -66,3 +67,10 @@ Star Wing Bench - Space Shooter Game:
 - Player controls, projectile systems, enemy drones
 - Anomaly effects, upgrade mechanics, background rendering
 - Real-time metrics overlay (draw calls, vertices, triangles)
+
+Sprite Bench - Fullscreen Sprite Stress Test:
+
+- Bouncing, morphing multicolour 16x16 sprites, no vsync, no overlay
+- Auto-ramps sprite count over time; Up/Down step, Left/Right interval, A/B grow/shrink
+- X toggles Static/Dynamic texture mode; SELECT exits
+- Used to isolate render-pipeline flicker independent of vsync/overlay/HUD code
