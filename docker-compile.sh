@@ -35,6 +35,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+UTILITY_DIR="${SCRIPT_DIR}/utility"
 TOOLCHAIN_DIR="${SCRIPT_DIR}/union-miyoomini-toolchain"
 WORKSPACE_DIR="${TOOLCHAIN_DIR}/workspace"
 
@@ -93,8 +94,8 @@ fi
 # Step 2: Copy scripts to workspace
 echo "Copying scripts to Docker workspace..."
 mkdir -p "$WORKSPACE_DIR"
-cp -f "$SCRIPT_DIR/mksdl2.sh" "$WORKSPACE_DIR/"
-cp -f "$SCRIPT_DIR/compile.sh" "$WORKSPACE_DIR/"
+cp -f "$UTILITY_DIR/mksdl2.sh" "$WORKSPACE_DIR/"
+cp -f "$UTILITY_DIR/compile.sh" "$WORKSPACE_DIR/"
 cp -f "$SCRIPT_DIR/Makefile" "$WORKSPACE_DIR/"
 cp -rf "$SCRIPT_DIR/src" "$WORKSPACE_DIR/"
 cp -rf "$SCRIPT_DIR/include" "$WORKSPACE_DIR/"
