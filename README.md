@@ -1,5 +1,13 @@
 # Miyoo SDL2/OpenGL Benchmarks
 
+SDL2 benchmark programs for the Miyoo Mini. The project is used to exercise
+rendering, audio, OpenGL ES, and SDL2 backend behaviour against a custom SDL2
+build for the device.
+
+The generated package is written to `app-dist/sdl_bench/`.
+
+## Screenshots
+
 <div align="center">
 
 <table>
@@ -31,142 +39,144 @@
 
 </div>
 
-## Description
+## Requirements
 
-This repository contains SDL2 benchmark tests that measure rendering performance on the Miyoo Mini handheld device using a new custom version of SDL2 libraries, originally based on Stewards but now completely rebuild w/ most stuibs implemented.. The benchmarks will give a good example of the baseline performance you can expect from these new liibs (Which are not yet on Github..) 
+- Docker, for the default build path.
+- Git, used by the Docker build script when the toolchain checkout is missing.
+- A Miyoo Mini SD card or deployment target for running the packaged app.
 
-## Quick Start
+The root build script automatically uses `union-miyoomini-toolchain/`. If that
+directory does not exist, it clones the toolchain repository.
 
-### Building from Source (Benchmark binaries only)
+## Build
+
+Build all benchmark binaries and prepare the distribution package:
 
 ```bash
-# Clone the repository
-git clone https://github.com/XK9274/miyoo_sdl2_benchmarks
-cd miyoo_sdl2_benchmarks
-
-# Run the Docker build script
 ./docker-compile.sh
-
-# Copy to your Miyoo Mini
-app-dist/sdl_bench # Will contain the ready-to-use package w/ bin/lib/scripts. 
 ```
 
-**Verbose Mode**: Add `--verbose` flag for detailed compilation output:
+Use verbose output when diagnosing build issues:
+
 ```bash
 ./docker-compile.sh --verbose
 ```
 
-**What the build does:**
-1. **Downloads toolchain** - Clones `union-miyoomini-toolchain` automatically
-2. **Sets up Docker environment** - Builds cross-compilation container
-3. **Compiles SDL2 libraries** - Builds SDL2, SDL2_ttf, SDL2_mixer for linking
-4. **Cross-compiles benchmarks** - Creates ARM binaries for Miyoo Mini
-5. **Packages distribution** - Prepares `app-dist/sdl_bench/` ready for device
+The build process:
 
-## Installation on Miyoo Mini
+- prepares the Miyoo Mini Docker toolchain;
+- installs or reuses cached SDL2 build artifacts for compile-time linking;
+- compiles the benchmark binaries with the project `Makefile`;
+- copies the resulting ARM binaries into `app-dist/sdl_bench/bin/`;
+- leaves `app-dist/sdl_bench/` ready to copy to the device.
 
-### Direct Installation
-1. **Copy the app directory** to your Miyoo Mini SD card into "App", the directory path should be:
-   ```bash
-   /mnt/SDCARD/App/sdl-bench
-   ```
+Helper scripts live in `utility/`. The root `docker-compile.sh` script remains
+the main entry point.
 
-2. **Restart MainUI** or reboot your Miyoo Mini (You can restart MainUI by briefly opening Search, Gameswitcher or similar; then closing it again)
+## Local Build
 
-3. **Launch benchmarks** - Navigate to Apps → "SDL Benchmark"
+`utility/compile.sh --local` can be used when the Miyoo Mini cross-compilation
+toolchain is already installed locally and available at the paths expected by
+the `Makefile`.
 
-## Benchmarks Included
-
-### Performance Tests
-- **SDL2 Software Double Buffer** (`sdl2_bench_software_double_buf`)
-  - Manually creates a software backbuffer in the test, disables hardware accelerated double buffering (internally in the mmiyoo backend)
-  - Particle systems and geometry rendering
-
-- **SDL2 Hardware Double Buffer** (`sdl2_bench_double_buf`)
-  - Tests hardware-accelerated double buffering
-  - Uses MI_GFX / MI_SYS to stand up double buffering internally within the SDL2 mmiyoo backend
-  - Particle systems and geometry rendering as a cube.
-
-- **SDL2 Render Suite** (`sdl2_render_suite`)
-  - Comprehensive rendering test battery
-  - Multiple test scenes: fills, rapid line drawing, textures churn
-
-- **SDL2 Render Suite GL** (`sdl2_render_suite_gl`)
-  - Lightweight OpenGL ES effect sampler
-  - Demonstrates simple shader-based visuals suited for the Miyoo Mini
-
-- **SDL2 Audio Benchmark** (`sdl2_audio_bench`)
-  - Audio performance testing
-  - Audio device proving, testing samples/buffers etc.
-
-- **SDL2 Star Wing Bench** (`space_bench`)
-  - Space shooter game with performance metrics
-  - Player movement, projectiles, drones, anomalies, effects system
-
-## Build System Architecture
-
-### Docker Pipeline
-```
-User runs ./docker-compile.sh
-       ↓
-Clone union-miyoomini-toolchain
-       ↓
-Build Docker container (miyoomini-toolchain)
-       ↓
-Copy scripts to Docker workspace
-       ↓
-Run mksdl2.sh inside container:
-  • Download SDL2 source packages
-  • Configure for arm-linux-gnueabihf
-  • Cross-compile SDL2 libraries
-  • Install to toolchain sysroot
-       ↓
-Run Makefile inside container:
-  • Cross-compile benchmark sources
-  • Link against compiled SDL2 libs
-  • Generate ARM binaries
-       ↓
-Copy binaries to app-dist/sdl_bench/bin/
-       ↓
-Ready for Miyoo Mini deployment!
+```bash
+./utility/compile.sh --local
 ```
 
-## Directory Structure
+The Docker build is the supported default because it sets up the toolchain and
+SDL2 compile-time dependencies consistently.
 
+## Installation
+
+Copy the generated app directory to the Miyoo Mini SD card:
+
+```text
+app-dist/sdl_bench/ -> /mnt/SDCARD/App/sdl_bench/
 ```
+
+Then restart MainUI or reboot the device. The app appears under Apps as
+`SDL Benchmark`.
+
+## Benchmarks
+
+- `sdl2_bench_software_double_buf`
+  - Uses a manually managed software backbuffer.
+  - Exercises particle and geometry rendering without relying on the backend's
+    hardware double buffering path.
+
+- `sdl2_bench_double_buf`
+  - Exercises hardware double buffering in the SDL2 Miyoo backend.
+  - Uses MI_GFX and MI_SYS backed presentation paths.
+  - Renders particle and cube-style geometry workloads.
+
+- `sdl2_render_suite`
+  - Runs a broader 2D rendering workload set.
+  - Includes fill, line, texture, geometry, scaling, memory, and pixel scenes.
+
+- `sdl2_render_suite_gl`
+  - Runs lightweight OpenGL ES rendering tests.
+  - Covers shader-based effect scenes intended for the Miyoo Mini GPU path.
+
+- `sdl2_audio_bench`
+  - Exercises SDL2 audio device setup and buffer behaviour.
+  - Includes waveform and sample playback related checks.
+
+- `sdl2_space_bench`
+  - Runs an interactive space shooter style benchmark.
+  - Exercises sprites, particles, projectiles, drones, anomalies, GL effects,
+    overlay rendering, and runtime metrics.
+
+## Build Flow
+
+```text
+./docker-compile.sh
+  -> ensure union-miyoomini-toolchain exists
+  -> copy source, Makefile, utility scripts, and cached artifacts to workspace
+  -> build or reuse the Docker toolchain image
+  -> run utility/mksdl2.sh inside the container as mksdl2.sh
+  -> run make inside the container
+  -> copy build/bin/* to app-dist/sdl_bench/bin/
+```
+
+SDL2 libraries built by `mksdl2.sh` are for compile-time linking in the
+toolchain sysroot. The runtime package uses the libraries already present under
+`app-dist/sdl_bench/lib/`.
+
+## Directory Layout
+
+```text
 miyoo_sdl2_benchmarks/
-├── 🐳 docker-compile.sh           # Master Docker orchestration script
-├── ⚙️  compile.sh                  # User-facing compilation script
-├── 🔧 mksdl2.sh                   # SDL2 library compilation script
-├── 📋 Makefile                    # Benchmark build configuration
-│
-├── 📁 src/                        # Source code
-│   ├── common/                    # Shared utilities
-│   ├── audio_bench/              # Audio benchmark
-│   ├── double_buf/               # Hardware double buffer test
-│   ├── software_buf/             # Software double buffer test
-│   ├── render_suite/             # Comprehensive render tests
-│   ├── render_suite_gl/          # OpenGL ES effect sampler
-│   └── space_bench/              # Star Wing space shooter benchmark
-│
-├── 📁 include/                    # Header files
-├── 📁 build/                      # Compiled binaries (generated)
-│   └── bin/                      # ARM executables
-│
-├── 📁 app-dist/                   # Distribution package
-│   └── sdl_bench/               # Ready for Miyoo deployment
-│       ├── bin/                 # Benchmark executables
-│       ├── lib/                 # Required runtime libraries
-│       ├── assets/              # Assets (audio, textures)
-│       ├── config.json          # App configuration
-│       └── launch.sh            # Launch script
-│
-└── 📁 union-miyoomini-toolchain/ # Cross-compilation toolchain (auto-cloned)
-    ├── Dockerfile               # Toolchain container setup
-    ├── Makefile                # Toolchain build system
-    └── workspace/              # Docker build workspace
+|-- docker-compile.sh              # Root Docker build entry point
+|-- Makefile                       # Benchmark build configuration
+|-- README.md
+|-- TODO.md
+|-- app-dist/
+|   `-- sdl_bench/                 # Device package
+|       |-- assets/                # Runtime assets
+|       |-- bin/                   # Built benchmark binaries
+|       |-- lib/                   # Runtime libraries bundled with the app
+|       |-- config.json
+|       `-- launch.sh
+|-- assets/                        # README screenshots
+|-- build/                         # Local/generated build output
+|-- build_artifacts/               # Cached compile-time artifacts
+|-- include/                       # Shared headers and GLES headers
+|-- neon-arm-library/              # NEON helper library
+|-- src/
+|   |-- audio_bench/
+|   |-- common/
+|   |-- double_buf/
+|   |-- render_suite/
+|   |-- render_suite_gl/
+|   |-- software_buf/
+|   `-- space_bench/
+|-- union-miyoomini-toolchain/      # Auto-cloned Docker toolchain checkout
+`-- utility/
+    |-- compile.sh                 # Optional local/Docker helper wrapper
+    `-- mksdl2.sh                  # SDL2 compile-time library builder
 ```
 
-## Assets used:
+## Asset Credits
 
-[Audio Test](https://pixabay.com/music/video-games-arcade-beat-323176/) by [NoCopyrightSound633](https://pixabay.com/users/nocopyrightsound633-47610058/)
+- `app-dist/sdl_bench/assets/bgm.wav`: [Audio Test](https://pixabay.com/music/video-games-arcade-beat-323176/)
+  by [NoCopyrightSound633](https://pixabay.com/users/nocopyrightsound633-47610058/).

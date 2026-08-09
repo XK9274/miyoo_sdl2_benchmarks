@@ -11,8 +11,9 @@
 #   --help      Show this help message
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GL_LIB_SOURCE_DIR="$SCRIPT_DIR/app-dist/sdl_bench/lib"
-GL_ARTIFACT_DIR="$SCRIPT_DIR/build_artifacts/gles_libs"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+GL_LIB_SOURCE_DIR="$REPO_DIR/app-dist/sdl_bench/lib"
+GL_ARTIFACT_DIR="$REPO_DIR/build_artifacts/gles_libs"
 
 sync_gles_artifacts() {
     if [ -d "$GL_LIB_SOURCE_DIR" ]; then
@@ -68,6 +69,8 @@ if [ "$LOCAL_MODE" = "true" ]; then
     echo "WARNING: This requires the cross-compilation toolchain to be already set up"
     echo ""
 
+    cd "$REPO_DIR"
+
     # Build all benchmark binaries locally
     make clean
     make
@@ -75,7 +78,7 @@ if [ "$LOCAL_MODE" = "true" ]; then
     # Check if build succeeded
     if [ $? -ne 0 ]; then
         echo "Build failed! Please check the output above."
-        echo "Consider using Docker mode: ./compile.sh"
+        echo "Consider using Docker mode: ./utility/compile.sh"
         exit 1
     fi
 
@@ -106,14 +109,14 @@ else
     # Default: Use Docker compilation pipeline
     echo "🚀 Starting Docker compilation pipeline..."
     if [ "$VERBOSE" = "false" ]; then
-        echo "💡 Use './compile.sh --verbose' for detailed output"
+        echo "💡 Use './utility/compile.sh --verbose' for detailed output"
     fi
     echo ""
 
     # Run the Docker orchestration script with verbose flag
     if [ "$VERBOSE" = "true" ]; then
-        exec "$SCRIPT_DIR/docker-compile.sh" --verbose
+        exec "$REPO_DIR/docker-compile.sh" --verbose
     else
-        exec "$SCRIPT_DIR/docker-compile.sh"
+        exec "$REPO_DIR/docker-compile.sh"
     fi
 fi
