@@ -119,19 +119,26 @@ void space_render_laser_helix(const SpaceBenchState *state,
 }
 
 /* Draws one cross-section texture tiled (not stretched) across [origin_x,
- * end_x) at the given height, native tile width per tile. Stretching a
- * near-1D gradient texture across a huge, wildly non-uniform destination
- * rect is what produced the earlier "invisible/segmented" beam; tiling
- * keeps every draw at a sane, native-ish scale. */
+ * end_x), native tile width per tile. Stretching a near-1D gradient
+ * texture across a huge, wildly non-uniform destination rect is what
+ * produced the earlier "invisible/segmented" beam; tiling keeps every
+ * draw at a sane, native-ish scale.
+ *
+ * Height tapers from cone_height down to base_height over the first
+ * cone_length pixels from origin_x, so the beam visibly flares at the
+ * emission point instead of being a uniform-width bar for its whole
+ * length. Pass cone_length <= 0 to disable (constant base_height). */
 static int space_render_laser_tile_strip(SDL_Renderer *renderer,
                                          SDL_Texture *tex,
                                          float origin_x,
                                          float origin_y,
                                          float end_x,
-                                         float height,
+                                         float base_height,
+                                         float cone_height,
+                                         float cone_length,
                                          SDL_Color tint)
 {
-    if (!tex || height <= 0.0f) {
+    if (!tex || base_height <= 0.0f) {
         return 0;
     }
     SDL_SetTextureColorMod(tex, tint.r, tint.g, tint.b);
@@ -139,10 +146,28 @@ static int space_render_laser_tile_strip(SDL_Renderer *renderer,
     int tiles = 0;
     float x = origin_x;
     while (x < end_x) {
-        const float tile_w = SDL_min((float)SPACE_GL_LASER_TILE_W, end_x - x + 1.0f);
+        const float dist = x - origin_x;
+        const SDL_bool in_cone = (cone_length > 0.0f) && (dist < cone_length);
+
+        /* Inside the cone, step in several small increments instead of one
+         * full native tile width -- advancing by the full tile width every
+         * iteration (as this used to) meant the whole taper only ever fell
+         * within the first tile (since cone_length was shorter than the
+         * tile width), i.e. one slightly-bigger rectangle, not a visible
+         * cone. Smaller steps here give several visibly different heights
+         * across the flare. */
+        const float step = in_cone ? SDL_max(8.0f, cone_length * 0.25f) : (float)SPACE_GL_LASER_TILE_W;
+        const float tile_w = SDL_min(step, end_x - x + 1.0f);
+
+        float height = base_height;
+        if (in_cone) {
+            const float t = SDL_min(1.0f, (dist + tile_w * 0.5f) / cone_length);
+            height = cone_height + (base_height - cone_height) * t;
+        }
+
         const SDL_FRect dst = {x, origin_y - height * 0.5f, tile_w, height};
         SDL_RenderCopyF(renderer, tex, NULL, &dst);
-        x += (float)SPACE_GL_LASER_TILE_W;
+        x += step;
         tiles++;
     }
     return tiles;
@@ -173,13 +198,32 @@ static void space_render_laser_beam(SDL_Renderer *renderer,
 
     if (glow_tex && edge_tex && core_tex) {
         int tiles = 0;
+
+        /* Cone widening at the origin (muzzle flare), tapering to the
+         * steady-state beam width -- sells "emitted from here" instead of
+         * reading as a uniform-width bar for its whole length. */
+        const float cone_length = 48.0f * thickness_scale;
+
         tiles += space_render_laser_tile_strip(renderer, glow_tex, origin_x, origin_y, end_x,
-                                               26.0f * thickness_scale, color);
+                                               26.0f * thickness_scale, 42.0f * thickness_scale,
+                                               cone_length, color);
         tiles += space_render_laser_tile_strip(renderer, edge_tex, origin_x, origin_y, end_x,
-                                               12.0f * thickness_scale, color);
-        const SDL_Color white = {255, 255, 255, 255};
+                                               12.0f * thickness_scale, 20.0f * thickness_scale,
+                                               cone_length, color);
+
+        /* Core: previously pure white at 4px, which fully washed out the
+         * beam's actual colour under additive blending. Shrunk and tinted
+         * toward the beam colour (kept bright/hot-looking, but no longer
+         * neutral white) so the colour reads even at the core. */
+        const SDL_Color core_tint = {
+            (Uint8)(255 - (255 - color.r) * 0.55f),
+            (Uint8)(255 - (255 - color.g) * 0.55f),
+            (Uint8)(255 - (255 - color.b) * 0.55f),
+            255
+        };
         tiles += space_render_laser_tile_strip(renderer, core_tex, origin_x, origin_y, end_x,
-                                               4.0f * thickness_scale, white);
+                                               2.5f * thickness_scale, 3.5f * thickness_scale,
+                                               cone_length, core_tint);
 
         SDL_Texture *flare_tex = space_gl_effect_bolt_texture();
         if (flare_tex) {
