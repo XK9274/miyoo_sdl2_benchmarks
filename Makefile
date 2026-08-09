@@ -15,7 +15,8 @@ PROGRAMS      := sdl2_bench_software_double_buf \
                  sdl2_space_bench \
                  sdl2_render_suite \
                  sdl2_render_suite_gl \
-                 sdl2_audio_bench
+                 sdl2_audio_bench \
+                 sdl2_sprite_bench
 
 TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
 
@@ -123,13 +124,21 @@ AUDIO_SOURCES := \
 AUDIO_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(AUDIO_SOURCES))
 AUDIO_TARGET  := $(BIN_DIR)/sdl2_audio_bench
 
+SPRITE_BENCH_SOURCES := \
+    $(SRC_DIR)/sprite_bench/input.c \
+    $(SRC_DIR)/sprite_bench/main.c \
+    $(SRC_DIR)/sprite_bench/state.c
+SPRITE_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SPRITE_BENCH_SOURCES))
+SPRITE_BENCH_TARGET  := $(BIN_DIR)/sdl2_sprite_bench
+
 ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(SPACE_OBJECTS) \
                  $(SOFTWARE_OBJECTS) \
                  $(DOUBLE_OBJECTS) \
                  $(RENDER_OBJECTS) \
                  $(RENDER_GL_OBJECTS) \
-                 $(AUDIO_OBJECTS)
+                 $(AUDIO_OBJECTS) \
+                 $(SPRITE_BENCH_OBJECTS)
 DEPS          := $(ALL_OBJECTS:.o=.d)
 
 # Toolchain ------------------------------------------------------------------
@@ -204,6 +213,10 @@ sdl2_render_suite: $(RENDER_TARGET)
 sdl2_render_suite_gl: $(RENDER_GL_TARGET)
 $(AUDIO_TARGET): $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(SPRITE_BENCH_TARGET): $(COMMON_OBJECTS) $(SPRITE_BENCH_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(SPRITE_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
