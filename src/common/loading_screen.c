@@ -458,12 +458,12 @@ static void bench_loading_update_gl(BenchLoadingScreen *screen)
     SDL_GL_MakeCurrent(screen->gl_window, NULL);
 }
 
-/* BENCH_LOADING_STYLE_SHIP: solid 3D dart geometry. */
+/* BENCH_LOADING_STYLE_SHIP: solid 3D dart geometry, wingspan on X/Z (rotates with the spin), slight Y taper so it isn't flat. */
 static const float ship_base[4][3] = {
-    { 1.00f,  0.00f,  0.42f},  /* nose */
-    {-0.55f, -0.62f, -0.10f},  /* left wingtip */
-    {-0.55f,  0.62f, -0.10f},  /* right wingtip */
-    {-0.30f,  0.00f, -0.48f},  /* tail */
+    { 1.00f, -0.36f,  0.00f},  /* nose */
+    {-0.55f,  0.00f, -0.62f},  /* left wingtip */
+    {-0.55f,  0.00f,  0.62f},  /* right wingtip */
+    {-0.30f, -0.36f,  0.00f},  /* tail */
 };
 
 static const int ship_faces[4][3] = {
@@ -508,21 +508,25 @@ static void bench_loading_render_ship(BenchLoadingScreen *screen,
         bench_project_vertex(ship_base[i], &rotation_cache, origin_x, origin_y, size, &vertices[i]);
     }
 
+    const SDL_Color fill_color = screen->bar_fill;
+    const SDL_Color ship_edge_color = {
+        (Uint8)(fill_color.r * 0.55f), (Uint8)(fill_color.g * 0.55f), (Uint8)(fill_color.b * 0.55f), 255
+    };
+
     SDL_Vertex triangle_vertices[4 * 3];
     int triangle_count = 0;
     for (int face = 0; face < 4; ++face) {
         const int *indices = ship_faces[face];
         const int base = triangle_count * 3;
-        bench_setup_sdl_vertex(&triangle_vertices[base + 0], &vertices[indices[0]], &screen->background);
-        bench_setup_sdl_vertex(&triangle_vertices[base + 1], &vertices[indices[1]], &screen->background);
-        bench_setup_sdl_vertex(&triangle_vertices[base + 2], &vertices[indices[2]], &screen->background);
+        bench_setup_sdl_vertex(&triangle_vertices[base + 0], &vertices[indices[0]], &fill_color);
+        bench_setup_sdl_vertex(&triangle_vertices[base + 1], &vertices[indices[1]], &fill_color);
+        bench_setup_sdl_vertex(&triangle_vertices[base + 2], &vertices[indices[2]], &fill_color);
         triangle_count++;
     }
 
     SDL_SetRenderDrawBlendMode(screen->renderer, SDL_BLENDMODE_BLEND);
     bench_render_triangle_batch(screen->renderer, triangle_vertices, triangle_count, NULL);
 
-    static const SDL_Color ship_edge_color = {255, 150, 40, 255};
     bench_render_edge_batch(screen->renderer,
                             vertices,
                             ship_edges,
