@@ -76,12 +76,7 @@ int main(int argc, char *argv[])
     }
     if (loading_active) {
         bench_loading_step(&loading, 0.9f, "Starfield ready");
-
-        const Uint64 hold_until = SDL_GetTicks64() + 2000; /* keep loading screen up briefly */
-        while (SDL_GetTicks64() < hold_until) {
-            bench_loading_step(&loading, 1.0f, "Ready");
-            SDL_Delay(16);
-        }
+        bench_loading_step(&loading, 1.0f, "Ready");
     }
 
     BenchMetrics metrics;
