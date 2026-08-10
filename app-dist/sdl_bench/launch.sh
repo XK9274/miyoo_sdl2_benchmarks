@@ -8,6 +8,20 @@ export SDL_VIDEODRIVER=mmiyoo
 export SDL_AUDIODRIVER=mmiyoo
 export EGL_VIDEODRIVER=mmiyoo
 
+# SDL_MMIYOO_VSYNC_MODE controls present pacing: "off" (no wait), "adaptive"
+# (default -- our own FBIO_WAITFORVSYNC, skipped if already running late),
+# or "strict" -- real FBIOPAN_DISPLAY panning paced by /dev/l.
+#
+# /dev/l in the Miyoo firmware controls double buffering and MI_DISP
+# interaction. It can pan for you, but when /dev/l handles it, you're
+# forced into "strict mode" vsync, where you get 60fps but whenever load
+# is too high, you're instantly forced to 30fps. You can kill /dev/l to
+# control this behaviour, but it will introduce flickering.
+#
+# Below, every suite runs three times back-to-back -- off, adaptive,
+# strict -- so the three logs sit next to each other for direct comparison.
+# export SDL_MMIYOO_VSYNC_MODE=strict
+
 freemma="/mnt/SDCARD/.tmp_update/bin/freemma"
 cpuclock="/mnt/SDCARD/.tmp_update/bin/cpuclock"
 
@@ -42,6 +56,7 @@ run_benchmark() {
     local bench_name="$1"
     local bench_path="$2"
     local log_name="$3"
+    local present_mode="$4"
     local log_file="$bench_dir/logs/$log_name.log"
 
     echo "========================================="
@@ -52,7 +67,17 @@ run_benchmark() {
         echo "===== START $bench_name: $(date) =====" > "$log_file"
         ps >> "$log_file"
         echo "-----" >> "$log_file"
-        SDL_MMIYOO_DEBUG=1 SDL_MMIYOO_DEBUG_VERBOSE=1 "$bench_path" >> "$log_file" 2>&1
+        case "$present_mode" in
+            off)
+                SDL_MMIYOO_VSYNC_MODE=off SDL_MMIYOO_DEBUG=1 SDL_MMIYOO_DEBUG_VERBOSE=1 "$bench_path" >> "$log_file" 2>&1
+                ;;
+            strict)
+                SDL_MMIYOO_VSYNC_MODE=strict SDL_MMIYOO_DEBUG=1 SDL_MMIYOO_DEBUG_VERBOSE=1 "$bench_path" >> "$log_file" 2>&1
+                ;;
+            *)
+                SDL_MMIYOO_VSYNC_MODE=adaptive SDL_MMIYOO_DEBUG=1 SDL_MMIYOO_DEBUG_VERBOSE=1 "$bench_path" >> "$log_file" 2>&1
+                ;;
+        esac
         local exit_code=$?
         echo "-----" >> "$log_file"
         ps >> "$log_file"
@@ -107,15 +132,37 @@ echo "Directory: $bench_dir"
 
 mkdir -p "$bench_dir/logs"
 
-# Run benchmarks (each captures its own log under logs/, see run_benchmark)
+# Run benchmarks (each captures its own log under logs/, see run_benchmark).
+# Each suite runs three times back-to-back: off, adaptive, strict, so the
+# three logs sit next to each other for a direct FPS comparison.
 exe_cpuclock
-run_benchmark "SDL2 Sprite Bench" "bin/sdl2_sprite_bench" "sdl2_sprite_bench"
-run_benchmark "SDL2 Render Suite" "bin/sdl2_render_suite" "sdl2_render_suite"
-run_benchmark "SDL2 Render Suite GL" "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl"
-run_benchmark "SDL2 Software Double Buffer Benchmark" "bin/sdl2_bench_software_double_buf" "sdl2_bench_software_double_buf"
-run_benchmark "SDL2 Double Buffer Benchmark" "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf"
-run_benchmark "SDL2 Interactive Demo" "bin/sdl2_space_bench" "sdl2_space_bench"
-run_benchmark "SDL2 Audio Benchmark" "bin/sdl2_audio_bench" "sdl2_audio_bench"
+run_benchmark "SDL2 Sprite Bench (off)"      "bin/sdl2_sprite_bench" "sdl2_sprite_bench_off" off
+run_benchmark "SDL2 Sprite Bench (adaptive)" "bin/sdl2_sprite_bench" "sdl2_sprite_bench_adaptive" adaptive
+run_benchmark "SDL2 Sprite Bench (strict)"   "bin/sdl2_sprite_bench" "sdl2_sprite_bench_strict" strict
+
+run_benchmark "SDL2 Render Suite (off)"      "bin/sdl2_render_suite" "sdl2_render_suite_off" off
+run_benchmark "SDL2 Render Suite (adaptive)" "bin/sdl2_render_suite" "sdl2_render_suite_adaptive" adaptive
+run_benchmark "SDL2 Render Suite (strict)"   "bin/sdl2_render_suite" "sdl2_render_suite_strict" strict
+
+run_benchmark "SDL2 Render Suite GL (off)"      "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl_off" off
+run_benchmark "SDL2 Render Suite GL (adaptive)" "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl_adaptive" adaptive
+run_benchmark "SDL2 Render Suite GL (strict)"   "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl_strict" strict
+
+run_benchmark "SDL2 Software Double Buffer Benchmark (off)"      "bin/sdl2_bench_software_double_buf" "sdl2_bench_software_double_buf_off" off
+run_benchmark "SDL2 Software Double Buffer Benchmark (adaptive)" "bin/sdl2_bench_software_double_buf" "sdl2_bench_software_double_buf_adaptive" adaptive
+run_benchmark "SDL2 Software Double Buffer Benchmark (strict)"   "bin/sdl2_bench_software_double_buf" "sdl2_bench_software_double_buf_strict" strict
+
+run_benchmark "SDL2 Double Buffer Benchmark (off)"      "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_off" off
+run_benchmark "SDL2 Double Buffer Benchmark (adaptive)" "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_adaptive" adaptive
+run_benchmark "SDL2 Double Buffer Benchmark (strict)"   "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_strict" strict
+
+run_benchmark "SDL2 Interactive Demo (off)"      "bin/sdl2_space_bench" "sdl2_space_bench_off" off
+run_benchmark "SDL2 Interactive Demo (adaptive)" "bin/sdl2_space_bench" "sdl2_space_bench_adaptive" adaptive
+run_benchmark "SDL2 Interactive Demo (strict)"   "bin/sdl2_space_bench" "sdl2_space_bench_strict" strict
+
+run_benchmark "SDL2 Audio Benchmark (off)"      "bin/sdl2_audio_bench" "sdl2_audio_bench_off" off
+run_benchmark "SDL2 Audio Benchmark (adaptive)" "bin/sdl2_audio_bench" "sdl2_audio_bench_adaptive" adaptive
+run_benchmark "SDL2 Audio Benchmark (strict)"   "bin/sdl2_audio_bench" "sdl2_audio_bench_strict" strict
 
 
 echo "========================================="
