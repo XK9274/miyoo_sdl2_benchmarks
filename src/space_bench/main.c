@@ -15,8 +15,6 @@ int main(int argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    SDL_setenv("SDL_MMIYOO_DOUBLE_BUFFER", "1", 1);
-
     Uint64 perf_freq = SDL_GetPerformanceFrequency();
     Uint64 last_counter = SDL_GetPerformanceCounter();
 
@@ -41,7 +39,10 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    /* SDL_CreateRenderer force-ORs in SDL_RENDERER_PRESENTVSYNC in this SDL2
+     * fork regardless of flags -- the hint is the only way to turn it off. */
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
         printf("Renderer creation failed: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);
