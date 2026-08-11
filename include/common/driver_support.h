@@ -53,10 +53,15 @@ typedef struct {
     int display_w;
     int display_h;
 
-    /* Requested via SDL_MMIYOO_VSYNC_MODE, not driver-verified ground truth
-     * for STRICT -- the driver may have silently fallen back to
-     * present-copy if the panel rejected FBIOPAN_DISPLAY panning. */
+    /* Requested via SDL_MMIYOO_VSYNC_MODE -- see vsync_verified_active below
+     * for the driver-confirmed ground truth. */
     BenchVSyncStatus vsync_status;
+
+    /* Verified via SDL_GetRendererInfo() -- SDL_RENDERER_PRESENTVSYNC now
+     * accurately reflects whether presentation is actually vsync-paced (real
+     * FBIO_WAITFORVSYNC wait in adaptive, or a driver-confirmed page-flip in
+     * strict), not just what SDL_MMIYOO_VSYNC_MODE requested. */
+    SDL_bool vsync_verified_active;
 } BenchDriverStatus;
 
 /* Opens joystick 0 and its haptic device if present, and spawns a background

@@ -14,8 +14,8 @@
 /* Index matches the MMIYOO_Button bit position reported by the Miyoo SDL2
  * joystick backend. POWER/VOLUP/VOLDOWN (indices 19-21) have no bench action
  * here -- vsync is driven by holding SELECT (see bench_driver_translate_button_event):
- * SELECT+X = vsync on/off, SELECT+A = adaptive/strict. Keyboard-emulation
- * equivalent: src/video/mmiyoo/SDL_event_mmiyoo.c. */
+ * SELECT+X = vsync off/adaptive toggle. Keyboard-emulation equivalent:
+ * src/video/mmiyoo/SDL_event_mmiyoo.c. */
 static const SDL_Keycode g_joy_button_map[MMIYOO_JOY_BUTTON_SLOTS] = {
     BTN_UP, BTN_DOWN, BTN_LEFT, BTN_RIGHT,
     BTN_A, BTN_B, BTN_X, BTN_Y,
@@ -50,12 +50,21 @@ static void bench_driver_refresh_status_locked(void)
         SDL_GetWindowSize(g_window, &display_w, &display_h);
     }
 
+    /* Miyoo SDL2's unset/unrecognized default is off. */
     const char *vsync_mode_hint = SDL_GetHint(BENCH_HINT_MMIYOO_VSYNC_MODE);
-    BenchVSyncStatus vsync_status = BENCH_VSYNC_STATUS_ADAPTIVE;
-    if (vsync_mode_hint && strcmp(vsync_mode_hint, BENCH_VSYNC_MODE_OFF) == 0) {
-        vsync_status = BENCH_VSYNC_STATUS_OFF;
+    BenchVSyncStatus vsync_status = BENCH_VSYNC_STATUS_OFF;
+    if (vsync_mode_hint && strcmp(vsync_mode_hint, BENCH_VSYNC_MODE_ADAPTIVE) == 0) {
+        vsync_status = BENCH_VSYNC_STATUS_ADAPTIVE;
     } else if (vsync_mode_hint && strcmp(vsync_mode_hint, BENCH_VSYNC_MODE_STRICT) == 0) {
         vsync_status = BENCH_VSYNC_STATUS_STRICT;
+    }
+
+    SDL_bool vsync_verified_active = SDL_FALSE;
+    if (g_renderer) {
+        SDL_RendererInfo info;
+        if (SDL_GetRendererInfo(g_renderer, &info) == 0) {
+            vsync_verified_active = (info.flags & SDL_RENDERER_PRESENTVSYNC) ? SDL_TRUE : SDL_FALSE;
+        }
     }
 
     SDL_LockMutex(g_status_mutex);
@@ -68,6 +77,7 @@ static void bench_driver_refresh_status_locked(void)
         g_status.display_h = display_h;
     }
     g_status.vsync_status = vsync_status;
+    g_status.vsync_verified_active = vsync_verified_active;
     SDL_UnlockMutex(g_status_mutex);
 }
 
@@ -89,7 +99,6 @@ SDL_bool bench_driver_init(SDL_Window *window, SDL_Renderer *renderer)
     memset(&g_status, 0, sizeof(g_status));
     g_status.input_source = BENCH_INPUT_SOURCE_KEYBOARD;
     g_status.battery_percent = -1;
-    g_status.vsync_status = BENCH_VSYNC_STATUS_ADAPTIVE;
     g_window = window;
     g_renderer = renderer;
     g_status_mutex = SDL_CreateMutex();
