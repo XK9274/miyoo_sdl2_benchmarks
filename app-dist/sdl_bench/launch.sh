@@ -4,9 +4,16 @@ bench_dir=$(dirname "$0")
 export HOME=$bench_dir
 export PATH=$bench_dir:$PATH
 export LD_LIBRARY_PATH=$bench_dir/lib:$LD_LIBRARY_PATH
-export SDL_VIDEODRIVER=mmiyoo
-export SDL_AUDIODRIVER=mmiyoo
-export EGL_VIDEODRIVER=mmiyoo
+
+# SDL_VIDEODRIVER/SDL_AUDIODRIVER/EGL_VIDEODRIVER used to be forced here to
+# work around mmiyoo backend auto-detection always failing (MMIYOO_Available()
+# only checked the env var itself, never real hardware). Auto-detection now
+# does a real probe (see MMIYOO_ProbeHardware() in sdl2_miyoo), so these are
+# left unset intentionally -- testing that auto-detect selects mmiyoo on its
+# own. Uncomment to force a specific backend again if needed.
+# export SDL_VIDEODRIVER=mmiyoo
+# export SDL_AUDIODRIVER=mmiyoo
+# export EGL_VIDEODRIVER=mmiyoo
 
 freemma="/mnt/SDCARD/.tmp_update/bin/freemma"
 cpuclock="/mnt/SDCARD/.tmp_update/bin/cpuclock"
