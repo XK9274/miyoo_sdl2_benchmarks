@@ -24,9 +24,6 @@ SDL_bool rs_handle_input(RenderSuiteState *state, BenchMetrics *metrics)
                 case BTN_VSYNC_TOGGLE:
                     bench_driver_toggle_vsync();
                     break;
-                case BTN_VSYNC_MODE_TOGGLE:
-                    bench_driver_toggle_vsync_mode();
-                    break;
                 case BTN_L2:
                     state->active_scene = (SceneKind)((state->active_scene + 1) % SCENE_MAX);
                     state->auto_cycle = SDL_FALSE;

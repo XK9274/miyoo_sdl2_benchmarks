@@ -8,15 +8,14 @@
 #define MMIYOO_JOY_BUTTON_SLOTS 22
 #define BENCH_DRIVER_REFRESH_INTERVAL_MS 2000
 
-#define MMIYOO_JOY_BUTTON_A      4
 #define MMIYOO_JOY_BUTTON_X      6
 #define MMIYOO_JOY_BUTTON_SELECT 12
 
 /* Index matches the MMIYOO_Button bit position reported by the Miyoo SDL2
  * joystick backend. POWER/VOLUP/VOLDOWN (indices 19-21) have no bench action
  * here -- vsync is driven by holding SELECT (see bench_driver_translate_button_event):
- * SELECT+X = vsync on/off, SELECT+A = adaptive/strict. Keyboard-emulation
- * equivalent: src/video/mmiyoo/SDL_event_mmiyoo.c. */
+ * SELECT+X = vsync off/adaptive toggle. Keyboard-emulation equivalent:
+ * src/video/mmiyoo/SDL_event_mmiyoo.c. */
 static const SDL_Keycode g_joy_button_map[MMIYOO_JOY_BUTTON_SLOTS] = {
     BTN_UP, BTN_DOWN, BTN_LEFT, BTN_RIGHT,
     BTN_A, BTN_B, BTN_X, BTN_Y,
@@ -51,6 +50,23 @@ static void bench_driver_refresh_status_locked(void)
         SDL_GetWindowSize(g_window, &display_w, &display_h);
     }
 
+    /* Miyoo SDL2's unset/unrecognized default is off. */
+    const char *vsync_mode_hint = SDL_GetHint(BENCH_HINT_MMIYOO_VSYNC_MODE);
+    BenchVSyncStatus vsync_status = BENCH_VSYNC_STATUS_OFF;
+    if (vsync_mode_hint && strcmp(vsync_mode_hint, BENCH_VSYNC_MODE_ADAPTIVE) == 0) {
+        vsync_status = BENCH_VSYNC_STATUS_ADAPTIVE;
+    } else if (vsync_mode_hint && strcmp(vsync_mode_hint, BENCH_VSYNC_MODE_STRICT) == 0) {
+        vsync_status = BENCH_VSYNC_STATUS_STRICT;
+    }
+
+    SDL_bool vsync_verified_active = SDL_FALSE;
+    if (g_renderer) {
+        SDL_RendererInfo info;
+        if (SDL_GetRendererInfo(g_renderer, &info) == 0) {
+            vsync_verified_active = (info.flags & SDL_RENDERER_PRESENTVSYNC) ? SDL_TRUE : SDL_FALSE;
+        }
+    }
+
     SDL_LockMutex(g_status_mutex);
     g_status.power_state = state;
     g_status.power_info_valid = (state != SDL_POWERSTATE_UNKNOWN);
@@ -60,6 +76,8 @@ static void bench_driver_refresh_status_locked(void)
         g_status.display_w = display_w;
         g_status.display_h = display_h;
     }
+    g_status.vsync_status = vsync_status;
+    g_status.vsync_verified_active = vsync_verified_active;
     SDL_UnlockMutex(g_status_mutex);
 }
 
@@ -81,8 +99,6 @@ SDL_bool bench_driver_init(SDL_Window *window, SDL_Renderer *renderer)
     memset(&g_status, 0, sizeof(g_status));
     g_status.input_source = BENCH_INPUT_SOURCE_KEYBOARD;
     g_status.battery_percent = -1;
-    g_status.vsync_enabled = SDL_TRUE; /* forced on by SDL_CreateRenderer(-1, ...) */
-    g_status.vsync_adaptive = SDL_TRUE;
     g_window = window;
     g_renderer = renderer;
     g_status_mutex = SDL_CreateMutex();
@@ -173,7 +189,7 @@ SDL_bool bench_driver_translate_button_event(const SDL_Event *event,
     }
 
     if (event->type == SDL_JOYBUTTONDOWN || event->type == SDL_JOYBUTTONUP) {
-        /* SELECT held as a modifier: X = vsync on/off, A = adaptive/strict.
+        /* SELECT held as a modifier: X = vsync off/adaptive toggle.
            SELECT's own tap action (reset metrics, see BTN_SELECT in each
            suite's input.c) still fires on release, but only if no combo was
            used during that hold. */
@@ -204,14 +220,14 @@ SDL_bool bench_driver_translate_button_event(const SDL_Event *event,
             return SDL_TRUE;
         }
 
-        if (select_held && (button == MMIYOO_JOY_BUTTON_X || button == MMIYOO_JOY_BUTTON_A)) {
+        if (select_held && button == MMIYOO_JOY_BUTTON_X) {
             if (pressed) {
                 select_combo_used = SDL_TRUE;
                 SDL_LockMutex(g_status_mutex);
                 g_status.input_source = BENCH_INPUT_SOURCE_JOYSTICK;
                 g_status.joystick_event_count++;
                 SDL_UnlockMutex(g_status_mutex);
-                *out_sym = (button == MMIYOO_JOY_BUTTON_X) ? BTN_VSYNC_TOGGLE : BTN_VSYNC_MODE_TOGGLE;
+                *out_sym = BTN_VSYNC_TOGGLE;
                 *out_pressed = SDL_TRUE;
                 return SDL_TRUE;
             }
@@ -258,33 +274,13 @@ void bench_driver_toggle_input_mode(void)
 
 void bench_driver_toggle_vsync(void)
 {
-    if (!g_renderer) {
-        return;
-    }
+    const char *current = SDL_GetHint(BENCH_HINT_MMIYOO_VSYNC_MODE);
+    const SDL_bool is_off = (current && strcmp(current, BENCH_VSYNC_MODE_OFF) == 0);
+
+    SDL_SetHint(BENCH_HINT_MMIYOO_VSYNC_MODE, is_off ? BENCH_VSYNC_MODE_ADAPTIVE : BENCH_VSYNC_MODE_OFF);
 
     SDL_LockMutex(g_status_mutex);
-    const SDL_bool want_enabled = !g_status.vsync_enabled;
-    SDL_UnlockMutex(g_status_mutex);
-
-    if (SDL_RenderSetVSync(g_renderer, want_enabled ? 1 : 0) == 0) {
-        SDL_LockMutex(g_status_mutex);
-        g_status.vsync_enabled = want_enabled;
-        SDL_UnlockMutex(g_status_mutex);
-    } else {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "bench_driver_toggle_vsync: SDL_RenderSetVSync failed: %s", SDL_GetError());
-    }
-}
-
-void bench_driver_toggle_vsync_mode(void)
-{
-    const char *current = SDL_GetHint(BENCH_HINT_MMIYOO_VSYNC_ADAPTIVE);
-    const SDL_bool is_adaptive = !(current && strcmp(current, "0") == 0);
-
-    SDL_SetHint(BENCH_HINT_MMIYOO_VSYNC_ADAPTIVE, is_adaptive ? "0" : "1");
-
-    SDL_LockMutex(g_status_mutex);
-    g_status.vsync_adaptive = !is_adaptive;
+    g_status.vsync_status = is_off ? BENCH_VSYNC_STATUS_ADAPTIVE : BENCH_VSYNC_STATUS_OFF;
     SDL_UnlockMutex(g_status_mutex);
 }
 
@@ -349,12 +345,13 @@ void bench_driver_format_status_grid(char fields[BENCH_STATUS_GRID_CELLS][BENCH_
     snprintf(fields[5], BENCH_STATUS_FIELD_LEN, "EVT kb %u / joy %u",
              status.keyboard_event_count, status.joystick_event_count);
 
-    if (status.vsync_enabled) {
-        snprintf(fields[6], BENCH_STATUS_FIELD_LEN, "VSYNC: ON/%s (SEL+X/A)",
-                 status.vsync_adaptive ? "Adaptive" : "Strict");
-    } else {
-        snprintf(fields[6], BENCH_STATUS_FIELD_LEN, "VSYNC: OFF (SEL+X)");
+    const char *mode_label = "Adaptive";
+    if (status.vsync_status == BENCH_VSYNC_STATUS_OFF) {
+        mode_label = "Off";
+    } else if (status.vsync_status == BENCH_VSYNC_STATUS_STRICT) {
+        mode_label = "Strict";
     }
+    snprintf(fields[6], BENCH_STATUS_FIELD_LEN, "VSYNC: %s (SEL+X)", mode_label);
 
     snprintf(fields[7], BENCH_STATUS_FIELD_LEN, "%dx%d", status.display_w, status.display_h);
 }

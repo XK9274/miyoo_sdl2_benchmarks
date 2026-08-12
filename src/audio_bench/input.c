@@ -27,9 +27,6 @@ SDL_bool audio_handle_input(BenchMetrics *metrics)
                 case BTN_VSYNC_TOGGLE:
                     bench_driver_toggle_vsync();
                     break;
-                case BTN_VSYNC_MODE_TOGGLE:
-                    bench_driver_toggle_vsync_mode();
-                    break;
                 case BTN_A:
                     if (audio_device_is_playing()) {
                         audio_device_stop(SDL_FALSE);

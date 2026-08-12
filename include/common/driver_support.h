@@ -10,6 +10,12 @@ typedef enum {
     BENCH_INPUT_SOURCE_JOYSTICK
 } BenchInputSource;
 
+typedef enum {
+    BENCH_VSYNC_STATUS_OFF = 0,
+    BENCH_VSYNC_STATUS_ADAPTIVE,
+    BENCH_VSYNC_STATUS_STRICT
+} BenchVSyncStatus;
+
 /* Must match the driver's SDL_HINT_MMIYOO_INPUT_MODE / MMIYOO_INPUT_MODE_*
  * constants in sdl2_miyoo's src/core/mmiyoo/SDL_mmiyoo.h -- duplicated here
  * since the benchmark can't include that driver-private header, only link
@@ -18,8 +24,14 @@ typedef enum {
 #define BENCH_INPUT_MODE_KEYBOARD "keyboard"
 #define BENCH_INPUT_MODE_JOYSTICK "joystick"
 
-/* Must match SDL_HINT_MMIYOO_VSYNC_ADAPTIVE in sdl2_miyoo's SDL_mmiyoo.h. */
-#define BENCH_HINT_MMIYOO_VSYNC_ADAPTIVE "SDL_MMIYOO_VSYNC_ADAPTIVE"
+/* Must match SDL_HINT_MMIYOO_VSYNC_MODE / MMIYOO_VSyncMode_e in sdl2_miyoo's
+ * SDL_mmiyoo.h. "off"/"adaptive" can be toggled live (bench_driver_toggle_vsync);
+ * "strict" locks in the /dev/l panning buffer layout at fb_init, so it's
+ * launch-time only -- set manually in launch.sh (see its comment block). */
+#define BENCH_HINT_MMIYOO_VSYNC_MODE "SDL_MMIYOO_VSYNC_MODE"
+#define BENCH_VSYNC_MODE_OFF      "off"
+#define BENCH_VSYNC_MODE_ADAPTIVE "adaptive"
+#define BENCH_VSYNC_MODE_STRICT   "strict"
 
 typedef struct {
     SDL_bool joystick_attached;
@@ -41,8 +53,15 @@ typedef struct {
     int display_w;
     int display_h;
 
-    SDL_bool vsync_enabled;
-    SDL_bool vsync_adaptive;
+    /* Requested via SDL_MMIYOO_VSYNC_MODE -- see vsync_verified_active below
+     * for the driver-confirmed ground truth. */
+    BenchVSyncStatus vsync_status;
+
+    /* Verified via SDL_GetRendererInfo() -- SDL_RENDERER_PRESENTVSYNC now
+     * accurately reflects whether presentation is actually vsync-paced (real
+     * FBIO_WAITFORVSYNC wait in adaptive, or a driver-confirmed page-flip in
+     * strict), not just what SDL_MMIYOO_VSYNC_MODE requested. */
+    SDL_bool vsync_verified_active;
 } BenchDriverStatus;
 
 /* Opens joystick 0 and its haptic device if present, and spawns a background
@@ -76,11 +95,11 @@ void bench_driver_rumble_pulse(float strength, Uint32 duration_ms);
  * active, so this is a real switch, not just a display preference. */
 void bench_driver_toggle_input_mode(void);
 
-/* Toggles vsync on the renderer passed to bench_driver_init. */
+/* Flips SDL_MMIYOO_VSYNC_MODE between "off" and "adaptive". Never touches
+ * "strict" -- if launched with SDL_MMIYOO_VSYNC_MODE=strict, this is a
+ * no-op on actual presentation (the /dev/l panning buffer layout is already
+ * locked in from fb_init), even though the hint/HUD value will change. */
 void bench_driver_toggle_vsync(void);
-
-/* Toggles adaptive vs strict vsync-wait mode. No effect if vsync is off. */
-void bench_driver_toggle_vsync_mode(void);
 
 /* Copies the current status snapshot out under lock. */
 void bench_driver_get_status(BenchDriverStatus *out_status);
