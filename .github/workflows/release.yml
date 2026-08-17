@@ -1,0 +1,174 @@
+name: Release SDL2 Benchmarks (Miyoo Mini)
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.2.0). Leave blank to auto-bump the patch version of the latest release."
+        required: false
+        type: string
+
+jobs:
+  preflight:
+    name: Pre-release checks
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag }}" ]]; then
+            TAG="${{ inputs.tag }}"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+            if [[ -z "$LATEST_TAG" ]]; then
+              TAG="v0.1.0"
+              echo "No existing release tags found -- starting at $TAG"
+            else
+              VER="${LATEST_TAG#v}"
+              MAJOR="${VER%%.*}"
+              REST="${VER#*.}"
+              MINOR="${REST%%.*}"
+              PATCH="${REST#*.}"
+              PATCH="${PATCH%%-*}"
+              TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+              echo "No tag given -- auto-bumping latest release $LATEST_TAG -> $TAG"
+            fi
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+
+          if ! echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "Tag '$TAG' does not match vMAJOR.MINOR.PATCH format"
+            exit 1
+          fi
+
+          VERSION="${TAG#v}"
+          echo "tag=$TAG"     >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing $TAG"
+
+      - name: Check for uncommitted changes
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "Working tree is dirty — release must be built from a clean tree"
+            git status
+            exit 1
+          fi
+
+      - name: Check tag is not a duplicate release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release '$TAG' already exists — bump the version"
+            exit 1
+          fi
+
+      - name: Verify docker-compile.sh is present
+        run: |
+          if [[ ! -f "docker-compile.sh" ]]; then
+            echo "docker-compile.sh missing from repo"
+            exit 1
+          fi
+
+  build:
+    name: Build
+    needs: preflight
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build via docker-compile.sh
+        run: |
+          chmod +x ./docker-compile.sh
+          ./docker-compile.sh
+
+      - name: Verify build artifacts
+        run: |
+          ls -la app-dist/sdl_bench/bin/
+          file app-dist/sdl_bench/bin/*
+
+      - name: Package release archive
+        id: package
+        run: |
+          TAG="${{ needs.preflight.outputs.tag }}"
+          ARCHIVE="sdl_bench-${TAG}.tar.gz"
+          tar -czf "$ARCHIVE" -C app-dist sdl_bench/
+          sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
+          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+          cat "${ARCHIVE}.sha256"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdl_bench-${{ needs.preflight.outputs.tag }}
+          path: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.archive }}.sha256
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [preflight, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sdl_bench-${{ needs.preflight.outputs.tag }}
+          path: output
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.preflight.outputs.tag }}"
+
+          gh release create "$TAG" \
+            output/*.tar.gz \
+            output/*.sha256 \
+            --title "SDL2 Benchmarks (Miyoo Mini) $TAG" \
+            --notes "$(cat <<NOTES
+          ## SDL2 Benchmarks for Miyoo Mini — $TAG
+
+          Cross-compiled for \`arm-linux-gnueabihf\` via \`docker-compile.sh\`.
+
+          ### Artifacts
+          | File | Description |
+          |------|-------------|
+          | \`sdl_bench-${TAG}.tar.gz\` | \`app-dist/sdl_bench\` (bin + lib + assets + launch.sh) |
+          | \`sdl_bench-${TAG}.tar.gz.sha256\` | SHA-256 checksum |
+
+          ### Install
+          Extract to \`/mnt/SDCARD/App/sdl_bench\` on the device, then restart MainUI.
+
+          ### Build info
+          - Commit: ${{ github.sha }}
+          - Toolchain: [XK9274/union-miyoomini-toolchain](https://github.com/XK9274/union-miyoomini-toolchain)
+          NOTES
+          )"
