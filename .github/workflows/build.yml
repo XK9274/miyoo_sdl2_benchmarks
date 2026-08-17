@@ -20,8 +20,8 @@ jobs:
 
     - name: Build SDL2 benchmarks
       run: |
-        chmod +x ./compile.sh
-        ./compile.sh
+        chmod +x ./docker-compile.sh
+        ./docker-compile.sh
 
     - name: Verify build artifacts
       run: |
