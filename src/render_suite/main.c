@@ -19,6 +19,24 @@
 #include "render_suite/state.h"
 #include "common/loading_screen.h"
 
+/* RS_FORCE_SCENE=<name> pins active_scene and disables auto-cycle; used for
+ * isolated A/B perf comparisons (e.g. geometry-scene NEON vs scalar). */
+static SDL_bool rs_scene_from_name(const char *name, SceneKind *out)
+{
+    static const struct { const char *name; SceneKind scene; } table[] = {
+        {"fill", SCENE_FILL}, {"texture", SCENE_TEXTURE}, {"lines", SCENE_LINES},
+        {"geometry", SCENE_GEOMETRY}, {"scaling", SCENE_SCALING},
+        {"memory", SCENE_MEMORY}, {"pixels", SCENE_PIXELS},
+    };
+    for (size_t i = 0; i < SDL_arraysize(table); i++) {
+        if (SDL_strcasecmp(name, table[i].name) == 0) {
+            *out = table[i].scene;
+            return SDL_TRUE;
+        }
+    }
+    return SDL_FALSE;
+}
+
 static void rs_print_system_info(void)
 {
     SDL_version version;
@@ -86,6 +104,18 @@ int main(int argc, char *argv[])
 
     RenderSuiteState state;
     rs_state_init(&state);
+
+    const char *force_scene_name = SDL_getenv("RS_FORCE_SCENE");
+    SceneKind forced_scene;
+    if (force_scene_name && rs_scene_from_name(force_scene_name, &forced_scene)) {
+        state.active_scene = forced_scene;
+        state.auto_cycle = SDL_FALSE;
+    }
+
+    const char *bench_duration_str = SDL_getenv("RS_BENCH_DURATION_S");
+    const double bench_duration_s = bench_duration_str ? SDL_atof(bench_duration_str) : 0.0;
+    const char *bench_tag = SDL_getenv("RS_BENCH_TAG");
+
     if (loading_active) {
         bench_loading_step(&loading, 0.2f, "Loading fonts");
     }
@@ -131,6 +161,7 @@ int main(int argc, char *argv[])
     printf("SDL2 Render Suite initialised\n");
 
     double next_status_refresh_ms = 0.0;
+    double next_bench_log_ms = 0.0;
 
     SDL_bool running = SDL_TRUE;
     while (running) {
@@ -198,6 +229,22 @@ int main(int argc, char *argv[])
         }
 
         rs_overlay_submit(overlay, &state, &metrics);
+
+        if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {
+            printf("[BENCH] tag=%s scene=%d elapsed_s=%.1f frame=%llu fps=%.2f avg_fps=%.2f "
+                   "min_fps=%.2f max_fps=%.2f frame_ms=%.3f tris=%llu verts=%llu\n",
+                   bench_tag, (int)state.active_scene, metrics.accumulated_frame_time_ms / 1000.0,
+                   (unsigned long long)metrics.frame_count, metrics.current_fps, metrics.avg_fps,
+                   metrics.min_fps, metrics.max_fps, metrics.frame_time_ms,
+                   (unsigned long long)metrics.triangles_rendered,
+                   (unsigned long long)metrics.vertices_rendered);
+            fflush(stdout);
+            next_bench_log_ms = metrics.accumulated_frame_time_ms + 2000.0;
+        }
+
+        if (bench_duration_s > 0.0 && metrics.accumulated_frame_time_ms >= bench_duration_s * 1000.0) {
+            running = SDL_FALSE;
+        }
     }
 
     bench_driver_shutdown();
