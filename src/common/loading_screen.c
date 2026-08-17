@@ -478,12 +478,7 @@ static const int ship_edges[6][2] = {
     {0, 3}, {1, 3}, {2, 3},
 };
 
-/* BENCH_LOADING_STYLE_SHIP: solid 3D dart, rotated/projected the same way
-   the double/hardware-buffer suites spin their shapes (see
-   common/geometry/core.c: bench_update_rotation_cache + bench_project_vertex,
-   a single Y-axis rotation with a simple perspective divide). Faces are
-   filled with the screen background color so only the silhouette shows;
-   edges are drawn on top for readability. */
+/* BENCH_LOADING_STYLE_SHIP: solid 3D dart, rotated/projected via common/geometry/core.c. Faces filled with the background color for a silhouette; edges drawn on top. */
 static void bench_loading_render_ship(BenchLoadingScreen *screen,
                                       int renderer_w,
                                       int renderer_h)

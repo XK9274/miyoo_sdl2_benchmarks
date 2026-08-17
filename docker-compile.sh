@@ -51,9 +51,9 @@ if [ ! -d "$TOOLCHAIN_DIR" ]; then
         echo "ERROR: Failed to clone toolchain repository"
         exit 1
     fi
-    echo "✓ Toolchain cloned successfully"
+    echo "Toolchain cloned successfully"
 else
-    echo "✓ Toolchain already exists at: $TOOLCHAIN_DIR"
+    echo "Toolchain already exists at: $TOOLCHAIN_DIR"
 fi
 
 # Step 1.5: Ensure NEON ARM library submodule is initialized
@@ -86,9 +86,9 @@ if [ ! -d "$NEON_DIR" ] || [ ! -f "$NEON_DIR/include/neon.h" ]; then
         echo "ERROR: NEON ARM library setup failed - neon.h not found"
         exit 1
     fi
-    echo "✓ NEON ARM library submodule initialized successfully"
+    echo "NEON ARM library submodule initialized successfully"
 else
-    echo "✓ NEON ARM library submodule already exists"
+    echo "NEON ARM library submodule already exists"
 fi
 
 # Step 2: Copy scripts to workspace
@@ -107,12 +107,12 @@ fi
 # Ensure GLES libs are available in build artifacts for linking
 mkdir -p "$WORKSPACE_DIR/build_artifacts/gles_libs"
 cp -a "$SCRIPT_DIR/app-dist/sdl_bench/lib/." "$WORKSPACE_DIR/build_artifacts/gles_libs/" 2>/dev/null || true
-echo "✓ Scripts and source files copied to workspace"
+echo "Scripts and source files copied to workspace"
 
 # Step 3: Make scripts executable
 chmod +x "$WORKSPACE_DIR/mksdl2.sh"
 chmod +x "$WORKSPACE_DIR/compile.sh"
-echo "✓ Scripts made executable"
+echo "Scripts made executable"
 
 # Step 4: Build Docker container and run SDL2 compilation
 echo ""
@@ -133,7 +133,7 @@ cd "$TOOLCHAIN_DIR"
 if [ "$VERBOSE" = "true" ]; then
     make .build || echo "Docker image already built"
 else
-    make .build 2>/dev/null || echo "✓ Docker image ready"
+    make .build 2>/dev/null || echo "Docker image ready"
 fi
 
 # Set verbose environment for scripts inside Docker
@@ -145,26 +145,26 @@ fi
 make_debug_arg=""
 if [ "$DEBUG" = "true" ]; then
     make_debug_arg="DEBUG=1"
-    echo "🐛 Debug build requested: benchmarks will be built with $make_debug_arg (symbols, no frame-pointer omission)"
+    echo "Debug build requested: benchmarks will be built with $make_debug_arg (symbols, no frame-pointer omission)"
 fi
 
-echo "🐳 Running compilation inside Docker container..."
+echo "Running compilation inside Docker container..."
 
 # Run Docker with automatic SDL2 compilation
 docker_cmd="
     cd /root/workspace/build_source
     export $verbose_env
 
-    echo '📦 Compiling SDL2 libraries...'
+    echo 'Compiling SDL2 libraries...'
     ./mksdl2.sh
 
     echo ''
-    echo '⚠️  IMPORTANT: Compiled SDL2 libraries are for COMPILE-TIME ONLY'
+    echo 'IMPORTANT: Compiled SDL2 libraries are for COMPILE-TIME ONLY'
     echo '   Do NOT copy these libraries to the Miyoo device for runtime'
     echo '   The device has its own SDL2 runtime libraries'
     echo ''
 
-    echo '🎯 Compiling SDL2 benchmarks...'
+    echo 'Compiling SDL2 benchmarks...'
     if [ \"$VERBOSE\" = \"true\" ]; then
         make clean && make $make_debug_arg
     else
@@ -172,12 +172,12 @@ docker_cmd="
     fi
 
     if [ \$? -eq 0 ]; then
-        echo '✅ Benchmark compilation successful!'
+        echo 'Benchmark compilation successful!'
         if [ \"$VERBOSE\" = \"true\" ]; then
             ls -la build/bin/
         fi
     else
-        echo '❌ ERROR: Benchmark compilation failed'
+        echo 'ERROR: Benchmark compilation failed'
         exit 1
     fi
 "
@@ -191,13 +191,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo "✓ Docker compilation completed successfully"
+echo "Docker compilation completed successfully"
 
 # Sync cached SDL2 artifacts back to the project directory for reuse
 if [ -d "$WORKSPACE_DIR/build_artifacts" ]; then
     mkdir -p "$SCRIPT_DIR/build_artifacts"
     cp -a "$WORKSPACE_DIR/build_artifacts/." "$SCRIPT_DIR/build_artifacts/"
-    echo "✓ SDL2 build artifacts updated"
+    echo "SDL2 build artifacts updated"
 fi
 
 # Step 5: Copy compiled binaries to distribution directory
@@ -206,7 +206,7 @@ mkdir -p "$SCRIPT_DIR/app-dist/sdl_bench/bin"
 
 if [ -d "$WORKSPACE_DIR/build/bin" ]; then
     cp -f "$WORKSPACE_DIR/build/bin"/* "$SCRIPT_DIR/app-dist/sdl_bench/bin/"
-    echo "✓ Binaries copied to: $SCRIPT_DIR/app-dist/sdl_bench/bin/"
+    echo "Binaries copied to: $SCRIPT_DIR/app-dist/sdl_bench/bin/"
 
     # List the compiled binaries
     echo ""
@@ -223,7 +223,7 @@ echo "Cleaning up workspace..."
 rm -rf "$WORKSPACE_DIR/SDL2-*"
 rm -rf "$WORKSPACE_DIR/logs"
 rm -f "$WORKSPACE_DIR"/*.tar.gz
-echo "✓ Workspace cleaned"
+echo "Workspace cleaned"
 
 echo ""
 echo "=========================================="
