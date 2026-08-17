@@ -5,25 +5,12 @@ export HOME=$bench_dir
 export PATH=$bench_dir:$PATH
 export LD_LIBRARY_PATH=$bench_dir/lib:$LD_LIBRARY_PATH
 
-# SDL_VIDEODRIVER/SDL_AUDIODRIVER/EGL_VIDEODRIVER used to be forced here to
-# work around mmiyoo backend auto-detection always failing (MMIYOO_Available()
-# only checked the env var itself, never real hardware). Auto-detection now
-# does a real probe (see MMIYOO_ProbeHardware() in sdl2_miyoo), so these are
-# left unset intentionally -- testing that auto-detect selects mmiyoo on its
-# own. Uncomment to force a specific backend again if needed.
+# Left unset intentionally: auto-detect selects mmiyoo via a real hardware probe. Uncomment to force a specific backend.
 # export SDL_VIDEODRIVER=mmiyoo
 # export SDL_AUDIODRIVER=mmiyoo
 # export EGL_VIDEODRIVER=mmiyoo
 
-# SDL_MMIYOO_VSYNC_MODE controls present pacing: "off" (no wait), "adaptive"
-# (default -- our own FBIO_WAITFORVSYNC, skipped if already running late),
-# or "strict" -- real FBIOPAN_DISPLAY panning paced by /dev/l.
-#
-# /dev/l in the Miyoo firmware controls double buffering and MI_DISP
-# interaction. It can pan for you, but when /dev/l handles it, you're
-# forced into "strict mode" vsync, where you get 60fps but whenever load
-# is too high, you're instantly forced to 30fps. You can kill /dev/l to
-# control this behaviour, but it will introduce flickering.
+# SDL_MMIYOO_VSYNC_MODE: "off" (no wait), "adaptive" (default -- FBIO_WAITFORVSYNC, skipped if running late), "strict" (real FBIOPAN_DISPLAY panning paced by /dev/l; hard-steps to 30fps under load, killing /dev/l regains control but introduces flickering).
 #
 # Below, every suite runs three times back-to-back -- off, adaptive,
 # strict -- so the three logs sit next to each other for direct comparison.

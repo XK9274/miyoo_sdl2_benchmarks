@@ -54,6 +54,4 @@ typedef struct {
     int alignment;   // 0 = left, 1 = center, 2 = right
 } BenchOverlayLine;
 
-// BenchOverlayBuilder struct removed - use OverlayGrid from overlay_grid.h instead
-
 #endif /* COMMON_TYPES_H */
