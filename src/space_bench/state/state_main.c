@@ -272,8 +272,6 @@ void space_state_update(SpaceBenchState *state, float dt)
     if (state->laser_cooldown > 0.0f) {
         state->laser_cooldown -= dt;
     }
-    // laser_hold_timer now counts UP while holding B button
-    // laser_charge_timer is no longer used
 
     if (state->input.fire_gun && state->gun_cooldown <= 0.0f) {
         const float base_speed = SPACE_BULLET_SPEED + state->scroll_speed * 0.25f;
