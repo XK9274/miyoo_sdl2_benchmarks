@@ -121,6 +121,37 @@ if [ "$1" = "--gdb" ]; then
     exec "$gdbserver_bin" ":$gdb_port" "$gdb_bench_path"
 fi
 
+# Isolated single-scene A/B perf run: forces one render_suite scene, disables
+# auto-cycle, runs for a fixed duration, and logs periodic [BENCH] fps lines
+# tagged for comparison across builds. No env vars other than the ones below
+# are set, so vsync mode etc. stays at the binary's own default.
+# Usage: ./launch.sh --geometry <tag> [duration_s]
+#   e.g. ./launch.sh --geometry neon 30
+if [ "$1" = "--geometry" ]; then
+    geo_tag="${2:-untagged}"
+    geo_duration="${3:-30}"
+    geo_log="$bench_dir/logs/render_suite_geometry_${geo_tag}.log"
+
+    if [ -z "$2" ]; then
+        echo "Usage: $0 --geometry <tag> [duration_s]"
+        exit 1
+    fi
+
+    mkdir -p "$bench_dir/logs"
+    echo "Running geometry-scene-only benchmark, tag=$geo_tag duration=${geo_duration}s"
+    echo "===== START geometry ($geo_tag): $(date) =====" > "$geo_log"
+    ps >> "$geo_log"
+    echo "-----" >> "$geo_log"
+    RS_FORCE_SCENE=geometry RS_BENCH_DURATION_S="$geo_duration" RS_BENCH_TAG="$geo_tag" \
+        "bin/sdl2_render_suite" >> "$geo_log" 2>&1
+    geo_exit=$?
+    echo "-----" >> "$geo_log"
+    ps >> "$geo_log"
+    echo "===== END geometry ($geo_tag): $(date) exit=$geo_exit =====" >> "$geo_log"
+    echo "Done. Log: $geo_log"
+    exit $geo_exit
+fi
+
 echo "Starting SDL2 benchmark suite..."
 echo "Directory: $bench_dir"
 
