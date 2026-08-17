@@ -184,7 +184,7 @@ compile_package() {
     if [ ! -d "$package_dir" ]; then
         tar -xf "$package_file"
         if [ $? -ne 0 ]; then
-            echo "❌ ERROR: Failed to extract $package_file"
+            echo "ERROR: Failed to extract $package_file"
             exit 1
         fi
     fi
@@ -199,7 +199,7 @@ compile_package() {
         ./autogen.sh | log_output 2>&1
     fi
     if [ $? -ne 0 ]; then
-        echo "❌ ERROR: autogen failed for $package_name"
+        echo "ERROR: autogen failed for $package_name"
         exit 1
     fi
 
@@ -211,7 +211,7 @@ compile_package() {
         ./configure CC=$CC --host=$HOST --build=$BUILD --prefix=$FIN_BIN_DIR $extra_configure_flags >/dev/null 2>&1
     fi
     if [ $? -ne 0 ]; then
-        echo "❌ ERROR: Configure failed for $package_name"
+        echo "ERROR: Configure failed for $package_name"
         echo "Check that dependencies are properly installed"
         exit 1
     fi
@@ -224,7 +224,7 @@ compile_package() {
         make clean | log_output 2>&1 && make -j$(( $(nproc) - 1 )) | log_output 2>&1
     fi
     if [ $? -ne 0 ]; then
-        echo "❌ ERROR: Build failed for $package_name"
+        echo "ERROR: Build failed for $package_name"
         exit 1
     fi
 
@@ -236,19 +236,19 @@ compile_package() {
         make install | log_output 2>&1
     fi
     if [ $? -ne 0 ]; then
-        echo "❌ ERROR: Install failed for $package_name"
+        echo "ERROR: Install failed for $package_name"
         exit 1
     fi
 
     # Verify installation
     if ! is_library_installed "$lib_check"; then
-        echo "❌ ERROR: $package_name installation verification failed"
+        echo "ERROR: $package_name installation verification failed"
         echo "Expected $FIN_BIN_DIR/lib/pkgconfig/$lib_check.pc"
         ls -la "$FIN_BIN_DIR/lib/pkgconfig/" | head -10
         exit 1
     fi
 
-    echo "✅ $package_name compiled and installed successfully"
+    echo "$package_name compiled and installed successfully"
     cd ..
 }
 
@@ -259,7 +259,7 @@ compile_package "SDL2-2.26.5.tar.gz" "SDL2" "SDL2-2.26.5" "--disable-joystick-vi
 
 # Check SDL2 installation before continuing with extensions
 if ! is_library_installed "sdl2"; then
-    echo "❌ CRITICAL ERROR: SDL2 base library is not properly installed"
+    echo "CRITICAL ERROR: SDL2 base library is not properly installed"
     echo "Cannot continue with SDL2 extensions"
     exit 1
 fi
@@ -273,7 +273,7 @@ compile_package "SDL2_ttf-2.20.2.tar.gz" "SDL2_TTF" "SDL2_ttf-2.20.2" "" "SDL2_t
 
 compile_package "SDL2_mixer-2.6.3.tar.gz" "SDL2_MIXER" "SDL2_mixer-2.6.3" "" "SDL2_mixer"
 
-status_msg "✅ All SDL2 libraries compiled successfully!"
+status_msg "All SDL2 libraries compiled successfully!"
 
 status_msg "Caching SDL2 artifacts for future builds..."
 
@@ -309,7 +309,7 @@ status_msg "Cached SDL2 artifacts updated"
 
 # Display installation summary
 echo ""
-echo "📋 Installation Summary:"
+echo "Installation Summary:"
 echo "SDL2 Headers: $FIN_BIN_DIR/include/SDL2/"
 echo "SDL2 Libraries: $FIN_BIN_DIR/lib/"
 echo "PKG Config: $FIN_BIN_DIR/lib/pkgconfig/"

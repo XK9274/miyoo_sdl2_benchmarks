@@ -509,5 +509,3 @@ int bench_overlay_height(const BenchOverlay *overlay)
     }
     return overlay->height;
 }
-
-// Old broken overlay builder functions removed - use overlay_grid.h instead

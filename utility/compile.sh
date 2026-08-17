@@ -107,9 +107,9 @@ if [ "$LOCAL_MODE" = "true" ]; then
 
 else
     # Default: Use Docker compilation pipeline
-    echo "🚀 Starting Docker compilation pipeline..."
+    echo "Starting Docker compilation pipeline..."
     if [ "$VERBOSE" = "false" ]; then
-        echo "💡 Use './utility/compile.sh --verbose' for detailed output"
+        echo "Use './utility/compile.sh --verbose' for detailed output"
     fi
     echo ""
 

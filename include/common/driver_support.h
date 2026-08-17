@@ -64,12 +64,7 @@ typedef struct {
     SDL_bool vsync_verified_active;
 } BenchDriverStatus;
 
-/* Opens joystick 0 and its haptic device if present, and spawns a background
- * thread that polls SDL_GetPowerInfo/window size at a slow (~2s) cadence.
- * The power query can shell out on-device (axp_test) and block for tens of
- * milliseconds, so it must never run on the caller's render thread -- that
- * is why this is a background thread rather than a per-frame call. Call
- * once after SDL_Init/SDL_CreateWindow/SDL_CreateRenderer. */
+/* Opens joystick 0 and its haptic device if present, and spawns a background thread polling SDL_GetPowerInfo/window size (~2s cadence) off the render thread, since the power query can block for tens of ms. Call once after SDL_Init/SDL_CreateWindow/SDL_CreateRenderer. */
 SDL_bool bench_driver_init(SDL_Window *window, SDL_Renderer *renderer);
 void bench_driver_shutdown(void);
 

@@ -31,13 +31,7 @@ SDL_Texture *space_gl_effect_pickup_texture(void);
 SDL_Texture *space_gl_effect_thumper_texture(void); /* NULL if not active this frame */
 SDL_Texture *space_gl_effect_shield_texture(void);
 
-/* Beam laser cross-section strips: gradient lives in the texture's V axis,
- * tiled (not stretched) horizontally by the caller to cover the beam's
- * actual length, SPACE_GL_LASER_TILE_W pixels per tile -- see
- * space_render_laser_beam in render/projectiles.c. Draw order
- * glow -> edge -> core: soft outer bloom, a crisp colored rim, then the
- * tight white-hot center on top. All three additive-blended. NULL if no
- * beam fired this frame. */
+/* Beam laser cross-section strips: gradient in the V axis, tiled horizontally by the caller (space_render_laser_beam) at SPACE_GL_LASER_TILE_W px/tile. Draw order glow -> edge -> core. NULL if no beam fired this frame. */
 #define SPACE_GL_LASER_TILE_W 64
 SDL_Texture *space_gl_effect_laser_glow_texture(void);
 SDL_Texture *space_gl_effect_laser_edge_texture(void);

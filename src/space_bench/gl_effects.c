@@ -76,18 +76,7 @@ static const char *g_shield_fragment_src =
     "    gl_FragColor = vec4(vec3(i), i);\n"
     "}\n";
 
-/* Laser beam cross-section strips (core/edge/glow), sampled along v_uv.y
- * only -- v_uv.x just feeds a subtle animated shimmer, since these tiles
- * are drawn repeated (not stretched) along the beam's length.
- *
- * These three are additive-blended (SDL_BLENDMODE_ADD, set right after
- * creation below), unlike bolt/pickup/thumper/shield which use normal
- * alpha blending. SDL's ADD formula is dstRGB += srcRGB * srcA: with the
- * usual vec4(vec3(i), i) convention (color AND alpha both equal the
- * falloff i), that multiplies the falloff by itself -- an already-soft
- * 0.1-0.3 glow gets squared down to 0.01-0.09, effectively invisible.
- * So these output alpha = 1.0 always and put the actual falloff in RGB,
- * making srcRGB * srcA = i * 1 = i, the correct linear contribution. */
+/* Laser cross-section strips, sampled along v_uv.y (v_uv.x just adds shimmer); additive-blended with alpha forced to 1.0 so srcRGB*srcA doesn't square the falloff into invisibility. */
 static const char *g_laser_glow_fragment_src =
     "precision mediump float;\n"
     "varying vec2 v_uv;\n"

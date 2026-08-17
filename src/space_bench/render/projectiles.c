@@ -118,16 +118,7 @@ void space_render_laser_helix(const SpaceBenchState *state,
     }
 }
 
-/* Draws one cross-section texture tiled (not stretched) across [origin_x,
- * end_x), native tile width per tile. Stretching a near-1D gradient
- * texture across a huge, wildly non-uniform destination rect is what
- * produced the earlier "invisible/segmented" beam; tiling keeps every
- * draw at a sane, native-ish scale.
- *
- * Height tapers from cone_height down to base_height over the first
- * cone_length pixels from origin_x, so the beam visibly flares at the
- * emission point instead of being a uniform-width bar for its whole
- * length. Pass cone_length <= 0 to disable (constant base_height). */
+/* Draws one cross-section texture tiled (not stretched) across [origin_x, end_x). Height tapers from cone_height to base_height over the first cone_length px from origin_x; pass cone_length <= 0 to disable. */
 static int space_render_laser_tile_strip(SDL_Renderer *renderer,
                                          SDL_Texture *tex,
                                          float origin_x,
@@ -149,13 +140,7 @@ static int space_render_laser_tile_strip(SDL_Renderer *renderer,
         const float dist = x - origin_x;
         const SDL_bool in_cone = (cone_length > 0.0f) && (dist < cone_length);
 
-        /* Inside the cone, step in several small increments instead of one
-         * full native tile width -- advancing by the full tile width every
-         * iteration (as this used to) meant the whole taper only ever fell
-         * within the first tile (since cone_length was shorter than the
-         * tile width), i.e. one slightly-bigger rectangle, not a visible
-         * cone. Smaller steps here give several visibly different heights
-         * across the flare. */
+        /* Small steps inside the cone give several distinct heights across the flare instead of one oversized tile. */
         const float step = in_cone ? SDL_max(8.0f, cone_length * 0.25f) : (float)SPACE_GL_LASER_TILE_W;
         const float tile_w = SDL_min(step, end_x - x + 1.0f);
 
@@ -173,12 +158,7 @@ static int space_render_laser_tile_strip(SDL_Renderer *renderer,
     return tiles;
 }
 
-/* Elite-Dangerous-style beam laser: a tight white-hot core, a crisp colored
- * edge/rim just outside it, and a soft colored glow bleeding further out --
- * all three GL-shaded (additive), tiled along the beam's length rather than
- * stretched (see space_render_laser_tile_strip). Plus a small muzzle flare
- * at the hardpoint, reusing the bolt effect's texture. Falls back to flat
- * lines if the GL effects failed to initialize. */
+/* Beam laser: white-hot core, colored edge, soft glow (all GL-shaded, additive, tiled), plus a muzzle flare at the hardpoint. Falls back to flat lines if GL effects failed to initialize. */
 static void space_render_laser_beam(SDL_Renderer *renderer,
                                     BenchMetrics *metrics,
                                     float origin_x,
