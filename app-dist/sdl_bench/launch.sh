@@ -40,7 +40,11 @@ exe_freemma() {
 }
 
 exe_cpuclock() {
-    "$cpuclock 1700"
+    if [ -f "$cpuclock" ]; then
+        "$cpuclock" 1700
+    else
+        echo "Warning: cpuclock not found at $cpuclock"
+    fi
 }
 
 # Function to run benchmark with error checking. Captures stdout/stderr
