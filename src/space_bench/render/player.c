@@ -111,51 +111,17 @@ void space_render_player(const SpaceBenchState *state,
         }
     }
 
-    // Wireframe pyramid geometry
-    const SpaceVec3 local_apex = {14.0f, 0.0f, 0.0f};
-    const SpaceVec3 local_base_a = {-8.0f, -8.0f, -8.0f};
-    const SpaceVec3 local_base_b = {-8.0f, 8.0f, -8.0f};
-    const SpaceVec3 local_base_c = {-8.0f, 8.0f, 8.0f};
-    const SpaceVec3 local_base_d = {-8.0f, -8.0f, 8.0f};
+    // Wireframe pyramid geometry (apex, then base corners a/b/c/d)
+    BenchVertex ship_verts[5];
+    const SDL_Color ship_color = {255, 200, 120, 255};
+    space_render_wire_pyramid(renderer, metrics, roll, origin_x, origin_y,
+                              14.0f, -8.0f, 8.0f, 0.0f, ship_color, ship_verts);
 
-    const float sin_roll = sinf(roll);
-    const float cos_roll = cosf(roll);
-
-    SpaceVec3 apex = space_apply_roll_cached(local_apex, sin_roll, cos_roll);
-    SpaceVec3 base_a = space_apply_roll_cached(local_base_a, sin_roll, cos_roll);
-    SpaceVec3 base_b = space_apply_roll_cached(local_base_b, sin_roll, cos_roll);
-    SpaceVec3 base_c = space_apply_roll_cached(local_base_c, sin_roll, cos_roll);
-    SpaceVec3 base_d = space_apply_roll_cached(local_base_d, sin_roll, cos_roll);
-
-    const SDL_FPoint apex_pt = space_project_point(apex, origin_x, origin_y);
-    const SDL_FPoint base_a_pt = space_project_point(base_a, origin_x, origin_y);
-    const SDL_FPoint base_b_pt = space_project_point(base_b, origin_x, origin_y);
-    const SDL_FPoint base_c_pt = space_project_point(base_c, origin_x, origin_y);
-    const SDL_FPoint base_d_pt = space_project_point(base_d, origin_x, origin_y);
-
-    // Draw wireframe pyramid
-    SDL_SetRenderDrawColor(renderer, 255, 200, 120, 255);
-
-    // Pyramid edges from apex to base corners
-    SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_a_pt.x, base_a_pt.y);
-    SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_b_pt.x, base_b_pt.y);
-    SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_c_pt.x, base_c_pt.y);
-    SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_d_pt.x, base_d_pt.y);
-
-    // Base square
-    SDL_FPoint base_strip[5] = {base_a_pt, base_b_pt, base_c_pt, base_d_pt, base_a_pt};
-    SDL_RenderDrawLinesF(renderer, base_strip, 5);
-
-    if (metrics) {
-        metrics->draw_calls += 5;
-        metrics->vertices_rendered += 16;
-    }
-
-    // Engine glow
+    // Engine glow, from the two rear-facing base corners
     SDL_SetRenderDrawColor(renderer, 120, 200, 255, 180);
     const float exhaust_x = origin_x - 15.0f;
-    SDL_RenderDrawLineF(renderer, base_b_pt.x, base_b_pt.y, exhaust_x, origin_y);
-    SDL_RenderDrawLineF(renderer, base_c_pt.x, base_c_pt.y, exhaust_x, origin_y);
+    SDL_RenderDrawLineF(renderer, ship_verts[2].screen_x, ship_verts[2].screen_y, exhaust_x, origin_y);
+    SDL_RenderDrawLineF(renderer, ship_verts[3].screen_x, ship_verts[3].screen_y, exhaust_x, origin_y);
 
     if (metrics) {
         metrics->draw_calls += 2;

@@ -28,6 +28,20 @@ void bench_project_vertex(const float *base_coords,
                           float size,
                           BenchVertex *out_vertex);
 
+/* Like bench_project_vertex, but rotates the Y-Z plane (roll around the local
+ * X/forward axis) instead of X-Z (yaw around the vertical axis) -- for models
+ * whose forward axis is X, e.g. ships banking as they fly. base_coords are
+ * final local units (not multiplied by a separate size), extra_z is added to
+ * the rotated Z before the perspective divide (for manual depth offsets, e.g.
+ * parallax sorting that should now also affect scale). */
+void bench_project_vertex_roll(const float *base_coords,
+                               const RotationCache *cache,
+                               float center_x,
+                               float center_y,
+                               float depth,
+                               float extra_z,
+                               BenchVertex *out_vertex);
+
 void bench_setup_sdl_vertex(SDL_Vertex *vert,
                             const BenchVertex *bench_vert,
                             const SDL_Color *color);
