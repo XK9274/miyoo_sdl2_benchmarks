@@ -4,6 +4,7 @@
 #include "space_bench/render.h"
 #include "space_bench/state.h"
 
+#include "common/geometry/core.h"
 #include "common/metrics.h"
 #include "common/overlay.h"
 
@@ -18,14 +19,23 @@
 #define SPACE_BACKGROUND_G 12
 #define SPACE_BACKGROUND_B 24
 
-typedef struct {
-    float x;
-    float y;
-    float z;
-} SpaceVec3;
-
-SpaceVec3 space_rotate_roll(SpaceVec3 v, float roll);
-SDL_FPoint space_project_point(SpaceVec3 v, float origin_x, float origin_y);
+/* Shared wireframe pyramid used by player/enemy/drone ships: apex at local
+ * (apex_x,0,0), a square base at local x=base_x with the given half-extent in
+ * y/z, rolled around the local X/forward axis and drawn with real
+ * perspective (common/geometry/core.c's bench_project_vertex_roll). Pass
+ * out_vertices if the caller needs individual projected screen points for
+ * extra decoration (e.g. engine glow); NULL otherwise. */
+void space_render_wire_pyramid(SDL_Renderer *renderer,
+                               BenchMetrics *metrics,
+                               float roll_radians,
+                               float center_x,
+                               float center_y,
+                               float apex_x,
+                               float base_x,
+                               float half_extent,
+                               float extra_z,
+                               SDL_Color color,
+                               BenchVertex out_vertices[5]);
 void space_render_trail(const SpaceTrail *trail,
                         SDL_Renderer *renderer,
                         BenchMetrics *metrics,
@@ -56,14 +66,5 @@ void space_render_anomaly(const SpaceBenchState *state, SDL_Renderer *renderer, 
 void space_render_explosions(const SpaceBenchState *state, SDL_Renderer *renderer, BenchMetrics *metrics);
 void space_render_player(const SpaceBenchState *state, SDL_Renderer *renderer, BenchMetrics *metrics);
 void space_render_game_over(const SpaceBenchState *state, SDL_Renderer *renderer, BenchMetrics *metrics);
-
-static inline SpaceVec3 space_apply_roll_cached(SpaceVec3 v, float sin_roll, float cos_roll)
-{
-    const float old_y = v.y;
-    const float old_z = v.z;
-    v.y = old_y * cos_roll - old_z * sin_roll;
-    v.z = old_y * sin_roll + old_z * cos_roll;
-    return v;
-}
 
 #endif  // SPACE_BENCH_RENDER_INTERNAL_H
