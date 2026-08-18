@@ -5,7 +5,10 @@
 
 typedef struct {
     char text[192];
-    SDL_Texture *texture;
+    SDL_Texture *texture;    /* persistent streaming texture, resized only when text outgrows it */
+    Uint32 format;           /* pixel format the texture was created with, matches TTF's surface */
+    int capacity_w;
+    int capacity_h;
     int w;
     int h;
 } HudLineCache;
@@ -22,17 +25,35 @@ static void draw_hud_line(SDL_Renderer *renderer,
     }
 
     if (cache->texture == NULL || strcmp(cache->text, text) != 0) {
-        if (cache->texture) {
-            SDL_DestroyTexture(cache->texture);
-            cache->texture = NULL;
-        }
-
         if (font) {
             SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
             if (surface) {
-                cache->texture = SDL_CreateTextureFromSurface(renderer, surface);
+                /* Recreate only when there's no texture yet or the new text no
+                 * longer fits -- normal case is reusing the same streaming
+                 * texture via SDL_UpdateTexture, no destroy/recreate churn. */
+                if (!cache->texture ||
+                    surface->format->format != cache->format ||
+                    surface->w > cache->capacity_w ||
+                    surface->h > cache->capacity_h) {
+                    if (cache->texture) {
+                        SDL_DestroyTexture(cache->texture);
+                    }
+                    cache->capacity_w = SDL_max(surface->w, cache->capacity_w);
+                    cache->capacity_h = SDL_max(surface->h, cache->capacity_h);
+                    cache->format = surface->format->format;
+                    cache->texture = SDL_CreateTexture(renderer,
+                                                       cache->format,
+                                                       SDL_TEXTUREACCESS_STREAMING,
+                                                       cache->capacity_w,
+                                                       cache->capacity_h);
+                    if (cache->texture) {
+                        SDL_SetTextureBlendMode(cache->texture, SDL_BLENDMODE_BLEND);
+                    }
+                }
+
                 if (cache->texture) {
-                    SDL_SetTextureBlendMode(cache->texture, SDL_BLENDMODE_BLEND);
+                    SDL_Rect region = {0, 0, surface->w, surface->h};
+                    SDL_UpdateTexture(cache->texture, &region, surface->pixels, surface->pitch);
                     cache->w = surface->w;
                     cache->h = surface->h;
                 }
@@ -45,8 +66,9 @@ static void draw_hud_line(SDL_Renderer *renderer,
     }
 
     if (cache->texture) {
+        SDL_Rect src = {0, 0, cache->w, cache->h};
         SDL_Rect dst = {8, y, cache->w, cache->h};
-        SDL_RenderCopy(renderer, cache->texture, NULL, &dst);
+        SDL_RenderCopy(renderer, cache->texture, &src, &dst);
     }
 }
 
