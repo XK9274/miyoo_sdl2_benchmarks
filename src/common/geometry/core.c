@@ -48,6 +48,34 @@ void bench_project_vertex(const float *base_coords,
     out_vertex->screen_y = center_y + base_y * scale;
 }
 
+void bench_project_vertex_roll(const float *base_coords,
+                               const RotationCache *cache,
+                               float center_x,
+                               float center_y,
+                               float depth,
+                               float extra_z,
+                               BenchVertex *out_vertex)
+{
+    if (!base_coords || !cache || !out_vertex) {
+        return;
+    }
+
+    const float base_x = base_coords[0];
+    const float base_y = base_coords[1];
+    const float base_z = base_coords[2];
+
+    const float yr = base_y * cache->cos_val - base_z * cache->sin_val;
+    const float zr = base_y * cache->sin_val + base_z * cache->cos_val + extra_z;
+    const float denom = depth + zr;
+    const float scale = (fabsf(denom) > 1e-6f) ? (depth / denom) : 1.0f;
+
+    out_vertex->rotate_x = base_x;
+    out_vertex->rotate_y = yr;
+    out_vertex->rotate_z = zr;
+    out_vertex->screen_x = center_x + base_x * scale;
+    out_vertex->screen_y = center_y + yr * scale;
+}
+
 void bench_setup_sdl_vertex(SDL_Vertex *vert,
                             const BenchVertex *bench_vert,
                             const SDL_Color *color)

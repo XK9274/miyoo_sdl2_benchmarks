@@ -1,7 +1,5 @@
 #include "space_bench/render/internal.h"
 
-#include <math.h>
-
 void space_render_enemies(const SpaceBenchState *state,
                           SDL_Renderer *renderer,
                           BenchMetrics *metrics)
@@ -18,43 +16,12 @@ void space_render_enemies(const SpaceBenchState *state,
         const float r = enemy->radius;
 
         const float scale = r * 0.8f;
-        const SpaceVec3 local_apex = {-scale * 1.2f, 0.0f, 0.0f};
-        const SpaceVec3 local_base_a = {scale, -scale, -scale};
-        const SpaceVec3 local_base_b = {scale, scale, -scale};
-        const SpaceVec3 local_base_c = {scale, scale, scale};
-        const SpaceVec3 local_base_d = {scale, -scale, scale};
+        const Uint8 red = 255 - (i * 17) % 100;
+        const Uint8 green = 100 + (i * 31) % 155;
+        const Uint8 blue = 150 + (i * 23) % 105;
+        const SDL_Color color = {red, green, blue, 220};
 
-        const float sin_roll = sinf(roll);
-        const float cos_roll = cosf(roll);
-
-        SpaceVec3 apex = space_apply_roll_cached(local_apex, sin_roll, cos_roll);
-        SpaceVec3 base_a = space_apply_roll_cached(local_base_a, sin_roll, cos_roll);
-        SpaceVec3 base_b = space_apply_roll_cached(local_base_b, sin_roll, cos_roll);
-        SpaceVec3 base_c = space_apply_roll_cached(local_base_c, sin_roll, cos_roll);
-        SpaceVec3 base_d = space_apply_roll_cached(local_base_d, sin_roll, cos_roll);
-
-        const SDL_FPoint apex_pt = space_project_point(apex, origin_x, origin_y);
-        const SDL_FPoint base_a_pt = space_project_point(base_a, origin_x, origin_y);
-        const SDL_FPoint base_b_pt = space_project_point(base_b, origin_x, origin_y);
-        const SDL_FPoint base_c_pt = space_project_point(base_c, origin_x, origin_y);
-        const SDL_FPoint base_d_pt = space_project_point(base_d, origin_x, origin_y);
-
-        Uint8 red = 255 - (i * 17) % 100;
-        Uint8 green = 100 + (i * 31) % 155;
-        Uint8 blue = 150 + (i * 23) % 105;
-        SDL_SetRenderDrawColor(renderer, red, green, blue, 220);
-
-        SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_a_pt.x, base_a_pt.y);
-        SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_b_pt.x, base_b_pt.y);
-        SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_c_pt.x, base_c_pt.y);
-        SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_d_pt.x, base_d_pt.y);
-
-        SDL_FPoint base_strip[5] = {base_a_pt, base_b_pt, base_c_pt, base_d_pt, base_a_pt};
-        SDL_RenderDrawLinesF(renderer, base_strip, 5);
-
-        if (metrics) {
-            metrics->draw_calls += 5;  // 4 apex edges + base strip
-            metrics->vertices_rendered += 16;
-        }
+        space_render_wire_pyramid(renderer, metrics, roll, origin_x, origin_y,
+                                  -scale * 1.2f, scale, scale, 0.0f, color, NULL);
     }
 }

@@ -36,47 +36,9 @@ void space_render_drones(const SpaceBenchState *state,
         const float origin_x = ship->x;
         const float origin_y = ship->y;
         const float roll = state->player_roll + ship->angle * 0.5f;
+        const SDL_Color color = {140, 220, 255, 230};
 
-        const SpaceVec3 local_apex = {8.0f, 0.0f, 0.0f};
-        const SpaceVec3 local_base_a = {-4.0f, -4.0f, -4.0f};
-        const SpaceVec3 local_base_b = {-4.0f, 4.0f, -4.0f};
-        const SpaceVec3 local_base_c = {-4.0f, 4.0f, 4.0f};
-        const SpaceVec3 local_base_d = {-4.0f, -4.0f, 4.0f};
-
-        const float sin_roll = sinf(roll);
-        const float cos_roll = cosf(roll);
-
-        SpaceVec3 apex = space_apply_roll_cached(local_apex, sin_roll, cos_roll);
-        SpaceVec3 base_a = space_apply_roll_cached(local_base_a, sin_roll, cos_roll);
-        SpaceVec3 base_b = space_apply_roll_cached(local_base_b, sin_roll, cos_roll);
-        SpaceVec3 base_c = space_apply_roll_cached(local_base_c, sin_roll, cos_roll);
-        SpaceVec3 base_d = space_apply_roll_cached(local_base_d, sin_roll, cos_roll);
-
-        apex.z += ship->z * 0.08f;
-        base_a.z += ship->z * 0.08f;
-        base_b.z += ship->z * 0.08f;
-        base_c.z += ship->z * 0.08f;
-        base_d.z += ship->z * 0.08f;
-
-        const SDL_FPoint apex_pt = space_project_point(apex, origin_x, origin_y);
-        const SDL_FPoint base_a_pt = space_project_point(base_a, origin_x, origin_y);
-        const SDL_FPoint base_b_pt = space_project_point(base_b, origin_x, origin_y);
-        const SDL_FPoint base_c_pt = space_project_point(base_c, origin_x, origin_y);
-        const SDL_FPoint base_d_pt = space_project_point(base_d, origin_x, origin_y);
-
-        SDL_SetRenderDrawColor(renderer, 140, 220, 255, 230);
-
-        SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_a_pt.x, base_a_pt.y);
-        SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_b_pt.x, base_b_pt.y);
-        SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_c_pt.x, base_c_pt.y);
-        SDL_RenderDrawLineF(renderer, apex_pt.x, apex_pt.y, base_d_pt.x, base_d_pt.y);
-
-        SDL_FPoint base_strip[5] = {base_a_pt, base_b_pt, base_c_pt, base_d_pt, base_a_pt};
-        SDL_RenderDrawLinesF(renderer, base_strip, 5);
-
-        if (metrics) {
-            metrics->draw_calls += 5;
-            metrics->vertices_rendered += 16;
-        }
+        space_render_wire_pyramid(renderer, metrics, roll, origin_x, origin_y,
+                                  8.0f, -4.0f, 4.0f, ship->z * 0.08f, color, NULL);
     }
 }
