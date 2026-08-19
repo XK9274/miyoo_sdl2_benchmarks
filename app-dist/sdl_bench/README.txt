@@ -4,7 +4,7 @@ Repository
 - Source: https://github.com/XK9274/miyoo_sdl2_benchmarks
 
 Overview
-This package contains SDL2 performance benchmarks for the Miyoo Mini handheld. It measures rendering and audio performance using several small test apps built with SDL2/SDL2_ttf/SDL2_mixer.
+This package contains SDL2 performance benchmarks for the Miyoo Mini handheld. It measures rendering, audio, OpenGL ES, and SDL2 backend behaviour using several small test apps.
 
 What’s inside this folder (sdl_bench/)
 - bin/
@@ -14,8 +14,8 @@ What’s inside this folder (sdl_bench/)
   • sdl2_render_suite                – Comprehensive rendering suite (fills, lines, textures)
   • sdl2_render_suite_gl             – Lightweight OpenGL ES effect sampler
   • sdl2_audio_bench                 – Audio device/sample/buffer tests
-  • space_bench                     – Star Wing space shooter with metrics
-  • sdl2_sprite_bench                 – Fullscreen morphing sprite stress test, no overlay, no vsync
+  • sdl2_space_bench                 – Star Wing space shooter with metrics
+  • sdl2_sprite_bench                – Fullscreen morphing sprite stress test, no overlay, no vsync
 
 - lib/
   Required runtime libraries for the benchmarks (SDL2 and friends).
@@ -29,9 +29,16 @@ What’s inside this folder (sdl_bench/)
 - launch.sh
   Launch script used by MainUI to start the benchmarks.
 
+- logs/
+  Created at runtime. Each benchmark run writes its own stdout/stderr log here.
+
 Install/Run
 - Copy the entire sdl_bench/ directory to your Miyoo Mini at: /mnt/SDCARD/App/
 - Restart MainUI or reboot, then open Apps → “SDL Benchmark”.
+- A normal launch runs each benchmark three times: SDL_MMIYOO_VSYNC_MODE=off, adaptive, then strict.
+- Diagnostic modes are available from the shell:
+  ./launch.sh --gdb <binary-name> [port]
+  ./launch.sh --geometry <tag> [duration_s]
 
 Notes
 - Built for the Miyoo Mini using the union-miyoomini-toolchain via Docker.
