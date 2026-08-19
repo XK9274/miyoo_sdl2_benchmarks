@@ -10,8 +10,7 @@ LOCAL_LIB_DIR := app-dist/sdl_bench/lib
 GL_ARTIFACT_DIR := build_artifacts/gles_libs
 GL_ARTIFACT_STAMP := $(GL_ARTIFACT_DIR)/.stamp
 
-PROGRAMS      := sdl2_bench_software_double_buf \
-                 sdl2_bench_double_buf \
+PROGRAMS      := sdl2_bench_double_buf \
                  sdl2_space_bench \
                  sdl2_render_suite \
                  sdl2_render_suite_gl \
@@ -70,16 +69,6 @@ SPACE_SOURCES := \
 SPACE_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SPACE_SOURCES))
 SPACE_TARGET  := $(BIN_DIR)/sdl2_space_bench
 
-SOFTWARE_SOURCES := \
-    $(SRC_DIR)/software_buf/input.c \
-    $(SRC_DIR)/software_buf/main.c \
-    $(SRC_DIR)/software_buf/overlay.c \
-    $(SRC_DIR)/software_buf/particles.c \
-    $(SRC_DIR)/software_buf/render.c \
-    $(SRC_DIR)/software_buf/state.c
-SOFTWARE_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SOFTWARE_SOURCES))
-SOFTWARE_TARGET  := $(BIN_DIR)/sdl2_bench_software_double_buf
-
 DOUBLE_SOURCES := \
     $(SRC_DIR)/double_buf/input.c \
     $(SRC_DIR)/double_buf/main.c \
@@ -133,7 +122,6 @@ SPRITE_BENCH_TARGET  := $(BIN_DIR)/sdl2_sprite_bench
 
 ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(SPACE_OBJECTS) \
-                 $(SOFTWARE_OBJECTS) \
                  $(DOUBLE_OBJECTS) \
                  $(RENDER_OBJECTS) \
                  $(RENDER_GL_OBJECTS) \
@@ -190,10 +178,6 @@ $(NEON_LIB):
 
 $(SPACE_TARGET): $(COMMON_OBJECTS) $(SPACE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(SPACE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
-	@echo "Built $@ successfully"
-
-$(SOFTWARE_TARGET): $(COMMON_OBJECTS) $(SOFTWARE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
-	$(CC) $(COMMON_OBJECTS) $(SOFTWARE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
 $(DOUBLE_TARGET): $(COMMON_OBJECTS) $(DOUBLE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
