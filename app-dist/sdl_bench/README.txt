@@ -9,7 +9,6 @@ This package contains SDL2 performance benchmarks for the Miyoo Mini handheld. I
 What’s inside this folder (sdl_bench/)
 - bin/
   Contains the benchmark executables:
-  • sdl2_bench_software_double_buf  – Software backbuffer rendering test
   • sdl2_bench_double_buf            – Hardware double buffering test (mmiyoo backend)
   • sdl2_render_suite                – Comprehensive rendering suite (fills, lines, textures)
   • sdl2_render_suite_gl             – Lightweight OpenGL ES effect sampler
