@@ -1,5 +1,5 @@
-#ifndef RENDER_SUITE_GL_STATE_H
-#define RENDER_SUITE_GL_STATE_H
+#ifndef GL_FBO_EFFECTS_STATE_H
+#define GL_FBO_EFFECTS_STATE_H
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -57,4 +57,4 @@ void rsgl_state_cycle_fbo_size(RsglState *state);
 void rsgl_state_commit_fbo_size(RsglState *state);
 void rsgl_state_revert_fbo_size(RsglState *state);
 
-#endif /* RENDER_SUITE_GL_STATE_H */
+#endif /* GL_FBO_EFFECTS_STATE_H */

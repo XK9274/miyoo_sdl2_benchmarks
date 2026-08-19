@@ -113,9 +113,11 @@ Then restart MainUI or reboot the device. The app appears under Apps as
   - Runs a broader 2D rendering workload set.
   - Includes fill, line, texture, geometry, scaling, memory, and pixel scenes.
 
-- `sdl2_render_suite_gl`
-  - Runs lightweight OpenGL ES rendering tests.
-  - Covers shader-based effect scenes intended for the Miyoo Mini GPU path.
+- `sdl2_gl_fbo_effects`
+  - Renders 15 shader-based effects offscreen into a hidden window's FBO and
+    reads the pixels back with `glReadPixels`, composited via the ordinary 2D
+    `SDL_Renderer`. Does not exercise a real on-screen GL swap chain -- see
+    `sdl2_gl_swap_window_pipeline` for that.
 
 - `sdl2_audio_bench`
   - Exercises SDL2 audio device setup and buffer behaviour.
@@ -166,8 +168,8 @@ miyoo_sdl2_benchmarks/
 |   |-- audio_bench/
 |   |-- common/
 |   |-- double_buf/
+|   |-- gl_fbo_effects/
 |   |-- render_suite/
-|   |-- render_suite_gl/
 |   |-- software_buf/
 |   `-- space_bench/
 |-- union-miyoomini-toolchain/      # Auto-cloned Docker toolchain checkout

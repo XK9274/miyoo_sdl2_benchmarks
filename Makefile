@@ -14,7 +14,7 @@ PROGRAMS      := sdl2_bench_software_double_buf \
                  sdl2_bench_double_buf \
                  sdl2_space_bench \
                  sdl2_render_suite \
-                 sdl2_render_suite_gl \
+                 sdl2_gl_fbo_effects \
                  sdl2_audio_bench \
                  sdl2_sprite_bench
 
@@ -106,14 +106,14 @@ RENDER_SOURCES := \
 RENDER_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(RENDER_SOURCES))
 RENDER_TARGET  := $(BIN_DIR)/sdl2_render_suite
 
-RENDER_GL_SOURCES := \
-    $(SRC_DIR)/render_suite_gl/input.c \
-    $(SRC_DIR)/render_suite_gl/main.c \
-    $(SRC_DIR)/render_suite_gl/overlay.c \
-    $(SRC_DIR)/render_suite_gl/state.c \
-    $(SRC_DIR)/render_suite_gl/scenes/effects.c
-RENDER_GL_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(RENDER_GL_SOURCES))
-RENDER_GL_TARGET  := $(BIN_DIR)/sdl2_render_suite_gl
+GL_FBO_EFFECTS_SOURCES := \
+    $(SRC_DIR)/gl_fbo_effects/input.c \
+    $(SRC_DIR)/gl_fbo_effects/main.c \
+    $(SRC_DIR)/gl_fbo_effects/overlay.c \
+    $(SRC_DIR)/gl_fbo_effects/state.c \
+    $(SRC_DIR)/gl_fbo_effects/scenes/effects.c
+GL_FBO_EFFECTS_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(GL_FBO_EFFECTS_SOURCES))
+GL_FBO_EFFECTS_TARGET  := $(BIN_DIR)/sdl2_gl_fbo_effects
 
 AUDIO_SOURCES := \
     $(SRC_DIR)/audio_bench/audio_device.c \
@@ -136,7 +136,7 @@ ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(SOFTWARE_OBJECTS) \
                  $(DOUBLE_OBJECTS) \
                  $(RENDER_OBJECTS) \
-                 $(RENDER_GL_OBJECTS) \
+                 $(GL_FBO_EFFECTS_OBJECTS) \
                  $(AUDIO_OBJECTS) \
                  $(SPRITE_BENCH_OBJECTS)
 DEPS          := $(ALL_OBJECTS:.o=.d)
@@ -204,13 +204,13 @@ $(RENDER_TARGET): $(COMMON_OBJECTS) $(RENDER_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(RENDER_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(RENDER_GL_TARGET): $(COMMON_OBJECTS) $(RENDER_GL_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
-	$(CC) $(COMMON_OBJECTS) $(RENDER_GL_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+$(GL_FBO_EFFECTS_TARGET): $(COMMON_OBJECTS) $(GL_FBO_EFFECTS_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(GL_FBO_EFFECTS_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
 sdl2_render_suite: $(RENDER_TARGET)
 
-sdl2_render_suite_gl: $(RENDER_GL_TARGET)
+sdl2_gl_fbo_effects: $(GL_FBO_EFFECTS_TARGET)
 $(AUDIO_TARGET): $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"

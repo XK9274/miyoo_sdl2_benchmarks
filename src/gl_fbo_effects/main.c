@@ -6,10 +6,10 @@
 #include <time.h>
 
 #include "bench_common.h"
-#include "render_suite_gl/input.h"
-#include "render_suite_gl/overlay.h"
-#include "render_suite_gl/scenes/effects.h"
-#include "render_suite_gl/state.h"
+#include "gl_fbo_effects/input.h"
+#include "gl_fbo_effects/overlay.h"
+#include "gl_fbo_effects/scenes/effects.h"
+#include "gl_fbo_effects/state.h"
 #include "common/loading_screen.h"
 
 static void rsgl_print_info(void)
