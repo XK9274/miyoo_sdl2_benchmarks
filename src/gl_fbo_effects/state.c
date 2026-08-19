@@ -61,15 +61,6 @@ void rsgl_state_destroy(RsglState *state)
         return;
     }
 
-    if (state->screen_texture) {
-        SDL_DestroyTexture(state->screen_texture);
-        state->screen_texture = NULL;
-    }
-    if (state->pixel_buffer) {
-        SDL_free(state->pixel_buffer);
-        state->pixel_buffer = NULL;
-        state->pixel_capacity = 0;
-    }
     if (state->font) {
         TTF_CloseFont(state->font);
         state->font = NULL;
