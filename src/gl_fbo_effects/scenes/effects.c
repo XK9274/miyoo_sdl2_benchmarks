@@ -1,4 +1,4 @@
-#include "render_suite_gl/scenes/effects.h"
+#include "gl_fbo_effects/scenes/effects.h"
 
 #include <SDL2/SDL_log.h>
 #include <SDL2/SDL_opengles2.h>

@@ -1,9 +1,9 @@
-#include "render_suite_gl/overlay.h"
+#include "gl_fbo_effects/overlay.h"
 
 #include <float.h>
 
 #include "common/overlay_grid.h"
-#include "render_suite_gl/scenes/effects.h"
+#include "gl_fbo_effects/scenes/effects.h"
 
 void rsgl_overlay_submit(BenchOverlay *overlay,
                          const RsglState *state,

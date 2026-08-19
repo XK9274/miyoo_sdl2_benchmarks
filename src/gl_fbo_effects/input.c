@@ -1,10 +1,10 @@
-#include "render_suite_gl/input.h"
+#include "gl_fbo_effects/input.h"
 
 #include <SDL2/SDL.h>
 
 #include "controller_input.h"
 #include "common/driver_support.h"
-#include "render_suite_gl/scenes/effects.h"
+#include "gl_fbo_effects/scenes/effects.h"
 
 SDL_bool rsgl_handle_input(RsglState *state, BenchMetrics *metrics)
 {

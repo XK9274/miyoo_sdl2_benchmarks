@@ -1,4 +1,4 @@
-#include "render_suite_gl/state.h"
+#include "gl_fbo_effects/state.h"
 
 const RsglFboPreset rsgl_fbo_presets[RSGL_FBO_PRESET_COUNT] = {
     {80, 60, "80x60"},
