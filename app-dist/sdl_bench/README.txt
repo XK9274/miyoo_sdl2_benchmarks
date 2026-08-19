@@ -14,7 +14,7 @@ What’s inside this folder (sdl_bench/)
   • sdl2_render_suite                – Comprehensive rendering suite (fills, lines, textures)
   • sdl2_render_suite_gl             – Lightweight OpenGL ES effect sampler
   • sdl2_audio_bench                 – Audio device/sample/buffer tests
-  • space_bench                     – Star Wing space shooter with metrics
+  • sdl2_space_bench                 – Space Bench: space shooter with metrics
   • sdl2_sprite_bench                 – Fullscreen morphing sprite stress test, no overlay, no vsync
 
 - lib/
@@ -61,7 +61,7 @@ Audio Benchmark - 4 Visualization Modes:
 - Dots (rect) - Particle-style visualization
 - Ribbons (geom) - Advanced geometry rendering
 
-Star Wing Bench - Space Shooter Game:
+Space Bench - Space Shooter Game:
 
 - Space combat simulation with performance tracking
 - Player controls, projectile systems, enemy drones

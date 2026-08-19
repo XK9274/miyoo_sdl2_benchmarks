@@ -185,9 +185,9 @@ run_benchmark "SDL2 Double Buffer Benchmark (off)"      "bin/sdl2_bench_double_b
 run_benchmark "SDL2 Double Buffer Benchmark (adaptive)" "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_adaptive" adaptive
 run_benchmark "SDL2 Double Buffer Benchmark (strict)"   "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_strict" strict
 
-run_benchmark "SDL2 Interactive Demo (off)"      "bin/sdl2_space_bench" "sdl2_space_bench_off" off
-run_benchmark "SDL2 Interactive Demo (adaptive)" "bin/sdl2_space_bench" "sdl2_space_bench_adaptive" adaptive
-run_benchmark "SDL2 Interactive Demo (strict)"   "bin/sdl2_space_bench" "sdl2_space_bench_strict" strict
+run_benchmark "SDL2 Space Bench (off)"      "bin/sdl2_space_bench" "sdl2_space_bench_off" off
+run_benchmark "SDL2 Space Bench (adaptive)" "bin/sdl2_space_bench" "sdl2_space_bench_adaptive" adaptive
+run_benchmark "SDL2 Space Bench (strict)"   "bin/sdl2_space_bench" "sdl2_space_bench_strict" strict
 
 run_benchmark "SDL2 Audio Benchmark (off)"      "bin/sdl2_audio_bench" "sdl2_audio_bench_off" off
 run_benchmark "SDL2 Audio Benchmark (adaptive)" "bin/sdl2_audio_bench" "sdl2_audio_bench_adaptive" adaptive
