@@ -126,6 +126,11 @@ Then restart MainUI or reboot the device. The app appears under Apps as
   - Exercises sprites, particles, projectiles, drones, anomalies, GL effects,
     overlay rendering, and runtime metrics.
 
+- `sdl2_sprite_bench`
+  - Fullscreen bouncing/morphing sprite stress test, deliberately without an
+    overlay/HUD or vsync, to isolate the render/present path from the
+    overlay code every other suite carries.
+
 ## Build Flow
 
 ```text
@@ -169,7 +174,8 @@ miyoo_sdl2_benchmarks/
 |   |-- render_suite/
 |   |-- render_suite_gl/
 |   |-- software_buf/
-|   `-- space_bench/
+|   |-- space_bench/
+|   `-- sprite_bench/
 |-- union-miyoomini-toolchain/      # Auto-cloned Docker toolchain checkout
 `-- utility/
     |-- compile.sh                 # Optional local/Docker helper wrapper
