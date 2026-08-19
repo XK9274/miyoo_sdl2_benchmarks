@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
         printf("TTF_Init failed: %s\n", TTF_GetError());
     }
 
-    SDL_Window *window = SDL_CreateWindow("SDL2 Star Wing Bench",
+    SDL_Window *window = SDL_CreateWindow("SDL2 Space Bench",
                                           SDL_WINDOWPOS_CENTERED,
                                           SDL_WINDOWPOS_CENTERED,
                                           SPACE_SCREEN_W,
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
         loading_active = SDL_FALSE;
     }
 
-    printf("SDL2 star wing bench started\n");
+    printf("SDL2 space bench started\n");
 
     SDL_bool running = SDL_TRUE;
     while (running) {
