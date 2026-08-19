@@ -177,10 +177,6 @@ run_benchmark "SDL2 Render Suite GL (off)"      "bin/sdl2_render_suite_gl" "sdl2
 run_benchmark "SDL2 Render Suite GL (adaptive)" "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl_adaptive" adaptive
 run_benchmark "SDL2 Render Suite GL (strict)"   "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl_strict" strict
 
-run_benchmark "SDL2 Software Double Buffer Benchmark (off)"      "bin/sdl2_bench_software_double_buf" "sdl2_bench_software_double_buf_off" off
-run_benchmark "SDL2 Software Double Buffer Benchmark (adaptive)" "bin/sdl2_bench_software_double_buf" "sdl2_bench_software_double_buf_adaptive" adaptive
-run_benchmark "SDL2 Software Double Buffer Benchmark (strict)"   "bin/sdl2_bench_software_double_buf" "sdl2_bench_software_double_buf_strict" strict
-
 run_benchmark "SDL2 Double Buffer Benchmark (off)"      "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_off" off
 run_benchmark "SDL2 Double Buffer Benchmark (adaptive)" "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_adaptive" adaptive
 run_benchmark "SDL2 Double Buffer Benchmark (strict)"   "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_strict" strict

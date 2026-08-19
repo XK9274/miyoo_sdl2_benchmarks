@@ -113,11 +113,6 @@ suite's geometry scene only and tags its periodic FPS output for A/B testing.
 
 ## Benchmarks
 
-- `sdl2_bench_software_double_buf`
-  - Uses a manually managed software backbuffer.
-  - Exercises particle and geometry rendering without relying on the backend's
-    hardware double buffering path.
-
 - `sdl2_bench_double_buf`
   - Exercises hardware double buffering in the SDL2 Miyoo backend.
   - Uses MI_GFX and MI_SYS backed presentation paths.
@@ -188,7 +183,6 @@ miyoo_sdl2_benchmarks/
 |   |-- double_buf/
 |   |-- render_suite/
 |   |-- render_suite_gl/
-|   |-- software_buf/
 |   |-- space_bench/
 |   `-- sprite_bench/
 |-- union-miyoomini-toolchain/      # Auto-cloned Docker toolchain checkout
