@@ -97,6 +97,20 @@ app-dist/sdl_bench/ -> /mnt/SDCARD/App/sdl_bench/
 Then restart MainUI or reboot the device. The app appears under Apps as
 `SDL Benchmark`.
 
+When launched normally, `app-dist/sdl_bench/launch.sh` runs each benchmark in
+three presentation modes: `off`, `adaptive`, and `strict`. Each run writes its
+own log under `app-dist/sdl_bench/logs/`.
+
+The launcher also has two diagnostic entry points:
+
+```bash
+./launch.sh --gdb <binary-name> [port]
+./launch.sh --geometry <tag> [duration_s]
+```
+
+`--gdb` starts one binary under `gdbserver`. `--geometry` runs the render
+suite's geometry scene only and tags its periodic FPS output for A/B testing.
+
 ## Benchmarks
 
 - `sdl2_bench_software_double_buf`
@@ -125,6 +139,11 @@ Then restart MainUI or reboot the device. The app appears under Apps as
   - Runs an interactive space shooter style benchmark.
   - Exercises sprites, particles, projectiles, drones, anomalies, GL effects,
     overlay rendering, and runtime metrics.
+
+- `sdl2_sprite_bench`
+  - Fullscreen bouncing/morphing sprite stress test, deliberately without an
+    overlay/HUD or vsync, to isolate the render/present path from the
+    overlay code every other suite carries.
 
 ## Build Flow
 
@@ -155,6 +174,7 @@ miyoo_sdl2_benchmarks/
 |       |-- assets/                # Runtime assets
 |       |-- bin/                   # Built benchmark binaries
 |       |-- lib/                   # Runtime libraries bundled with the app
+|       |-- logs/                  # Runtime-generated benchmark logs
 |       |-- config.json
 |       `-- launch.sh
 |-- assets/                        # README screenshots
@@ -169,7 +189,8 @@ miyoo_sdl2_benchmarks/
 |   |-- render_suite/
 |   |-- render_suite_gl/
 |   |-- software_buf/
-|   `-- space_bench/
+|   |-- space_bench/
+|   `-- sprite_bench/
 |-- union-miyoomini-toolchain/      # Auto-cloned Docker toolchain checkout
 `-- utility/
     |-- compile.sh                 # Optional local/Docker helper wrapper
