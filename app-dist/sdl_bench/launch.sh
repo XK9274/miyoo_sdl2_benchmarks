@@ -173,9 +173,9 @@ run_benchmark "SDL2 Render Suite (off)"      "bin/sdl2_render_suite" "sdl2_rende
 run_benchmark "SDL2 Render Suite (adaptive)" "bin/sdl2_render_suite" "sdl2_render_suite_adaptive" adaptive
 run_benchmark "SDL2 Render Suite (strict)"   "bin/sdl2_render_suite" "sdl2_render_suite_strict" strict
 
-run_benchmark "SDL2 Render Suite GL (off)"      "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl_off" off
-run_benchmark "SDL2 Render Suite GL (adaptive)" "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl_adaptive" adaptive
-run_benchmark "SDL2 Render Suite GL (strict)"   "bin/sdl2_render_suite_gl" "sdl2_render_suite_gl_strict" strict
+run_benchmark "SDL2 GL FBO Effects (off)"      "bin/sdl2_gl_fbo_effects" "sdl2_gl_fbo_effects_off" off
+run_benchmark "SDL2 GL FBO Effects (adaptive)" "bin/sdl2_gl_fbo_effects" "sdl2_gl_fbo_effects_adaptive" adaptive
+run_benchmark "SDL2 GL FBO Effects (strict)"   "bin/sdl2_gl_fbo_effects" "sdl2_gl_fbo_effects_strict" strict
 
 run_benchmark "SDL2 Double Buffer Benchmark (off)"      "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_off" off
 run_benchmark "SDL2 Double Buffer Benchmark (adaptive)" "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_adaptive" adaptive

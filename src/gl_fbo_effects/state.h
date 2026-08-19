@@ -1,5 +1,5 @@
-#ifndef RENDER_SUITE_GL_STATE_H
-#define RENDER_SUITE_GL_STATE_H
+#ifndef GL_FBO_EFFECTS_STATE_H
+#define GL_FBO_EFFECTS_STATE_H
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -27,9 +27,6 @@ typedef struct {
     float top_margin;
 
     TTF_Font *font;
-    SDL_Texture *screen_texture;
-    Uint8 *pixel_buffer;
-    size_t pixel_capacity;
 
     int screen_width;
     int screen_height;
@@ -39,15 +36,7 @@ typedef struct {
     int fbo_height;
     SDL_bool fbo_dirty;
 
-    SDL_Window *gl_window;
-    SDL_GLContext gl_context;
-    Uint32 gl_vbo;
-    Uint32 gl_ibo;
-    Uint32 gl_fbo;
-    Uint32 gl_color_texture;
     SDL_bool gl_ready;
-    SDL_bool gl_library_loaded;
-    SDL_bool gl_external;
 } RsglState;
 
 void rsgl_state_init(RsglState *state);
@@ -57,4 +46,4 @@ void rsgl_state_cycle_fbo_size(RsglState *state);
 void rsgl_state_commit_fbo_size(RsglState *state);
 void rsgl_state_revert_fbo_size(RsglState *state);
 
-#endif /* RENDER_SUITE_GL_STATE_H */
+#endif /* GL_FBO_EFFECTS_STATE_H */

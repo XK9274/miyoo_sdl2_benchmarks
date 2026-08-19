@@ -11,7 +11,7 @@ What’s inside this folder (sdl_bench/)
   Contains the benchmark executables:
   • sdl2_bench_double_buf            – Hardware double buffering test (mmiyoo backend)
   • sdl2_render_suite                – Comprehensive rendering suite (fills, lines, textures)
-  • sdl2_render_suite_gl             – Lightweight OpenGL ES effect sampler
+  • sdl2_gl_fbo_effects              – 15 offscreen GL FBO shader effects, read back and composited via the 2D renderer
   • sdl2_audio_bench                 – Audio device/sample/buffer tests
   • sdl2_space_bench                 – Space Bench: space shooter with metrics
   • sdl2_sprite_bench                – Fullscreen morphing sprite stress test, no overlay, no vsync
@@ -54,11 +54,11 @@ Render Suite - 7 Test Scenes:
 6. Memory Management - Dynamic texture allocation stress testing
 7. Pixel Operations - Direct pixel manipulation effects
 
-Render Suite GL - Effect Modes:
+GL FBO Effects - 15 Effect Modes:
 
-1. Sunrise Gradient – animated gradient with subtle sun bloom
-2. Soft Waves – low-cost sine wave field
-3. Scanline Glow – retro scanline pulse effect
+Sunrise Gradient, Soft Waves, Scanline Glow, Floating Orbs, Aurora Borealis,
+Nebula Clouds, Fire Effect, Lightning Storm, Crystal Cavern, Plasma Flow,
+Electric Grid, Ocean Depths, Retro Sun, Digital Rain, Chromatic Shift
 
 Audio Benchmark - 4 Visualization Modes:
 

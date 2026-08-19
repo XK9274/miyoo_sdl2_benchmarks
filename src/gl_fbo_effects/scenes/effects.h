@@ -1,10 +1,10 @@
-#ifndef RENDER_SUITE_GL_SCENES_EFFECTS_H
-#define RENDER_SUITE_GL_SCENES_EFFECTS_H
+#ifndef GL_FBO_EFFECTS_SCENES_EFFECTS_H
+#define GL_FBO_EFFECTS_SCENES_EFFECTS_H
 
 #include <SDL2/SDL.h>
 
 #include "bench_common.h"
-#include "render_suite_gl/state.h"
+#include "gl_fbo_effects/state.h"
 
 SDL_bool rsgl_effects_init(RsglState *state, SDL_Renderer *renderer);
 void rsgl_effects_render(RsglState *state,
@@ -17,4 +17,4 @@ void rsgl_effects_cleanup(RsglState *state);
 int rsgl_effect_count(void);
 const char *rsgl_effect_name(int index);
 
-#endif /* RENDER_SUITE_GL_SCENES_EFFECTS_H */
+#endif /* GL_FBO_EFFECTS_SCENES_EFFECTS_H */

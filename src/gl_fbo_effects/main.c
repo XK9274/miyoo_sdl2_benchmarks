@@ -6,10 +6,10 @@
 #include <time.h>
 
 #include "bench_common.h"
-#include "render_suite_gl/input.h"
-#include "render_suite_gl/overlay.h"
-#include "render_suite_gl/scenes/effects.h"
-#include "render_suite_gl/state.h"
+#include "gl_fbo_effects/input.h"
+#include "gl_fbo_effects/overlay.h"
+#include "gl_fbo_effects/scenes/effects.h"
+#include "gl_fbo_effects/state.h"
 #include "common/loading_screen.h"
 
 static void rsgl_print_info(void)
@@ -70,8 +70,6 @@ int main(int argc, char *argv[])
                                                   window,
                                                   renderer,
                                                   BENCH_LOADING_STYLE_GL);
-    SDL_Window *loader_gl_window = NULL;
-    SDL_GLContext loader_gl_context = NULL;
     if (loading_active) {
         bench_loading_step(&loading, 0.1f, "Preparing state objects");
     }
@@ -107,13 +105,11 @@ int main(int argc, char *argv[])
 
     rsgl_state_update_layout(&state, overlay);
     if (loading_active) {
+        /* No loading-screen GL context handoff (unlike before the
+         * common/gl_effect.c refactor) -- the shared refcounted context is
+         * acquired lazily by rsgl_effects_init() below instead. One extra
+         * context creation at startup, but far simpler ownership. */
         bench_loading_step(&loading, 0.45f, "Preparing GL context");
-        if (bench_loading_obtain_gl(&loading, &loader_gl_window, &loader_gl_context)) {
-            state.gl_window = loader_gl_window;
-            state.gl_context = loader_gl_context;
-            state.gl_external = SDL_TRUE;
-            state.gl_library_loaded = SDL_TRUE;
-        }
     }
 
     if (!rsgl_effects_init(&state, renderer)) {
