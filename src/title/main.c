@@ -66,9 +66,6 @@ int main(int argc, char *argv[])
         }
 
         title_menu_render(&ctx, &state);
-
-        /* Modest cap keeps idle CPU use sane. */
-        SDL_Delay(16);
     }
 
     title_context_shutdown(&ctx);
