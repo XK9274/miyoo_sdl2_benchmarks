@@ -182,7 +182,10 @@ docker_cmd="
     fi
 "
 
+TITLE_GIT_VERSION="$(git -C "$SCRIPT_DIR" describe --tags --always --dirty 2>/dev/null || echo unknown)"
+
 docker run --rm \
+    -e TITLE_GIT_VERSION="$TITLE_GIT_VERSION" \
     -v "$WORKSPACE_DIR":/root/workspace/build_source \
     miyoomini-toolchain bash -c "$docker_cmd"
 

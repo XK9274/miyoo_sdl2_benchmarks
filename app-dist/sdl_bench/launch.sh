@@ -17,6 +17,19 @@ export LD_LIBRARY_PATH=$bench_dir/lib:$LD_LIBRARY_PATH
 freemma="/mnt/SDCARD/.tmp_update/bin/freemma"
 cpuclock="/mnt/SDCARD/.tmp_update/bin/cpuclock"
 
+# MainUI's App/ folder convention doesn't track or kill a previously launched
+# process -- re-tapping the icon (e.g. after backing out via the system
+# Menu/Home button instead of this app's own Exit control) spawns a second
+# full process tree that fights the first over the MMIYOO driver's singleton
+# joystick/framebuffer resources. Clear out any stale instance first so every
+# launch starts clean.
+my_pid=$$
+for stale_pid in $(pgrep -f "bin/sdl2_" 2>/dev/null); do
+    if [ "$stale_pid" != "$my_pid" ]; then
+        kill -9 "$stale_pid" 2>/dev/null
+    fi
+done
+
 # Stop audio services
 if [ -f /mnt/SDCARD/.tmp_update/script/stop_audioserver.sh ]; then
     /mnt/SDCARD/.tmp_update/script/stop_audioserver.sh

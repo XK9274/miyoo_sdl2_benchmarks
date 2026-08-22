@@ -9,8 +9,7 @@ typedef enum {
     TITLE_ACTION_QUIT
 } TitleAction;
 
-/* Polls pending SDL events and updates state accordingly. Returns the
- * highest-priority action that occurred this poll (launch or quit). */
+/* Polls pending SDL events, updates state, returns the resulting action if any. */
 TitleAction title_handle_input(TitleState *state);
 
 #endif /* TITLE_INPUT_H */

@@ -10,6 +10,7 @@
 typedef struct {
     const char *label;
     const char *bin_name;
+    const char *info;
 } TitleSuiteEntry;
 
 typedef enum {
@@ -34,7 +35,8 @@ typedef enum {
 
 typedef enum {
     TITLE_MODE_MENU = 0,
-    TITLE_MODE_CHILD_ERROR
+    TITLE_MODE_CHILD_ERROR,
+    TITLE_MODE_INFO_MODAL
 } TitleMode;
 
 typedef struct {
@@ -48,9 +50,11 @@ typedef struct {
 
     TitleFocusPane focus;
     int config_row;
+    SDL_bool editing; /* config row is in edit mode -- Left/Right change its value */
 
     TitleMode mode;
     char error_message[160];
+    int info_modal_suite;
 } TitleState;
 
 void title_state_init(TitleState *state);
@@ -58,15 +62,27 @@ void title_state_init(TitleState *state);
 /* Moves selection within the currently focused pane (delta: -1 or +1). */
 void title_state_move_selection(TitleState *state, int delta);
 
-void title_state_toggle_focus(TitleState *state);
+/* Moves focus toward list (delta<0) or config (delta>0); clears edit mode. */
+void title_state_move_focus_horizontal(TitleState *state, int delta);
+
+/* Enters/exits edit mode for the focused config row; no-op if list pane focused. */
+void title_state_toggle_edit(TitleState *state);
 
 /* Cycles the value of the currently focused config row (delta: -1 or +1); no-op if list pane focused. */
 void title_state_cycle_config(TitleState *state, int delta);
 
 const TitleSuiteEntry *title_state_selected_suite(const TitleState *state);
 
+/* True when the list selection is on the trailing Quit row (index TITLE_SUITE_COUNT). */
+SDL_bool title_state_quit_selected(const TitleState *state);
+
 void title_state_set_child_error(TitleState *state, const char *bin_name, SDL_bool crashed, int code_or_signal);
 
 void title_state_clear_error(TitleState *state);
+
+/* Opens the info modal for the currently list-selected suite; no-op on the Quit row. */
+void title_state_open_info_modal(TitleState *state);
+
+void title_state_close_info_modal(TitleState *state);
 
 #endif /* TITLE_STATE_H */

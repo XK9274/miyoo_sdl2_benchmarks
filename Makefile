@@ -51,9 +51,18 @@ TITLE_SOURCES := \
     $(SRC_DIR)/title/menu.c \
     $(SRC_DIR)/title/config_panel.c \
     $(SRC_DIR)/title/launcher.c \
-    $(SRC_DIR)/title/state.c
+    $(SRC_DIR)/title/state.c \
+    $(SRC_DIR)/title/backend_status.c \
+    $(SRC_DIR)/title/statusbar.c \
+    $(SRC_DIR)/title/render_util.c \
+    $(SRC_DIR)/title/battery_icon.c \
+    $(SRC_DIR)/title/battery_fill.c \
+    $(SRC_DIR)/title/background.c \
+    $(SRC_DIR)/title/fireflies.c \
+    $(SRC_DIR)/title/modal.c
 TITLE_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(TITLE_SOURCES))
 TITLE_TARGET  := $(BIN_DIR)/sdl2_title
+TITLE_VERSION_HEADER := $(INC_DIR)/title/version.h
 
 SPACE_SOURCES := \
     $(SRC_DIR)/space_bench/input.c \
@@ -189,6 +198,15 @@ all: $(TARGETS)
 # Build NEON library
 $(NEON_LIB):
 	$(MAKE) -C $(NEON_DIR) CROSS_COMPILE=$(CROSS_PREFIX)
+
+TITLE_GIT_VERSION ?= $(shell git -C $(CURDIR) describe --tags --always --dirty 2>/dev/null || echo unknown)
+
+.PHONY: $(TITLE_VERSION_HEADER)
+$(TITLE_VERSION_HEADER):
+	@mkdir -p $(dir $@)
+	@echo '#define TITLE_VERSION_STRING "$(TITLE_GIT_VERSION)"' > $@
+
+$(TITLE_OBJECTS): $(TITLE_VERSION_HEADER)
 
 $(TITLE_TARGET): $(COMMON_OBJECTS) $(TITLE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(TITLE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
