@@ -10,7 +10,7 @@ int title_battery_icon_width(int height)
     return body_w + nub_w + 1;
 }
 
-void title_draw_battery_icon(SDL_Renderer *renderer, TitleBatteryFill *fill,
+void title_draw_battery_icon(SDL_Renderer *renderer, TitleBatteryFill *fill, TitleBatteryGlow *glow,
                              int x, int y, int height, int percent, SDL_bool charging)
 {
     if (!renderer || height <= 0) {
@@ -32,6 +32,12 @@ void title_draw_battery_icon(SDL_Renderer *renderer, TitleBatteryFill *fill,
     const SDL_Color fill_ok = {60, 170, 90, 255};
     const SDL_Color fill_low = {190, 70, 60, 255};
     const SDL_Color fill_color = charging ? fill_charging : ((percent <= 15) ? fill_low : fill_ok);
+
+    if (charging && glow) {
+        const int total_w = body_w + nub_w + 1;
+        const int diameter = (int)(total_w * 2.2f);
+        title_battery_glow_render(glow, renderer, x + total_w / 2, y + height / 2, diameter, fill_color);
+    }
 
     const SDL_Rect body = {x, y, body_w, height};
     SDL_SetRenderDrawColor(renderer, outline.r, outline.g, outline.b, outline.a);

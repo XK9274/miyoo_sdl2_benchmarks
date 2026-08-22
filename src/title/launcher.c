@@ -73,6 +73,7 @@ SDL_bool title_context_init(TitleContext *ctx)
 
     bench_driver_init(ctx->window, ctx->renderer);
     title_battery_fill_init(&ctx->battery_fill, ctx->renderer);
+    title_battery_glow_init(&ctx->battery_glow, ctx->renderer);
     /* Run before the backend probe so its SDL_RaiseWindow fires last. */
     title_fireflies_init(&ctx->fireflies, ctx->renderer);
     title_backend_status_probe(&ctx->backend, ctx->window, ctx->renderer);
@@ -94,6 +95,7 @@ void title_context_shutdown(TitleContext *ctx)
 
     title_fireflies_shutdown(&ctx->fireflies);
     title_battery_fill_shutdown(&ctx->battery_fill);
+    title_battery_glow_shutdown(&ctx->battery_glow);
     bench_driver_shutdown();
 
     if (ctx->title_font) {
