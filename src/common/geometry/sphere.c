@@ -79,8 +79,12 @@ static void bench_render_sphere_faces(SDL_Renderer *renderer,
         const int next_lon = (lon + 1) % SPHERE_LON_DIVISIONS;
 
         const BenchVertex *v0 = &vertices[0];
-        const BenchVertex *v1 = &vertices[1 + lon];
-        const BenchVertex *v2 = &vertices[1 + next_lon];
+        const BenchVertex *v1 = &vertices[1 + next_lon];
+        const BenchVertex *v2 = &vertices[1 + lon];
+
+        if (!bench_triangle_is_front_facing(v0, v1, v2)) {
+            continue;
+        }
 
         const int base = triangle_count * 3;
         bench_setup_sdl_vertex(&triangle_vertices[base + 0], v0, &color);
@@ -98,24 +102,28 @@ static void bench_render_sphere_faces(SDL_Renderer *renderer,
             const SDL_Color color = sphere_colors[(lat + lon) % 8];
 
             const BenchVertex *v0 = &vertices[curr_ring_start + lon];
-            const BenchVertex *v1 = &vertices[next_ring_start + lon];
-            const BenchVertex *v2 = &vertices[curr_ring_start + next_lon];
+            const BenchVertex *v1 = &vertices[curr_ring_start + next_lon];
+            const BenchVertex *v2 = &vertices[next_ring_start + lon];
 
-            const int base = triangle_count * 3;
-            bench_setup_sdl_vertex(&triangle_vertices[base + 0], v0, &color);
-            bench_setup_sdl_vertex(&triangle_vertices[base + 1], v1, &color);
-            bench_setup_sdl_vertex(&triangle_vertices[base + 2], v2, &color);
-            triangle_count++;
+            if (bench_triangle_is_front_facing(v0, v1, v2)) {
+                const int base = triangle_count * 3;
+                bench_setup_sdl_vertex(&triangle_vertices[base + 0], v0, &color);
+                bench_setup_sdl_vertex(&triangle_vertices[base + 1], v1, &color);
+                bench_setup_sdl_vertex(&triangle_vertices[base + 2], v2, &color);
+                triangle_count++;
+            }
 
             const BenchVertex *v3 = &vertices[curr_ring_start + next_lon];
-            const BenchVertex *v4 = &vertices[next_ring_start + lon];
-            const BenchVertex *v5 = &vertices[next_ring_start + next_lon];
+            const BenchVertex *v4 = &vertices[next_ring_start + next_lon];
+            const BenchVertex *v5 = &vertices[next_ring_start + lon];
 
-            const int base2 = triangle_count * 3;
-            bench_setup_sdl_vertex(&triangle_vertices[base2 + 0], v3, &color);
-            bench_setup_sdl_vertex(&triangle_vertices[base2 + 1], v4, &color);
-            bench_setup_sdl_vertex(&triangle_vertices[base2 + 2], v5, &color);
-            triangle_count++;
+            if (bench_triangle_is_front_facing(v3, v4, v5)) {
+                const int base2 = triangle_count * 3;
+                bench_setup_sdl_vertex(&triangle_vertices[base2 + 0], v3, &color);
+                bench_setup_sdl_vertex(&triangle_vertices[base2 + 1], v4, &color);
+                bench_setup_sdl_vertex(&triangle_vertices[base2 + 2], v5, &color);
+                triangle_count++;
+            }
         }
     }
 
@@ -129,6 +137,10 @@ static void bench_render_sphere_faces(SDL_Renderer *renderer,
         const BenchVertex *v0 = &vertices[last_ring_start + lon];
         const BenchVertex *v1 = &vertices[last_ring_start + next_lon];
         const BenchVertex *v2 = &vertices[south_pole_index];
+
+        if (!bench_triangle_is_front_facing(v0, v1, v2)) {
+            continue;
+        }
 
         const int base = triangle_count * 3;
         bench_setup_sdl_vertex(&triangle_vertices[base + 0], v0, &color);

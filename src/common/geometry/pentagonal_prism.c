@@ -21,14 +21,15 @@ static const float pentagonal_prism_base[][3] = {
     { 0.30901699f, -0.95105652f, -1.0f},
 };
 
+/* Outward-CCW winding per face. */
 static const int pentagonal_prism_faces[][3] = {
     {0, 1, 2}, {0, 2, 3}, {0, 3, 4},
     {5, 7, 6}, {5, 8, 7}, {5, 9, 8},
-    {0, 1, 6}, {0, 6, 5},
-    {1, 2, 7}, {1, 7, 6},
-    {2, 3, 8}, {2, 8, 7},
-    {3, 4, 9}, {3, 9, 8},
-    {4, 0, 5}, {4, 5, 9},
+    {6, 1, 0}, {5, 6, 0},
+    {7, 2, 1}, {6, 7, 1},
+    {8, 3, 2}, {7, 8, 2},
+    {9, 4, 3}, {8, 9, 3},
+    {5, 0, 4}, {9, 5, 4},
 };
 
 static const int pentagonal_prism_edges[][2] = {
@@ -82,6 +83,10 @@ void bench_render_pentagonal_prism(SDL_Renderer *renderer,
             const BenchVertex *v1 = &vertices[indices[1]];
             const BenchVertex *v2 = &vertices[indices[2]];
 
+            if (!bench_triangle_is_front_facing(v0, v1, v2)) {
+                continue;
+            }
+
             const int base = tri_count * 3;
             bench_setup_sdl_vertex(&triangle_vertices[base + 0], v0, &color);
             bench_setup_sdl_vertex(&triangle_vertices[base + 1], v1, &color);
@@ -90,9 +95,10 @@ void bench_render_pentagonal_prism(SDL_Renderer *renderer,
         }
 
         bench_render_triangle_batch(renderer, triangle_vertices, tri_count, metrics);
+        return;
     }
 
-    if (mode == 0 || mode == 1) {
+    if (mode == 1) {
         bench_render_edge_batch(renderer,
                                 vertices,
                                 pentagonal_prism_edges,

@@ -98,6 +98,19 @@ void bench_setup_sdl_vertex(SDL_Vertex *vert,
     }
 }
 
+SDL_bool bench_triangle_is_front_facing(const BenchVertex *v0,
+                                        const BenchVertex *v1,
+                                        const BenchVertex *v2)
+{
+    if (!v0 || !v1 || !v2) {
+        return SDL_TRUE;
+    }
+
+    const float area = (v1->screen_x - v0->screen_x) * (v2->screen_y - v0->screen_y)
+                      - (v2->screen_x - v0->screen_x) * (v1->screen_y - v0->screen_y);
+    return area < 0.0f;
+}
+
 void bench_render_triangle_batch(SDL_Renderer *renderer,
                                  SDL_Vertex *vertices,
                                  int triangle_count,

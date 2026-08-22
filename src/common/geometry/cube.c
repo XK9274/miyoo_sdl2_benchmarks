@@ -31,13 +31,14 @@ static const SDL_Color cube_edge_palette[] = {
     {255, 255, 255, 255},
 };
 
+/* Outward-CCW winding per face. */
 static const int cube_faces[][4] = {
-    {0, 1, 2, 3},
+    {3, 2, 1, 0},
     {4, 5, 6, 7},
     {0, 1, 5, 4},
     {2, 3, 7, 6},
     {1, 2, 6, 5},
-    {0, 3, 7, 4},
+    {4, 7, 3, 0},
 };
 
 static const SDL_Color cube_face_colors[] = {
@@ -70,6 +71,10 @@ static void bench_render_cube_faces(SDL_Renderer *renderer,
             const BenchVertex *v1 = &vertices[tri_indices[tri * 3 + 1]];
             const BenchVertex *v2 = &vertices[tri_indices[tri * 3 + 2]];
 
+            if (!bench_triangle_is_front_facing(v0, v1, v2)) {
+                continue;
+            }
+
             const int base = triangle_count * 3;
             bench_setup_sdl_vertex(&triangle_vertices[base + 0], v0, &color);
             bench_setup_sdl_vertex(&triangle_vertices[base + 1], v1, &color);
@@ -98,9 +103,10 @@ void bench_render_cube(SDL_Renderer *renderer,
 
     if (mode == 0) {
         bench_render_cube_faces(renderer, vertices, metrics);
+        return;
     }
 
-    if (mode == 0 || mode == 1) {
+    if (mode == 1) {
         bench_render_edge_batch(renderer,
                                 vertices,
                                 cube_edges,

@@ -326,6 +326,13 @@ static void rs_render_star_field(SDL_Renderer *renderer, const StarField *field,
     }
 }
 
+/* Screen-space winding test, mirroring bench_triangle_is_front_facing in common/geometry/core.c. */
+static inline SDL_bool rs_triangle_is_front_facing(float x0, float y0, float x1, float y1, float x2, float y2)
+{
+    const float area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+    return area < 0.0f;
+}
+
 static void rs_render_triangles_cpu(SDL_Renderer *renderer,
                                     const TriangleCache *cache,
                                     const float *proj_x, const float *proj_y,
@@ -335,6 +342,13 @@ static void rs_render_triangles_cpu(SDL_Renderer *renderer,
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
     for (int i = 0; i < triangle_count; i++) {
+        const int base = i * 3;
+        if (!rs_triangle_is_front_facing(proj_x[base], proj_y[base],
+                                         proj_x[base + 1], proj_y[base + 1],
+                                         proj_x[base + 2], proj_y[base + 2])) {
+            continue;
+        }
+
         SDL_Vertex vertices[3];
         for (int j = 0; j < 3; j++) {
             const int idx = i * 3 + j;
