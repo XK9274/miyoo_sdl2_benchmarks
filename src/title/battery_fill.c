@@ -1,9 +1,58 @@
 #include "title/battery_fill.h"
 
-#include "title/render_util.h"
+#include <SDL2/SDL_opengles2.h>
 
-#define TITLE_BATTERY_FILL_W 32
-#define TITLE_BATTERY_FILL_H 16
+/* Internal render resolution, stretched to the icon's actual on-screen inner rect. */
+#define TITLE_BATTERY_FILL_GL_W 48
+#define TITLE_BATTERY_FILL_GL_H 20
+
+static const char *g_battery_fill_fragment_src =
+    "precision mediump float;\n"
+    "varying vec2 v_uv;\n"
+    "uniform float u_time;\n"
+    "uniform float u_fill;\n"
+    "uniform float u_speed;\n"
+    "uniform vec3 u_color;\n"
+    "void main() {\n"
+    "    float wave = sin(v_uv.y * 10.0 + u_time * 2.2) * 0.015;\n"
+    "    float edge = u_fill + wave;\n"
+    "    if (v_uv.x > edge) { discard; }\n"
+    "    float grad = mix(1.15, 0.75, v_uv.y);\n"
+    "    vec3 col = u_color * grad;\n"
+    "    float diag = v_uv.x * 0.5 + v_uv.y * 0.5;\n"
+    "    float shimmer_pos = fract(u_time * u_speed);\n"
+    "    float shimmer = smoothstep(0.08, 0.0, abs(diag - shimmer_pos));\n"
+    "    col += vec3(1.0) * shimmer * 0.5;\n"
+    "    gl_FragColor = vec4(col, 1.0);\n"
+    "}\n";
+
+typedef struct {
+    float fill;
+    float time;
+    float speed;
+    float color[3];
+} TitleBatteryFillUniforms;
+
+static void title_battery_fill_set_uniforms(Uint32 program, void *userdata)
+{
+    const TitleBatteryFillUniforms *u = (const TitleBatteryFillUniforms *)userdata;
+    const GLint loc_fill = glGetUniformLocation(program, "u_fill");
+    const GLint loc_time = glGetUniformLocation(program, "u_time");
+    const GLint loc_speed = glGetUniformLocation(program, "u_speed");
+    const GLint loc_color = glGetUniformLocation(program, "u_color");
+    if (loc_fill >= 0) {
+        glUniform1f(loc_fill, u->fill);
+    }
+    if (loc_time >= 0) {
+        glUniform1f(loc_time, u->time);
+    }
+    if (loc_speed >= 0) {
+        glUniform1f(loc_speed, u->speed);
+    }
+    if (loc_color >= 0) {
+        glUniform3fv(loc_color, 1, u->color);
+    }
+}
 
 void title_battery_fill_init(TitleBatteryFill *fill, SDL_Renderer *renderer)
 {
@@ -11,50 +60,34 @@ void title_battery_fill_init(TitleBatteryFill *fill, SDL_Renderer *renderer)
         return;
     }
     SDL_zerop(fill);
-    if (!renderer) {
+
+    if (!renderer || !gl_effect_context_acquire()) {
+        return;
+    }
+    if (!gl_effect_target_create(&fill->target, renderer, TITLE_BATTERY_FILL_GL_W, TITLE_BATTERY_FILL_GL_H)) {
+        gl_effect_context_release();
         return;
     }
 
-    const int w = TITLE_BATTERY_FILL_W;
-    const int h = TITLE_BATTERY_FILL_H;
-    Uint8 *pixels = (Uint8 *)SDL_malloc((size_t)w * h * 4);
-    if (!pixels) {
+    fill->program = gl_effect_compile_program(g_battery_fill_fragment_src);
+    if (!fill->program) {
+        gl_effect_target_destroy(&fill->target);
+        gl_effect_context_release();
         return;
     }
 
-    /* Plain white brightness gradient; SDL_SetTextureColorMod tints it at draw time. */
-    for (int y = 0; y < h; y++) {
-        const float t = (h > 1) ? (float)y / (float)(h - 1) : 0.0f;
-        const float factor = 1.0f - t * 0.35f; /* brighter at top, darker at bottom */
-        const Uint8 v = (Uint8)(factor * 255.0f);
-        for (int x = 0; x < w; x++) {
-            Uint8 *p = pixels + (y * w + x) * 4;
-            p[0] = v;
-            p[1] = v;
-            p[2] = v;
-            p[3] = 255;
-        }
-    }
-
-    fill->pattern = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, w, h);
-    if (fill->pattern) {
-        SDL_UpdateTexture(fill->pattern, NULL, pixels, w * 4);
-        SDL_SetTextureBlendMode(fill->pattern, SDL_BLENDMODE_BLEND);
-        fill->pattern_w = w;
-        fill->pattern_h = h;
-        fill->ready = SDL_TRUE;
-    }
-
-    SDL_free(pixels);
+    fill->ready = SDL_TRUE;
 }
 
 void title_battery_fill_shutdown(TitleBatteryFill *fill)
 {
-    if (!fill || !fill->pattern) {
+    if (!fill || !fill->ready) {
         return;
     }
-    SDL_DestroyTexture(fill->pattern);
-    fill->pattern = NULL;
+    gl_effect_destroy_program(fill->program);
+    fill->program = 0;
+    gl_effect_target_destroy(&fill->target);
+    gl_effect_context_release();
     fill->ready = SDL_FALSE;
 }
 
@@ -70,32 +103,14 @@ void title_battery_fill_render(TitleBatteryFill *fill, SDL_Renderer *renderer,
         percent = 100;
     }
 
-    const int fill_w = (dst.w * percent) / 100;
-    if (fill_w <= 0) {
-        return;
-    }
+    TitleBatteryFillUniforms u;
+    u.fill = percent / 100.0f;
+    u.time = SDL_GetTicks() / 1000.0f;
+    u.speed = charging ? 0.55f : 0.2f; /* faster scroll while charging */
+    u.color[0] = color.r / 255.0f;
+    u.color[1] = color.g / 255.0f;
+    u.color[2] = color.b / 255.0f;
 
-    const float time = SDL_GetTicks() / 1000.0f;
-    const float pulse = 0.85f + 0.15f * SDL_sinf(time * 2.0f);
-
-    SDL_SetTextureColorMod(fill->pattern, color.r, color.g, color.b);
-    SDL_SetTextureAlphaMod(fill->pattern, (Uint8)(pulse * 255.0f));
-
-    const SDL_Rect fill_rect = {dst.x, dst.y, fill_w, dst.h};
-    SDL_RenderCopy(renderer, fill->pattern, NULL, &fill_rect);
-
-    if (charging && fill_w > 4) {
-        /* Subtle left-to-right (ping-pong) highlight band, same hue as the fill. */
-        const int band_w = SDL_max(3, fill_w / 5);
-        const float period = SDL_fmodf(time * 0.6f, 2.0f);
-        const float progress = (period <= 1.0f) ? period : (2.0f - period);
-        const int band_x = fill_rect.x + (int)(progress * (float)(fill_w - band_w));
-
-        const SDL_Rect band_rect = {band_x, fill_rect.y, band_w, fill_rect.h};
-        const SDL_Color band_color = {
-            (Uint8)SDL_min(255, color.r + 60), (Uint8)SDL_min(255, color.g + 40),
-            (Uint8)SDL_min(255, color.b + 60), 110,
-        };
-        title_draw_dim_rect(renderer, band_rect, band_color);
-    }
+    gl_effect_render(&fill->target, fill->program, title_battery_fill_set_uniforms, &u);
+    SDL_RenderCopy(renderer, fill->target.screen_texture, NULL, &dst);
 }

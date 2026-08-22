@@ -6,6 +6,7 @@
 
 #include "title/backend_status.h"
 #include "title/battery_fill.h"
+#include "title/battery_glow.h"
 #include "title/state.h"
 
 #define TITLE_STATUSBAR_FOOTER_HEIGHT 34
@@ -32,7 +33,8 @@ void title_statusbar_render_footer(SDL_Renderer *renderer, TTF_Font *ui_font, TT
 /* Header bar: FPS (left), title (centered), clock+battery+percent (right) -- one aligned row. */
 void title_statusbar_render_header(SDL_Renderer *renderer,
                                    TTF_Font *left_font, TTF_Font *title_font, TTF_Font *accent_font,
-                                   TitleBatteryFill *battery_fill, const TitleBackendStatus *backend,
+                                   TitleBatteryFill *battery_fill, TitleBatteryGlow *battery_glow,
+                                   const TitleBackendStatus *backend,
                                    const char *left_text, const char *title_text);
 
 /* Tagline (SDL/platform info), backend LEDs, then the version string -- stacked below top_y. */

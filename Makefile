@@ -57,6 +57,7 @@ TITLE_SOURCES := \
     $(SRC_DIR)/title/render_util.c \
     $(SRC_DIR)/title/battery_icon.c \
     $(SRC_DIR)/title/battery_fill.c \
+    $(SRC_DIR)/title/battery_glow.c \
     $(SRC_DIR)/title/background.c \
     $(SRC_DIR)/title/fireflies.c \
     $(SRC_DIR)/title/modal.c
