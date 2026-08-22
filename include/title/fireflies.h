@@ -5,13 +5,14 @@
 
 #include "common/gl_effect.h"
 
-#define TITLE_FIREFLY_COUNT 8
+#define TITLE_FIREFLY_COUNT 32
 
 typedef struct {
     float x, y;
     float vx, vy;
     float phase;
     float hue_mix;
+    SDL_bool far; /* half the flies: half draw size, half brightness -- reads as further away */
 } TitleFirefly;
 
 typedef struct {
