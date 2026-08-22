@@ -6,10 +6,12 @@
 
 #include "common/types.h"
 
-/* Tiny sprite rendered once at init; per-frame animation is pure SDL texture modulation, no GL. */
-#define TITLE_FIREFLIES_GL_W 9
-#define TITLE_FIREFLIES_GL_H 9
-#define TITLE_FIREFLIES_DRAW_SIZE 16
+/* Tiny sprite rendered once at init; per-frame animation is pure SDL texture modulation, no GL.
+ * FBO is sized up from the sprite's own glow-falloff shader so the 12px-radius draw size stays
+ * smooth instead of visibly upscaled/blocky. */
+#define TITLE_FIREFLIES_GL_W 15
+#define TITLE_FIREFLIES_GL_H 15
+#define TITLE_FIREFLIES_DRAW_SIZE 24
 #define TITLE_FIREFLIES_MARGIN 24.0f
 
 static const char *g_firefly_sprite_fragment_src =
@@ -37,6 +39,7 @@ void title_fireflies_init(TitleFireflies *fx, SDL_Renderer *renderer)
         fx->flies[i].vy = SDL_sinf(angle) * speed;
         fx->flies[i].phase = (float)(rand() % 628) / 100.0f;
         fx->flies[i].hue_mix = (float)(rand() % 100) / 100.0f;
+        fx->flies[i].far = (i % 2) == 0;
     }
 
     if (!renderer || !gl_effect_context_acquire()) {
@@ -111,21 +114,22 @@ void title_fireflies_render(SDL_Renderer *renderer, TitleFireflies *fx)
     }
 
     const float time = SDL_GetTicks() / 1000.0f;
-    const int half = TITLE_FIREFLIES_DRAW_SIZE / 2;
 
     for (int i = 0; i < TITLE_FIREFLY_COUNT; i++) {
         const TitleFirefly *fly = &fx->flies[i];
         const float pulse = 0.7f + 0.3f * SDL_sinf(time * 1.6f + fly->phase);
+        const float brightness = fly->far ? 0.5f : 1.0f;
 
         const Uint8 r = (Uint8)(SDL_clamp(0.45f + 0.45f * fly->hue_mix, 0.0f, 1.0f) * 255);
         const Uint8 g = 255;
         const Uint8 b = (Uint8)(SDL_clamp(0.25f + 0.05f * fly->hue_mix, 0.0f, 1.0f) * 255);
 
         SDL_SetTextureColorMod(fx->target.screen_texture, r, g, b);
-        SDL_SetTextureAlphaMod(fx->target.screen_texture, (Uint8)(pulse * 255));
+        SDL_SetTextureAlphaMod(fx->target.screen_texture, (Uint8)(pulse * brightness * 255));
 
-        const SDL_Rect dst = {(int)fly->x - half, (int)fly->y - half,
-                              TITLE_FIREFLIES_DRAW_SIZE, TITLE_FIREFLIES_DRAW_SIZE};
+        const int size = fly->far ? TITLE_FIREFLIES_DRAW_SIZE / 2 : TITLE_FIREFLIES_DRAW_SIZE;
+        const int half = size / 2;
+        const SDL_Rect dst = {(int)fly->x - half, (int)fly->y - half, size, size};
         SDL_RenderCopy(renderer, fx->target.screen_texture, NULL, &dst);
     }
 }
