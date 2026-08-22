@@ -39,8 +39,10 @@ void rsgl_state_init(RsglState *state)
     state->effect_count = 0;
     state->elapsed_time = 0.0f;
     state->top_margin = 0.0f;
-    state->screen_width = BENCH_SCREEN_W;
-    state->screen_height = BENCH_SCREEN_H;
+    /* Defaults to native; main.c overrides to the configured logical size
+     * after bench_display_config_apply() runs (renderer isn't created yet here). */
+    state->screen_width = BENCH_NATIVE_W;
+    state->screen_height = BENCH_NATIVE_H;
     rsgl_state_apply_fbo_preset(state, RSGL_FBO_DEFAULT_INDEX);
     state->fbo_prev_size_index = state->fbo_size_index;
     state->fbo_dirty = SDL_FALSE;

@@ -10,14 +10,25 @@ export LD_LIBRARY_PATH=$bench_dir/lib:$LD_LIBRARY_PATH
 # export SDL_AUDIODRIVER=mmiyoo
 # export EGL_VIDEODRIVER=mmiyoo
 
-# SDL_MMIYOO_VSYNC_MODE: "off" (no wait), "adaptive" (default -- FBIO_WAITFORVSYNC, skipped if running late), "strict" (real FBIOPAN_DISPLAY panning paced by /dev/l; hard-steps to 30fps under load, killing /dev/l regains control but introduces flickering).
-#
-# Below, every suite runs three times back-to-back -- off, adaptive,
-# strict -- so the three logs sit next to each other for direct comparison.
+# SDL_MMIYOO_VSYNC_MODE: "off" (no wait), "adaptive" (FBIO_WAITFORVSYNC, skipped if running late), "strict" (real FBIOPAN_DISPLAY panning paced by /dev/l; hard-steps to 30fps under load, killing /dev/l regains control but introduces flickering).
+# The title screen's config panel sets this per launched suite; uncomment to force a value for the title screen itself too.
 # export SDL_MMIYOO_VSYNC_MODE=strict
 
 freemma="/mnt/SDCARD/.tmp_update/bin/freemma"
 cpuclock="/mnt/SDCARD/.tmp_update/bin/cpuclock"
+
+# MainUI's App/ folder convention doesn't track or kill a previously launched
+# process -- re-tapping the icon (e.g. after backing out via the system
+# Menu/Home button instead of this app's own Exit control) spawns a second
+# full process tree that fights the first over the MMIYOO driver's singleton
+# joystick/framebuffer resources. Clear out any stale instance first so every
+# launch starts clean.
+my_pid=$$
+for stale_pid in $(pgrep -f "bin/sdl2_" 2>/dev/null); do
+    if [ "$stale_pid" != "$my_pid" ]; then
+        kill -9 "$stale_pid" 2>/dev/null
+    fi
+done
 
 # Stop audio services
 if [ -f /mnt/SDCARD/.tmp_update/script/stop_audioserver.sh ]; then
@@ -45,52 +56,6 @@ exe_cpuclock() {
     else
         echo "Warning: cpuclock not found at $cpuclock"
     fi
-}
-
-# Function to run benchmark with error checking. Captures stdout/stderr
-# (including MMIYOO_LOG_WARN/ERROR/DEBUG driver logging) to its own file
-# under logs/, since MainUI/interactive launch swallows console output.
-run_benchmark() {
-    local bench_name="$1"
-    local bench_path="$2"
-    local log_name="$3"
-    local present_mode="$4"
-    local log_file="$bench_dir/logs/$log_name.log"
-
-    echo "========================================="
-    echo "Running $bench_name..."
-    echo "========================================="
-
-    if [ -f "$bench_path" ]; then
-        echo "===== START $bench_name: $(date) =====" > "$log_file"
-        ps >> "$log_file"
-        echo "-----" >> "$log_file"
-        case "$present_mode" in
-            off)
-                SDL_MMIYOO_VSYNC_MODE=off SDL_MMIYOO_DEBUG=1 SDL_MMIYOO_DEBUG_VERBOSE=1 "$bench_path" >> "$log_file" 2>&1
-                ;;
-            strict)
-                SDL_MMIYOO_VSYNC_MODE=strict SDL_MMIYOO_DEBUG=1 SDL_MMIYOO_DEBUG_VERBOSE=1 "$bench_path" >> "$log_file" 2>&1
-                ;;
-            *)
-                SDL_MMIYOO_VSYNC_MODE=adaptive SDL_MMIYOO_DEBUG=1 SDL_MMIYOO_DEBUG_VERBOSE=1 "$bench_path" >> "$log_file" 2>&1
-                ;;
-        esac
-        local exit_code=$?
-        echo "-----" >> "$log_file"
-        ps >> "$log_file"
-        echo "===== END $bench_name: $(date) exit=$exit_code =====" >> "$log_file"
-        if [ $exit_code -eq 0 ]; then
-            echo "$bench_name completed successfully"
-        else
-            echo "Warning: $bench_name exited with code $exit_code"
-        fi
-    else
-        echo "Error: $bench_path not found"
-        return 1
-    fi
-
-    # exe_freemma # Not needed now, fixed the SDL backend
 }
 
 cd "$bench_dir"
@@ -156,45 +121,17 @@ if [ "$1" = "--geometry" ]; then
     exit $geo_exit
 fi
 
-echo "Starting SDL2 benchmark suite..."
+echo "Starting SDL2 Demo Suites title screen..."
 echo "Directory: $bench_dir"
 
-mkdir -p "$bench_dir/logs"
-
-# Run benchmarks (each captures its own log under logs/, see run_benchmark).
-# Each suite runs three times back-to-back: off, adaptive, strict, so the
-# three logs sit next to each other for a direct FPS comparison.
 exe_cpuclock
-run_benchmark "SDL2 Sprite Bench (off)"      "bin/sdl2_sprite_bench" "sdl2_sprite_bench_off" off
-run_benchmark "SDL2 Sprite Bench (adaptive)" "bin/sdl2_sprite_bench" "sdl2_sprite_bench_adaptive" adaptive
-run_benchmark "SDL2 Sprite Bench (strict)"   "bin/sdl2_sprite_bench" "sdl2_sprite_bench_strict" strict
 
-run_benchmark "SDL2 Render Suite (off)"      "bin/sdl2_render_suite" "sdl2_render_suite_off" off
-run_benchmark "SDL2 Render Suite (adaptive)" "bin/sdl2_render_suite" "sdl2_render_suite_adaptive" adaptive
-run_benchmark "SDL2 Render Suite (strict)"   "bin/sdl2_render_suite" "sdl2_render_suite_strict" strict
+if [ ! -f "bin/sdl2_title" ]; then
+    echo "Error: bin/sdl2_title not found"
+    exit 1
+fi
 
-run_benchmark "SDL2 GL FBO Effects (off)"      "bin/sdl2_gl_fbo_effects" "sdl2_gl_fbo_effects_off" off
-run_benchmark "SDL2 GL FBO Effects (adaptive)" "bin/sdl2_gl_fbo_effects" "sdl2_gl_fbo_effects_adaptive" adaptive
-run_benchmark "SDL2 GL FBO Effects (strict)"   "bin/sdl2_gl_fbo_effects" "sdl2_gl_fbo_effects_strict" strict
-
-run_benchmark "SDL2 Double Buffer Benchmark (off)"      "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_off" off
-run_benchmark "SDL2 Double Buffer Benchmark (adaptive)" "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_adaptive" adaptive
-run_benchmark "SDL2 Double Buffer Benchmark (strict)"   "bin/sdl2_bench_double_buf" "sdl2_bench_double_buf_strict" strict
-
-run_benchmark "SDL2 Space Bench (off)"      "bin/sdl2_space_bench" "sdl2_space_bench_off" off
-run_benchmark "SDL2 Space Bench (adaptive)" "bin/sdl2_space_bench" "sdl2_space_bench_adaptive" adaptive
-run_benchmark "SDL2 Space Bench (strict)"   "bin/sdl2_space_bench" "sdl2_space_bench_strict" strict
-
-run_benchmark "SDL2 Audio Benchmark (off)"      "bin/sdl2_audio_bench" "sdl2_audio_bench_off" off
-run_benchmark "SDL2 Audio Benchmark (adaptive)" "bin/sdl2_audio_bench" "sdl2_audio_bench_adaptive" adaptive
-run_benchmark "SDL2 Audio Benchmark (strict)"   "bin/sdl2_audio_bench" "sdl2_audio_bench_strict" strict
-
-
-echo "========================================="
-echo "All benchmarks completed!"
-echo "========================================="
-
-# exe_freemma
+bin/sdl2_title
 
 if [ -f /mnt/SDCARD/.tmp_update/script/start_audioserver.sh ]; then
     echo "Restarting audio services..."

@@ -3,8 +3,17 @@
 
 #include <SDL2/SDL.h>
 
-#define BENCH_SCREEN_W 640
-#define BENCH_SCREEN_H 480
+/* Native physical framebuffer size on Miyoo Mini hardware. Always use these for
+ * SDL_CreateWindow -- MMIYOO_CreateRenderer sizes the actual render target from
+ * GFX_GetFrameWidth/Height() regardless of window w/h, so the window must always
+ * be created at native size. Use bench_logical_w()/bench_logical_h() (see
+ * common/display_config.h) for in-scene layout math instead. */
+#define BENCH_NATIVE_W 640
+#define BENCH_NATIVE_H 480
+
+/* Compat aliases retained during the logical-size refactor; prefer BENCH_NATIVE_W/H. */
+#define BENCH_SCREEN_W BENCH_NATIVE_W
+#define BENCH_SCREEN_H BENCH_NATIVE_H
 #define BENCH_OVERLAY_MAX_LINES 20  // Used by grid system: 10 rows × 2 columns
 
 typedef struct {

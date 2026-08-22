@@ -1,6 +1,6 @@
 {
-  "label": "SDL2-Benchmark",
+  "label": "Miyoo SDL2 Test Launcher",
   "icon": "icon.png",
   "launch": "launch.sh",
-  "description": "SDL2 Benchmark Run"
+  "description": "Miyoo SSD202D SDL2/GL test suites"
 }

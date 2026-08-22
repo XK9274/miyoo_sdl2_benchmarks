@@ -41,8 +41,8 @@ int main(int argc, char *argv[])
     SDL_Window *window = SDL_CreateWindow("SDL2 GL Effect Suite",
                                           SDL_WINDOWPOS_CENTERED,
                                           SDL_WINDOWPOS_CENTERED,
-                                          BENCH_SCREEN_W,
-                                          BENCH_SCREEN_H,
+                                          BENCH_NATIVE_W,
+                                          BENCH_NATIVE_H,
                                           SDL_WINDOW_SHOWN);
     if (!window) {
         fprintf(stderr, "Window creation failed: %s\n", SDL_GetError());
@@ -63,6 +63,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    int logical_w, logical_h;
+    bench_display_config_load(&logical_w, &logical_h);
+    bench_display_config_apply(renderer, logical_w, logical_h);
+    bench_frame_limit_load();
+
     bench_driver_init(window, renderer);
 
     BenchLoadingScreen loading;
@@ -78,6 +83,8 @@ int main(int argc, char *argv[])
 
     RsglState state;
     rsgl_state_init(&state);
+    state.screen_width = logical_w;
+    state.screen_height = logical_h;
     if (loading_active) {
         bench_loading_step(&loading, 0.2f, "Loading fonts");
     }
@@ -89,7 +96,7 @@ int main(int argc, char *argv[])
         bench_loading_step(&loading, 0.3f, "Allocating overlay");
     }
 
-    BenchOverlay *overlay = bench_overlay_create(renderer, BENCH_SCREEN_W, 16, 12);
+    BenchOverlay *overlay = bench_overlay_create(renderer, logical_w, 16, 12);
     if (!overlay) {
         fprintf(stderr, "Overlay creation failed\n");
         if (loading_active) {
@@ -105,10 +112,7 @@ int main(int argc, char *argv[])
 
     rsgl_state_update_layout(&state, overlay);
     if (loading_active) {
-        /* No loading-screen GL context handoff (unlike before the
-         * common/gl_effect.c refactor) -- the shared refcounted context is
-         * acquired lazily by rsgl_effects_init() below instead. One extra
-         * context creation at startup, but far simpler ownership. */
+        /* GL effects acquire the shared context lazily during init. */
         bench_loading_step(&loading, 0.45f, "Preparing GL context");
     }
 
@@ -150,6 +154,8 @@ int main(int argc, char *argv[])
 
     SDL_bool running = SDL_TRUE;
     while (running) {
+        const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
+
         if (!rsgl_handle_input(&state, &metrics)) {
             break;
         }
@@ -178,6 +184,7 @@ int main(int argc, char *argv[])
         SDL_RenderPresent(renderer);
 
         bench_update_metrics(&metrics, delta * 1000.0);
+        bench_frame_limit_wait(frame_start_counter);
         state.running = running;
 
         if (metrics.accumulated_frame_time_ms >= next_status_refresh_ms) {

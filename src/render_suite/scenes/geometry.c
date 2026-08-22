@@ -290,8 +290,8 @@ static void rs_update_star_field(StarField *field, int count,
     }
 
     for (i = 0; i < count; i++) {
-        if (field->x[i] < 0 || field->x[i] > BENCH_SCREEN_W ||
-            field->y[i] < 0 || field->y[i] > BENCH_SCREEN_H || field->life[i] <= 0.0f) {
+        if (field->x[i] < 0 || field->x[i] > bench_logical_w() ||
+            field->y[i] < 0 || field->y[i] > bench_logical_h() || field->life[i] <= 0.0f) {
 
             field->x[i] = center_x + ((float)rand() / RAND_MAX - 0.5f) * 20.0f;
             field->y[i] = center_y + ((float)rand() / RAND_MAX - 0.5f) * 20.0f;
@@ -396,8 +396,8 @@ void rs_scene_geometry(RenderSuiteState *state,
     }
 
     const float factor = rs_state_stress_factor(state);
-    const int region_height = SDL_max(1, BENCH_SCREEN_H - (int)state->top_margin);
-    const float center_x = BENCH_SCREEN_W * 0.5f;
+    const int region_height = SDL_max(1, bench_logical_h() - (int)state->top_margin);
+    const float center_x = bench_logical_w() * 0.5f;
     const float center_y = (float)state->top_margin + (float)region_height * 0.5f;
 
     // Update rotation

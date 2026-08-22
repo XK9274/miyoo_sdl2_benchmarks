@@ -8,7 +8,8 @@ This package contains SDL2 performance benchmarks for the Miyoo Mini handheld. I
 
 What’s inside this folder (sdl_bench/)
 - bin/
-  Contains the benchmark executables:
+  Contains the title screen and benchmark executables:
+  • sdl2_title                       – Title screen: select a suite, configure resolution/vsync/frame limit/input mode, launch it
   • sdl2_bench_double_buf            – Hardware double buffering test (mmiyoo backend)
   • sdl2_render_suite                – Comprehensive rendering suite (fills, lines, textures)
   • sdl2_gl_fbo_effects              – 15 offscreen GL FBO shader effects, read back and composited via the 2D renderer
@@ -29,12 +30,16 @@ What’s inside this folder (sdl_bench/)
   Launch script used by MainUI to start the benchmarks.
 
 - logs/
-  Created at runtime. Each benchmark run writes its own stdout/stderr log here.
+  Only used by the --geometry diagnostic mode below; not written during normal use.
 
 Install/Run
 - Copy the entire sdl_bench/ directory to your Miyoo Mini at: /mnt/SDCARD/App/
 - Restart MainUI or reboot, then open Apps → “SDL Benchmark”.
-- A normal launch runs each benchmark three times: SDL_MMIYOO_VSYNC_MODE=off, adaptive, then strict.
+- A normal launch opens the "SDL2 Demo Suites" title screen: pick a suite from the
+  list, adjust Resolution / VSync Mode / Frame Limit / Input Mode in the config
+  panel, then press A to launch it. Exiting a suite returns to the title screen;
+  the title screen's own Exit quits back to MainUI. Each suite still has its own
+  in-app controls (stress levels, etc.) once running.
 - Diagnostic modes are available from the shell:
   ./launch.sh --gdb <binary-name> [port]
   ./launch.sh --geometry <tag> [duration_s]

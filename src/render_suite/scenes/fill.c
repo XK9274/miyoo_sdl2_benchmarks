@@ -29,7 +29,7 @@ void rs_scene_fill(RenderSuiteState *state,
 
     const float factor = rs_state_stress_factor(state);
     const int start_y = (int)state->top_margin;
-    const int region_height = SDL_max(1, BENCH_SCREEN_H - start_y);
+    const int region_height = SDL_max(1, bench_logical_h() - start_y);
 
     int columns = (int)(16.0f * factor);
     if (columns < 12) {
@@ -60,8 +60,8 @@ void rs_scene_fill(RenderSuiteState *state,
         const float freq_units = (1.5f + 0.35f * (float)pass) * column_stride;
 
         for (int col = 0; col < columns; ++col) {
-            const int col_x = (col * BENCH_SCREEN_W) / columns;
-            const int next_x = ((col + 1) * BENCH_SCREEN_W) / columns;
+            const int col_x = (col * bench_logical_w()) / columns;
+            const int next_x = ((col + 1) * bench_logical_w()) / columns;
             const int col_w = SDL_max(1, next_x - col_x);
 
             const float base_units = pass_phase + freq_units * (float)col;
