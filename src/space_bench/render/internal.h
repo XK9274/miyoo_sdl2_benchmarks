@@ -19,12 +19,7 @@
 #define SPACE_BACKGROUND_G 12
 #define SPACE_BACKGROUND_B 24
 
-/* Shared wireframe pyramid used by player/enemy/drone ships: apex at local
- * (apex_x,0,0), a square base at local x=base_x with the given half-extent in
- * y/z, rolled around the local X/forward axis and drawn with real
- * perspective (common/geometry/core.c's bench_project_vertex_roll). Pass
- * out_vertices if the caller needs individual projected screen points for
- * extra decoration (e.g. engine glow); NULL otherwise. */
+/* Shared rolled wireframe pyramid for player, enemy, and drone ships. */
 void space_render_wire_pyramid(SDL_Renderer *renderer,
                                BenchMetrics *metrics,
                                float roll_radians,

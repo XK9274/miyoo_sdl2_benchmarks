@@ -16,18 +16,12 @@ typedef enum {
     BENCH_VSYNC_STATUS_STRICT
 } BenchVSyncStatus;
 
-/* Must match the driver's SDL_HINT_MMIYOO_INPUT_MODE / MMIYOO_INPUT_MODE_*
- * constants in sdl2_miyoo's src/core/mmiyoo/SDL_mmiyoo.h -- duplicated here
- * since the benchmark can't include that driver-private header, only link
- * against its public SDL2 API. Unset hint defaults to joystick. */
+/* Mirrors the Miyoo SDL2 input-mode hint values. */
 #define BENCH_HINT_MMIYOO_INPUT_MODE "SDL_MMIYOO_INPUT_MODE"
 #define BENCH_INPUT_MODE_KEYBOARD "keyboard"
 #define BENCH_INPUT_MODE_JOYSTICK "joystick"
 
-/* Must match SDL_HINT_MMIYOO_VSYNC_MODE / MMIYOO_VSyncMode_e in sdl2_miyoo's
- * SDL_mmiyoo.h. "off"/"adaptive" can be toggled live (bench_driver_toggle_vsync);
- * "strict" locks in the /dev/l panning buffer layout at fb_init, so it's
- * launch-time only -- set manually in launch.sh (see its comment block). */
+/* Mirrors the Miyoo SDL2 vsync-mode hint values. */
 #define BENCH_HINT_MMIYOO_VSYNC_MODE "SDL_MMIYOO_VSYNC_MODE"
 #define BENCH_VSYNC_MODE_OFF      "off"
 #define BENCH_VSYNC_MODE_ADAPTIVE "adaptive"
@@ -53,31 +47,21 @@ typedef struct {
     int display_w;
     int display_h;
 
-    /* Requested via SDL_MMIYOO_VSYNC_MODE -- see vsync_verified_active below
-     * for the driver-confirmed ground truth. */
+    /* Requested SDL_MMIYOO_VSYNC_MODE value. */
     BenchVSyncStatus vsync_status;
 
-    /* Verified via SDL_GetRendererInfo() -- SDL_RENDERER_PRESENTVSYNC now
-     * accurately reflects whether presentation is actually vsync-paced (real
-     * FBIO_WAITFORVSYNC wait in adaptive, or a driver-confirmed page-flip in
-     * strict), not just what SDL_MMIYOO_VSYNC_MODE requested. */
+    /* Driver-confirmed presentation pacing. */
     SDL_bool vsync_verified_active;
 } BenchDriverStatus;
 
-/* Opens joystick 0 and its haptic device if present, and spawns a background thread polling SDL_GetPowerInfo/window size (~2s cadence) off the render thread, since the power query can block for tens of ms. Call once after SDL_Init/SDL_CreateWindow/SDL_CreateRenderer. */
+/* Opens input/haptics and starts the slow status refresh thread. */
 SDL_bool bench_driver_init(SDL_Window *window, SDL_Renderer *renderer);
 void bench_driver_shutdown(void);
 
-/* Maps an SDL_KEYDOWN or SDL_JOYBUTTONDOWN event onto the shared BTN_* keycode
- * space from controller_input.h, so a suite's existing keyboard switch can
- * also handle joystick input unchanged. Returns 0 if the event maps to no
- * bench action. Updates the tracked input source as a side effect. */
+/* Maps key/joystick button presses into the shared BTN_* keycode space. */
 SDL_Keycode bench_driver_translate_event(const SDL_Event *event);
 
-/* Same mapping as above, but for suites that track held button state (press
- * AND release), such as space_bench's movement/fire input. Returns SDL_TRUE
- * if the event is a mapped key or joystick button transition, filling
- * out_sym/out_pressed; SDL_FALSE if the event is irrelevant. */
+/* Maps key/joystick button transitions for held-input suites. */
 SDL_bool bench_driver_translate_button_event(const SDL_Event *event,
                                              SDL_Keycode *out_sym,
                                              SDL_bool *out_pressed);
@@ -90,19 +74,13 @@ void bench_driver_rumble_pulse(float strength, Uint32 duration_ms);
  * active, so this is a real switch, not just a display preference. */
 void bench_driver_toggle_input_mode(void);
 
-/* Flips SDL_MMIYOO_VSYNC_MODE between "off" and "adaptive". Never touches
- * "strict" -- if launched with SDL_MMIYOO_VSYNC_MODE=strict, this is a
- * no-op on actual presentation (the /dev/l panning buffer layout is already
- * locked in from fb_init), even though the hint/HUD value will change. */
+/* Toggles SDL_MMIYOO_VSYNC_MODE between "off" and "adaptive". */
 void bench_driver_toggle_vsync(void);
 
 /* Copies the current status snapshot out under lock. */
 void bench_driver_get_status(BenchDriverStatus *out_status);
 
-/* Fills an 8-cell (2 row x 4 col, row-major) status grid for
- * bench_overlay_set_status_grid: battery, joystick, rumble, input mode,
- * input source, event counts, vsync, and display resolution. Unused cells
- * are left as empty strings. */
+/* Formats the 2x4 driver status grid. */
 void bench_driver_format_status_grid(char fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN]);
 
 #endif /* COMMON_DRIVER_SUPPORT_H */

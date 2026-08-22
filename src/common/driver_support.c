@@ -11,11 +11,7 @@
 #define MMIYOO_JOY_BUTTON_X      6
 #define MMIYOO_JOY_BUTTON_SELECT 12
 
-/* Index matches the MMIYOO_Button bit position reported by the Miyoo SDL2
- * joystick backend. POWER/VOLUP/VOLDOWN (indices 19-21) have no bench action
- * here -- vsync is driven by holding SELECT (see bench_driver_translate_button_event):
- * SELECT+X = vsync off/adaptive toggle. Keyboard-emulation equivalent:
- * src/video/mmiyoo/SDL_event_mmiyoo.c. */
+/* Indexed by the MMIYOO_Button bit positions reported by the joystick backend. */
 static const SDL_Keycode g_joy_button_map[MMIYOO_JOY_BUTTON_SLOTS] = {
     BTN_UP, BTN_DOWN, BTN_LEFT, BTN_RIGHT,
     BTN_A, BTN_B, BTN_X, BTN_Y,
@@ -35,10 +31,7 @@ static SDL_mutex *g_status_mutex = NULL;
 static SDL_Thread *g_refresh_thread = NULL;
 static SDL_atomic_t g_refresh_running;
 
-/* Does the actual (possibly blocking, e.g. axp_test popen on-device) power
- * query. Only ever called from bench_driver_init (once, synchronously, to
- * seed initial data) or the background thread -- never from a caller's
- * render loop. */
+/* Refreshes slow device status outside the render loop. */
 static void bench_driver_refresh_status_locked(void)
 {
     int seconds = -1;

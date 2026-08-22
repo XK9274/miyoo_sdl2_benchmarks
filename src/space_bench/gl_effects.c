@@ -7,14 +7,10 @@
 /* Shaders output grayscale luminance; colour comes from SDL_SetTextureColorMod at blit time. */
 
 #define SPACE_GL_BOLT_SIZE 20
-#define SPACE_GL_PICKUP_SIZE 40
+#define SPACE_GL_PICKUP_SIZE 64
 #define SPACE_GL_THUMPER_SIZE 64
 #define SPACE_GL_SHIELD_SIZE 72
-/* Laser beam strips are tiled horizontally (not stretched) to cover the
- * beam's length -- see space_render_laser_beam in render/projectiles.c.
- * Native pixel size, so no scaling distortion regardless of beam length.
- * SPACE_GL_LASER_TILE_W itself lives in gl_effects.h (shared with the tiling
- * code in render/projectiles.c). */
+/* Laser beam strips are tiled horizontally by space_render_laser_beam(). */
 #define SPACE_GL_LASER_GLOW_H 22
 #define SPACE_GL_LASER_EDGE_H 10
 #define SPACE_GL_LASER_CORE_H 4
@@ -76,7 +72,7 @@ static const char *g_shield_fragment_src =
     "    gl_FragColor = vec4(vec3(i), i);\n"
     "}\n";
 
-/* Laser cross-section strips, sampled along v_uv.y (v_uv.x just adds shimmer); additive-blended with alpha forced to 1.0 so srcRGB*srcA doesn't square the falloff into invisibility. */
+/* Laser cross-section strips; color tint is applied during additive blit. */
 static const char *g_laser_glow_fragment_src =
     "precision mediump float;\n"
     "varying vec2 v_uv;\n"
@@ -199,10 +195,7 @@ SDL_bool space_gl_effects_init(SDL_Renderer *renderer)
         return SDL_FALSE;
     }
 
-    /* Additive rather than the default alpha-blend: a beam should brighten
-     * the space background under it, not paint a translucent rect over it.
-     * (Shaders above already output alpha=1.0 to play correctly with ADD's
-     * dstRGB += srcRGB * srcA -- see the comment above g_laser_glow_fragment_src.) */
+    /* Beam textures brighten the background instead of alpha-blending over it. */
     SDL_SetTextureBlendMode(g_laser_glow.target.screen_texture, SDL_BLENDMODE_ADD);
     SDL_SetTextureBlendMode(g_laser_edge.target.screen_texture, SDL_BLENDMODE_ADD);
     SDL_SetTextureBlendMode(g_laser_core.target.screen_texture, SDL_BLENDMODE_ADD);
