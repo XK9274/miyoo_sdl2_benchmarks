@@ -9,8 +9,7 @@
 /* Total on-screen width (body + nub) an icon of this height will occupy. */
 int title_battery_icon_width(int height);
 
-/* Vector battery outline + nub, with an animated GL fill (falls back to flat SDL fill if unavailable)
- * and a soft ambient glow of the fill colour while charging. */
+/* Vector battery outline + nub, with an animated GL fill and a charging-only ambient glow. */
 void title_draw_battery_icon(SDL_Renderer *renderer, TitleBatteryFill *fill, TitleBatteryGlow *glow,
                              int x, int y, int height, int percent, SDL_bool charging);
 

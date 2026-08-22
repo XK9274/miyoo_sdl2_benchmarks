@@ -6,9 +6,7 @@
 
 #include "common/types.h"
 
-/* Tiny sprite rendered once at init; per-frame animation is pure SDL texture modulation, no GL.
- * FBO is sized up from the sprite's own glow-falloff shader so the 12px-radius draw size stays
- * smooth instead of visibly upscaled/blocky. */
+/* Tiny sprite rendered once at init and upscaled for a smooth glow; per-frame animation is pure SDL texture modulation, no GL. */
 #define TITLE_FIREFLIES_GL_W 15
 #define TITLE_FIREFLIES_GL_H 15
 #define TITLE_FIREFLIES_DRAW_SIZE 24

@@ -111,8 +111,7 @@ void title_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
     SDL_RenderCopy(renderer, slot->texture, NULL, &dst);
 }
 
-/* Same as title_draw_text, but the glyph is baked once in white and tinted via texture
- * color/alpha mod each call -- lets tint change every frame (e.g. a pulse) at no extra cost. */
+/* Same as title_draw_text, but bakes the glyph in white and tints it via texture color mod each call. */
 void title_draw_text_tinted(SDL_Renderer *renderer, TTF_Font *font, const char *text,
                             int x, int y, SDL_Color tint, SDL_bool center)
 {
@@ -191,8 +190,7 @@ void title_draw_panel_frame(SDL_Renderer *renderer, TTF_Font *font, const char *
                       title_lerp_u8(border.b, border_active.b, pulse), 255}
         : border;
 
-    /* Same continuous pulse as the border -- safe now since the label's glyph texture is
-     * baked once (white) and just tinted per frame, not re-rasterized (see title_draw_text_tinted). */
+    /* Same continuous pulse as the border, cheap since the label is tinted rather than re-rasterized. */
     const SDL_Color label_draw = active
         ? (SDL_Color){title_lerp_u8(label_color.r, label_active.r, pulse),
                       title_lerp_u8(label_color.g, label_active.g, pulse),
