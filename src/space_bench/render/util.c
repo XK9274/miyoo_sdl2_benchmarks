@@ -35,9 +35,6 @@ void space_render_wire_pyramid(SDL_Renderer *renderer,
     RotationCache cache = {.rotation = NAN};
     bench_update_rotation_cache(&cache, roll_radians);
 
-    /* Matches bench_project_vertex's own depth=size*5 convention (cube.c et al),
-     * with half_extent standing in for "size" since it's the model's actual
-     * Y/Z half-extent. */
     const float depth = half_extent * 5.0f;
 
     BenchVertex local_vertices[5];

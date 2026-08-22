@@ -118,7 +118,7 @@ void space_render_laser_helix(const SpaceBenchState *state,
     }
 }
 
-/* Draws one cross-section texture tiled (not stretched) across [origin_x, end_x). Height tapers from cone_height to base_height over the first cone_length px from origin_x; pass cone_length <= 0 to disable. */
+/* Tiles one beam cross-section texture, with optional muzzle-height taper. */
 static int space_render_laser_tile_strip(SDL_Renderer *renderer,
                                          SDL_Texture *tex,
                                          float origin_x,
@@ -140,7 +140,7 @@ static int space_render_laser_tile_strip(SDL_Renderer *renderer,
         const float dist = x - origin_x;
         const SDL_bool in_cone = (cone_length > 0.0f) && (dist < cone_length);
 
-        /* Small steps inside the cone give several distinct heights across the flare instead of one oversized tile. */
+        /* Smaller cone steps keep the muzzle flare visibly tapered. */
         const float step = in_cone ? SDL_max(8.0f, cone_length * 0.25f) : (float)SPACE_GL_LASER_TILE_W;
         const float tile_w = SDL_min(step, end_x - x + 1.0f);
 
@@ -158,7 +158,7 @@ static int space_render_laser_tile_strip(SDL_Renderer *renderer,
     return tiles;
 }
 
-/* Beam laser: white-hot core, colored edge, soft glow (all GL-shaded, additive, tiled), plus a muzzle flare at the hardpoint. Falls back to flat lines if GL effects failed to initialize. */
+/* GL-shaded beam with a flat-line fallback. */
 static void space_render_laser_beam(SDL_Renderer *renderer,
                                     BenchMetrics *metrics,
                                     float origin_x,
@@ -179,9 +179,7 @@ static void space_render_laser_beam(SDL_Renderer *renderer,
     if (glow_tex && edge_tex && core_tex) {
         int tiles = 0;
 
-        /* Cone widening at the origin (muzzle flare), tapering to the
-         * steady-state beam width -- sells "emitted from here" instead of
-         * reading as a uniform-width bar for its whole length. */
+        /* Muzzle flare tapers to the steady-state beam width. */
         const float cone_length = 48.0f * thickness_scale;
 
         tiles += space_render_laser_tile_strip(renderer, glow_tex, origin_x, origin_y, end_x,
@@ -191,10 +189,7 @@ static void space_render_laser_beam(SDL_Renderer *renderer,
                                                12.0f * thickness_scale, 20.0f * thickness_scale,
                                                cone_length, color);
 
-        /* Core: previously pure white at 4px, which fully washed out the
-         * beam's actual colour under additive blending. Shrunk and tinted
-         * toward the beam colour (kept bright/hot-looking, but no longer
-         * neutral white) so the colour reads even at the core. */
+        /* Keep the core hot, but tinted enough for the beam color to read. */
         const SDL_Color core_tint = {
             (Uint8)(255 - (255 - color.r) * 0.55f),
             (Uint8)(255 - (255 - color.g) * 0.55f),
