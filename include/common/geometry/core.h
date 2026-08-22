@@ -28,12 +28,7 @@ void bench_project_vertex(const float *base_coords,
                           float size,
                           BenchVertex *out_vertex);
 
-/* Like bench_project_vertex, but rotates the Y-Z plane (roll around the local
- * X/forward axis) instead of X-Z (yaw around the vertical axis) -- for models
- * whose forward axis is X, e.g. ships banking as they fly. base_coords are
- * final local units (not multiplied by a separate size), extra_z is added to
- * the rotated Z before the perspective divide (for manual depth offsets, e.g.
- * parallax sorting that should now also affect scale). */
+/* Projects local-X-forward geometry with roll and an optional depth offset. */
 void bench_project_vertex_roll(const float *base_coords,
                                const RotationCache *cache,
                                float center_x,
