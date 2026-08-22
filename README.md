@@ -37,11 +37,15 @@ The generated package is written to `app-dist/sdl_bench/`.
 ## Requirements
 
 - Docker, for the default build path.
-- Git, used by the Docker build script when the toolchain checkout is missing.
+- Git, used by the build scripts to obtain the toolchain and NEON helper library.
 - A Miyoo Mini SD card or deployment target for running the packaged app.
 
 The root build script automatically uses `union-miyoomini-toolchain/`. If that
-directory does not exist, it clones the toolchain repository.
+directory does not exist, it clones the toolchain repository. The NEON helper
+is not stored as a submodule: every build clones or refreshes
+`XK9274/neon-arm-library-miyoo` in generated, ignored build space and logs the
+exact commit used. Set `NEON_ARM_REPO_URL` or `NEON_ARM_REF` to override its
+source or ref.
 
 ## Build
 
@@ -146,6 +150,7 @@ suite's geometry scene only and tags its periodic FPS output for A/B testing.
 ```text
 ./docker-compile.sh
   -> ensure union-miyoomini-toolchain exists
+  -> clone/refresh neon-arm-library-miyoo in the toolchain workspace
   -> copy source, Makefile, utility scripts, and cached artifacts to workspace
   -> build or reuse the Docker toolchain image
   -> run utility/mksdl2.sh inside the container as mksdl2.sh
@@ -177,7 +182,6 @@ miyoo_sdl2_benchmarks/
 |-- build/                         # Local/generated build output
 |-- build_artifacts/               # Cached compile-time artifacts
 |-- include/                       # Shared headers and GLES headers
-|-- neon-arm-library/              # NEON helper library
 |-- src/
 |   |-- audio_bench/
 |   |-- common/
@@ -187,10 +191,11 @@ miyoo_sdl2_benchmarks/
 |   |-- space_bench/
 |   |-- sprite_bench/
 |   `-- title/                     # Launcher/title screen (sdl2_title)
-|-- union-miyoomini-toolchain/      # Auto-cloned Docker toolchain checkout
+|-- union-miyoomini-toolchain/      # Ignored toolchain + cloned build dependencies
 `-- utility/
     |-- compile.sh                 # Optional local/Docker helper wrapper
-    `-- mksdl2.sh                  # SDL2 compile-time library builder
+    |-- mksdl2.sh                  # SDL2 compile-time library builder
+    `-- prepare-neon.sh            # Clone/refresh the generated NEON dependency
 ```
 
 ## Asset Credits
