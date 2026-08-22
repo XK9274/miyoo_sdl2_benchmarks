@@ -2,5 +2,5 @@
   "label": "Miyoo SDL2 Test Launcher",
   "icon": "icon.png",
   "launch": "launch.sh",
-  "description": "Miyoo SSD202D SDL2/GL test suites"
+  "description": "SSD202D SDL2/GL test suites"
 }
