@@ -6,6 +6,10 @@ build for the device.
 
 The generated package is written to `app-dist/sdl_bench/`.
 
+> **AI disclosure:** substantial parts of this repo (features, refactors, and
+> this README) were built with AI coding assistance (Claude Code), reviewed
+> and maintained by a human.
+
 ## Screenshots
 
 <div align="center">
@@ -97,9 +101,9 @@ app-dist/sdl_bench/ -> /mnt/SDCARD/App/sdl_bench/
 Then restart MainUI or reboot the device. The app appears under Apps as
 `SDL Benchmark`.
 
-When launched normally, `app-dist/sdl_bench/launch.sh` runs each benchmark in
-three presentation modes: `off`, `adaptive`, and `strict`. Each run writes its
-own log under `app-dist/sdl_bench/logs/`.
+When launched normally, `app-dist/sdl_bench/launch.sh` starts `sdl2_title`,
+the themed launcher/title screen, from which you pick and configure a suite
+to run. Each suite run writes its own log under `app-dist/sdl_bench/logs/`.
 
 The launcher also has two diagnostic entry points:
 
@@ -112,6 +116,11 @@ The launcher also has two diagnostic entry points:
 suite's geometry scene only and tags its periodic FPS output for A/B testing.
 
 ## Benchmarks
+
+- `sdl2_title`
+  - Themed launcher/title screen shown when the app starts.
+  - Lets you pick a suite, configure resolution/vsync/frame-limit/input, and
+    launches the selected binary; shows live battery/backend status.
 
 - `sdl2_bench_double_buf`
   - Exercises hardware double buffering in the SDL2 Miyoo backend.
@@ -185,7 +194,8 @@ miyoo_sdl2_benchmarks/
 |   |-- gl_fbo_effects/
 |   |-- render_suite/
 |   |-- space_bench/
-|   `-- sprite_bench/
+|   |-- sprite_bench/
+|   `-- title/                     # Launcher/title screen (sdl2_title)
 |-- union-miyoomini-toolchain/      # Auto-cloned Docker toolchain checkout
 `-- utility/
     |-- compile.sh                 # Optional local/Docker helper wrapper
