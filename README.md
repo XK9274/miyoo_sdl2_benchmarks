@@ -15,27 +15,19 @@ The generated package is written to `app-dist/sdl_bench/`.
 
 <table>
   <tr>
-    <td align="center"><img src="assets/sdl_bench_030.png" width="300"></td>
-    <td align="center"><img src="assets/sdl_bench_029.png" width="300"></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="assets/sdl_bench_028.png" width="300"></td>
-    <td align="center"><img src="assets/sdl_bench_022.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_008.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_009.png" width="300"></td>
   </tr>
   <tr>
     <td align="center"><img src="assets/sdl_bench_010.png" width="300"></td>
-    <td align="center"><img src="assets/sdl_bench_008.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_011.png" width="300"></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/sdl_bench_007.png" width="300"></td>
-    <td align="center"><img src="assets/sdl_bench_006.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_012.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_013.png" width="300"></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/sdl_bench_033.png" width="300"></td>
-    <td align="center"><img src="assets/sdl_bench_032.png" width="300"></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="assets/sdl_bench_031.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_014.png" width="300"></td>
     <td align="center"></td>
   </tr>
 </table>
