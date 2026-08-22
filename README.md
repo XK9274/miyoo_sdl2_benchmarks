@@ -196,3 +196,7 @@ miyoo_sdl2_benchmarks/
 
 - `app-dist/sdl_bench/assets/bgm.wav`: [Audio Test](https://pixabay.com/music/video-games-arcade-beat-323176/)
   by [NoCopyrightSound633](https://pixabay.com/users/nocopyrightsound633-47610058/).
+- `app-dist/sdl_bench/assets/ThaleahFat.ttf`: [Free Pixel Font Thaleah](https://tinyworlds.itch.io/free-pixel-font-thaleah)
+  by [Tiny Worlds](https://tinyworlds.itch.io/).
+- `app-dist/sdl_bench/icon.png`: [Pixel Skill Icons Pack - 250 Warrior Abilities](https://batareya.itch.io/pixel-skill-icons-pack-250-warrior-abilities)
+  by [batareya](https://batareya.itch.io/).

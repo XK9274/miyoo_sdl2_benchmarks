@@ -64,3 +64,8 @@ void title_config_row_value_text(const TitleState *state, TitleConfigRow row, ch
             break;
     }
 }
+
+SDL_bool title_config_row_disabled(TitleConfigRow row)
+{
+    return row == TITLE_CONFIG_RESOLUTION;
+}

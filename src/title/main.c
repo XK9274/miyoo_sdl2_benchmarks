@@ -23,11 +23,23 @@ int main(int argc, char *argv[])
     TitleState state;
     title_state_init(&state);
 
+    Uint32 last_ticks = SDL_GetTicks();
+
     SDL_bool running = SDL_TRUE;
     while (running) {
+        const Uint32 now_ticks = SDL_GetTicks();
+        const float dt = (now_ticks - last_ticks) / 1000.0f;
+        last_ticks = now_ticks;
+        title_fireflies_update(&ctx.fireflies, dt);
+
         const TitleAction action = title_handle_input(&state);
 
         if (action == TITLE_ACTION_QUIT) {
+            running = SDL_FALSE;
+            break;
+        }
+
+        if (action == TITLE_ACTION_LAUNCH && title_state_quit_selected(&state)) {
             running = SDL_FALSE;
             break;
         }
@@ -41,6 +53,7 @@ int main(int argc, char *argv[])
                     running = SDL_FALSE;
                     break;
                 }
+                last_ticks = SDL_GetTicks(); /* avoid a huge dt spike after the suite ran */
 
                 if (result.exec_failed) {
                     title_state_set_child_error(&state, suite->bin_name, SDL_FALSE, 127);
@@ -52,11 +65,9 @@ int main(int argc, char *argv[])
             }
         }
 
-        title_menu_render(ctx.renderer, ctx.title_font, ctx.ui_font, &state);
+        title_menu_render(&ctx, &state);
 
-        /* Menu is idle most of the time; a modest cap keeps CPU use sane
-         * without needing the common frame-limit helper (that's for the
-         * benchmark suites' presentation pacing, not this UI). */
+        /* Modest cap keeps idle CPU use sane. */
         SDL_Delay(16);
     }
 

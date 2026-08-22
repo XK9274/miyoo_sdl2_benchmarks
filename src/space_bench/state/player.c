@@ -26,6 +26,8 @@ void space_player_take_damage(SpaceBenchState *state, float amount)
         state->player_alive = SDL_FALSE;
         state->game_state = SPACE_GAME_OVER;
         state->gameover_countdown = SPACE_GAMEOVER_COUNTDOWN_TIME;
+        /* Default to Quit on death -- an un-navigated A press should leave, not retry. */
+        state->gameover_selected = SPACE_GAMEOVER_QUIT;
     }
     state->player_invulnerable = SPACE_PLAYER_INVULN_TIME;
 }
@@ -52,6 +54,8 @@ void space_player_take_beam_damage(SpaceBenchState *state, float amount)
         state->player_alive = SDL_FALSE;
         state->game_state = SPACE_GAME_OVER;
         state->gameover_countdown = SPACE_GAMEOVER_COUNTDOWN_TIME;
+        /* Default to Quit on death -- an un-navigated A press should leave, not retry. */
+        state->gameover_selected = SPACE_GAMEOVER_QUIT;
     }
 }
 

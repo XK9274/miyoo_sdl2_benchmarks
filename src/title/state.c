@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "title/config_panel.h"
+
 void title_state_init(TitleState *state)
 {
     if (!state) {
@@ -12,12 +14,22 @@ void title_state_init(TitleState *state)
     memset(state, 0, sizeof(*state));
 
     const TitleSuiteEntry suites[TITLE_SUITE_COUNT] = {
-        {"Render Suite",         "sdl2_render_suite"},
-        {"GL FBO Effects",       "sdl2_gl_fbo_effects"},
-        {"Hardware Double Buffer", "sdl2_bench_double_buf"},
-        {"Space Bench",          "sdl2_space_bench"},
-        {"Sprite Bench",         "sdl2_sprite_bench"},
-        {"Audio Bench",          "sdl2_audio_bench"},
+        {"Render Suite", "sdl2_render_suite",
+         "Cycles 7 2D rendering scenes -- fills, lines, textures, geometry, scaling, memory, "
+         "pixel ops -- exercising the MMIYOO hardware-accelerated SDL2 renderer."},
+        {"GL FBO Effects", "sdl2_gl_fbo_effects",
+         "Shader-based effects rendered offscreen via GLES2 into an FBO, composited through "
+         "the 2D renderer -- exercises the shared GLES2/SwiftShader pipeline."},
+        {"Hardware Double Buffer", "sdl2_bench_double_buf",
+         "Rotating cube and particle field exercising MI_GFX/MI_SYS hardware double buffering."},
+        {"Space Bench", "sdl2_space_bench",
+         "Interactive space-shooter stress test -- sprites, particles, and GL effects "
+         "together under real gameplay load."},
+        {"Sprite Bench", "sdl2_sprite_bench",
+         "Auto-ramping bouncing-sprite count stress test isolating the raw texture blit/present path."},
+        {"Audio Bench", "sdl2_audio_bench",
+         "Waveform visualizations driven by the MMIYOO audio backend, exercising audio "
+         "playback alongside rendering."},
     };
     memcpy(state->suites, suites, sizeof(suites));
 
@@ -38,10 +50,11 @@ void title_state_move_selection(TitleState *state, int delta)
     }
 
     if (state->focus == TITLE_FOCUS_LIST) {
+        /* +1 for the trailing Quit row at index TITLE_SUITE_COUNT. */
         int next = state->selected_suite + delta;
         if (next < 0) {
-            next = TITLE_SUITE_COUNT - 1;
-        } else if (next >= TITLE_SUITE_COUNT) {
+            next = TITLE_SUITE_COUNT;
+        } else if (next > TITLE_SUITE_COUNT) {
             next = 0;
         }
         state->selected_suite = next;
@@ -53,15 +66,33 @@ void title_state_move_selection(TitleState *state, int delta)
             next = 0;
         }
         state->config_row = next;
+        state->editing = SDL_FALSE; /* editing is row-specific -- changing row exits it */
     }
 }
 
-void title_state_toggle_focus(TitleState *state)
+void title_state_move_focus_horizontal(TitleState *state, int delta)
 {
-    if (!state) {
+    if (!state || delta == 0) {
         return;
     }
-    state->focus = (state->focus == TITLE_FOCUS_LIST) ? TITLE_FOCUS_CONFIG : TITLE_FOCUS_LIST;
+    state->editing = SDL_FALSE;
+    /* List sits left, config sits right -- move toward that side. */
+    if (delta < 0) {
+        state->focus = TITLE_FOCUS_LIST;
+    } else {
+        state->focus = TITLE_FOCUS_CONFIG;
+    }
+}
+
+void title_state_toggle_edit(TitleState *state)
+{
+    if (!state || state->focus != TITLE_FOCUS_CONFIG) {
+        return;
+    }
+    if (title_config_row_disabled((TitleConfigRow)state->config_row)) {
+        return;
+    }
+    state->editing = !state->editing;
 }
 
 static void title_cycle_enum(int *value, int count, int delta)
@@ -76,6 +107,9 @@ static void title_cycle_enum(int *value, int count, int delta)
 void title_state_cycle_config(TitleState *state, int delta)
 {
     if (!state || state->focus != TITLE_FOCUS_CONFIG || delta == 0) {
+        return;
+    }
+    if (title_config_row_disabled((TitleConfigRow)state->config_row)) {
         return;
     }
 
@@ -124,6 +158,11 @@ const TitleSuiteEntry *title_state_selected_suite(const TitleState *state)
     return &state->suites[state->selected_suite];
 }
 
+SDL_bool title_state_quit_selected(const TitleState *state)
+{
+    return state && state->selected_suite == TITLE_SUITE_COUNT;
+}
+
 void title_state_set_child_error(TitleState *state, const char *bin_name, SDL_bool crashed, int code_or_signal)
 {
     if (!state) {
@@ -146,4 +185,21 @@ void title_state_clear_error(TitleState *state)
     }
     state->mode = TITLE_MODE_MENU;
     state->error_message[0] = '\0';
+}
+
+void title_state_open_info_modal(TitleState *state)
+{
+    if (!state || state->focus != TITLE_FOCUS_LIST || title_state_quit_selected(state)) {
+        return;
+    }
+    state->info_modal_suite = state->selected_suite;
+    state->mode = TITLE_MODE_INFO_MODAL;
+}
+
+void title_state_close_info_modal(TitleState *state)
+{
+    if (!state) {
+        return;
+    }
+    state->mode = TITLE_MODE_MENU;
 }
