@@ -182,7 +182,9 @@ docker_cmd="
     fi
 "
 
-TITLE_GIT_VERSION="$(git -C "$SCRIPT_DIR" describe --tags --always --dirty 2>/dev/null || echo unknown)"
+# Release builds provide the resolved tag explicitly. Development builds retain
+# the descriptive Git fallback, including commit and dirty-worktree details.
+TITLE_GIT_VERSION="${TITLE_GIT_VERSION:-$(git -C "$SCRIPT_DIR" describe --tags --always --dirty 2>/dev/null || echo unknown)}"
 
 docker run --rm \
     -e TITLE_GIT_VERSION="$TITLE_GIT_VERSION" \

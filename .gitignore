@@ -22,6 +22,7 @@ build/
 # OS files
 .DS_Store
 Thumbs.db
+*:Zone.Identifier
 
 # toolchain artifacts
 union-miyoomini-toolchain/
@@ -30,7 +31,9 @@ app-dist/sdl_bench/bin/
 
 # Release artifacts
 *.tar.gz
+*.tar.gz.sha256
 release_notes.md
+RELEASE_PROCESS.md
 
 # Local scratch notes
 TODO.md
