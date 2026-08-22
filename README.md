@@ -6,9 +6,8 @@ build for the device.
 
 The generated package is written to `app-dist/sdl_bench/`.
 
-> **AI disclosure:** substantial parts of this repo (features, refactors, and
-> this README) were built with AI coding assistance (Claude Code), reviewed
-> and maintained by a human.
+> **AI disclosure:** there's been substantial usage of various LLMs in this
+> repo to both write the code & maintain the repo.
 
 ## Screenshots
 
