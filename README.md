@@ -6,8 +6,8 @@ build for the device.
 
 The generated package is written to `app-dist/sdl_bench/`.
 
-> **AI disclosure:** there's been substantial usage of various LLMs in this
-> repo to both write the code & maintain the repo.
+> **AI disclosure:** there's been a substantial usage of various LLM in this
+> project to both write the code & maintain the repo itself.
 
 ## Screenshots
 
