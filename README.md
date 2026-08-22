@@ -28,7 +28,7 @@ The generated package is written to `app-dist/sdl_bench/`.
   </tr>
   <tr>
     <td align="center"><img src="assets/sdl_bench_014.png" width="300"></td>
-    <td align="center"></td>
+    <td align="center"><img src="assets/sdl_bench_006.png" width="300"></td>
   </tr>
 </table>
 
