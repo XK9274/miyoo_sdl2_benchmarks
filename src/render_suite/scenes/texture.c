@@ -21,8 +21,8 @@ void rs_scene_texture(RenderSuiteState *state,
     const float scale = 1.0f + 0.40f * wave;
 
     SDL_FRect dest = {
-        BENCH_SCREEN_W * 0.5f - 96.0f * scale,
-        (state->top_margin + (BENCH_SCREEN_H - state->top_margin) * 0.5f) - 96.0f * scale,
+        bench_logical_w() * 0.5f - 96.0f * scale,
+        (state->top_margin + (bench_logical_h() - state->top_margin) * 0.5f) - 96.0f * scale,
         192.0f * scale,
         192.0f * scale
     };
@@ -41,12 +41,12 @@ void rs_scene_texture(RenderSuiteState *state,
         sprite_count = 192;
     }
 
-    const int vertical_space = SDL_max(1, BENCH_SCREEN_H - (int)state->top_margin);
+    const int vertical_space = SDL_max(1, bench_logical_h() - (int)state->top_margin);
     const int sprite_stride = SDL_max(18, 64 - (int)(factor * 3.0f));
 
     for (int i = 0; i < sprite_count; ++i) {
         SDL_Rect rect = {
-            (i * sprite_stride + (int)(state->texture_angle * 2.0f)) % BENCH_SCREEN_W - 16,
+            (i * sprite_stride + (int)(state->texture_angle * 2.0f)) % bench_logical_w() - 16,
             (int)state->top_margin + (i * sprite_stride + (int)(state->texture_angle * 1.3f)) % vertical_space - 16,
             32,
             32

@@ -69,8 +69,8 @@ static float sprite_randf(float min_val, float max_val)
 
 static void sprite_spawn_instance(SpriteInstance *inst, int index)
 {
-    inst->x = sprite_randf(0.0f, (float)(BENCH_SCREEN_W - SPRITE_SIZE));
-    inst->y = sprite_randf(0.0f, (float)(BENCH_SCREEN_H - SPRITE_SIZE));
+    inst->x = sprite_randf(0.0f, (float)(bench_logical_w() - SPRITE_SIZE));
+    inst->y = sprite_randf(0.0f, (float)(bench_logical_h() - SPRITE_SIZE));
     const float speed = sprite_randf(40.0f, 160.0f);
     const float angle = sprite_randf(0.0f, 2.0f * SPRITE_PI);
     inst->vx = cosf(angle) * speed;
@@ -220,16 +220,16 @@ void sprite_state_update_instances(SpriteBenchState *state, float delta_seconds)
         if (inst->x < 0.0f) {
             inst->x = 0.0f;
             inst->vx = -inst->vx;
-        } else if (inst->x > (float)(BENCH_SCREEN_W - SPRITE_SIZE)) {
-            inst->x = (float)(BENCH_SCREEN_W - SPRITE_SIZE);
+        } else if (inst->x > (float)(bench_logical_w() - SPRITE_SIZE)) {
+            inst->x = (float)(bench_logical_w() - SPRITE_SIZE);
             inst->vx = -inst->vx;
         }
 
         if (inst->y < 0.0f) {
             inst->y = 0.0f;
             inst->vy = -inst->vy;
-        } else if (inst->y > (float)(BENCH_SCREEN_H - SPRITE_SIZE)) {
-            inst->y = (float)(BENCH_SCREEN_H - SPRITE_SIZE);
+        } else if (inst->y > (float)(bench_logical_h() - SPRITE_SIZE)) {
+            inst->y = (float)(bench_logical_h() - SPRITE_SIZE);
             inst->vy = -inst->vy;
         }
     }
@@ -261,7 +261,7 @@ static int sprite_status_band_top(const SpriteBenchState *state)
 {
     const int row_height = (state->line_height > 0) ? state->line_height : 20;
     const int bottom_margin = 6;
-    return BENCH_SCREEN_H - bottom_margin - row_height * 3;
+    return bench_logical_h() - bottom_margin - row_height * 3;
 }
 
 void sprite_state_render_status_bg(SpriteBenchState *state, SDL_Renderer *renderer, BenchMetrics *metrics)
@@ -270,7 +270,7 @@ void sprite_state_render_status_bg(SpriteBenchState *state, SDL_Renderer *render
 
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
-    SDL_Rect band = {0, band_top - 4, BENCH_SCREEN_W, BENCH_SCREEN_H - band_top + 4};
+    SDL_Rect band = {0, band_top - 4, bench_logical_w(), bench_logical_h() - band_top + 4};
     SDL_RenderFillRect(renderer, &band);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 

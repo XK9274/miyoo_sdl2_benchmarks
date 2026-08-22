@@ -30,8 +30,8 @@ int main(int argc, char *argv[])
     SDL_Window *window = SDL_CreateWindow("SDL2 Space Bench",
                                           SDL_WINDOWPOS_CENTERED,
                                           SDL_WINDOWPOS_CENTERED,
-                                          SPACE_SCREEN_W,
-                                          SPACE_SCREEN_H,
+                                          BENCH_NATIVE_W,
+                                          BENCH_NATIVE_H,
                                           SDL_WINDOW_SHOWN);
     if (!window) {
         printf("Window creation failed: %s\n", SDL_GetError());
@@ -49,6 +49,11 @@ int main(int argc, char *argv[])
         SDL_Quit();
         return 1;
     }
+
+    int logical_w, logical_h;
+    bench_display_config_load(&logical_w, &logical_h);
+    bench_display_config_apply(renderer, logical_w, logical_h);
+    bench_frame_limit_load();
 
     bench_driver_init(window, renderer);
 
@@ -91,6 +96,8 @@ int main(int argc, char *argv[])
 
     SDL_bool running = SDL_TRUE;
     while (running) {
+        const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
+
         running = space_handle_input(&state, &metrics);
         if (!running) {
             break;
@@ -111,6 +118,7 @@ int main(int argc, char *argv[])
         SDL_RenderPresent(renderer);
 
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
+        bench_frame_limit_wait(frame_start_counter);
     }
 
     bench_driver_shutdown();

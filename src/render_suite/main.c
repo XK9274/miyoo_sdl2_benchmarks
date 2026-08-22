@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 
     SDL_Window *window = SDL_CreateWindow("SDL2 Render Suite",
                                           SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          BENCH_SCREEN_W, BENCH_SCREEN_H,
+                                          BENCH_NATIVE_W, BENCH_NATIVE_H,
                                           SDL_WINDOW_SHOWN);
     if (!window) {
         printf("Window creation failed: %s\n", SDL_GetError());
@@ -88,6 +88,11 @@ int main(int argc, char *argv[])
         SDL_Quit();
         return 1;
     }
+
+    int logical_w, logical_h;
+    bench_display_config_load(&logical_w, &logical_h);
+    bench_display_config_apply(renderer, logical_w, logical_h);
+    bench_frame_limit_load();
 
     bench_driver_init(window, renderer);
 
@@ -136,7 +141,7 @@ int main(int argc, char *argv[])
     BenchMetrics metrics;
     bench_reset_metrics(&metrics);
 
-    BenchOverlay *overlay = bench_overlay_create(renderer, BENCH_SCREEN_W, 16, 12);
+    BenchOverlay *overlay = bench_overlay_create(renderer, bench_logical_w(), 16, 12);
     if (!overlay) {
         printf("Overlay creation failed\n");
         if (loading_active) {
@@ -165,6 +170,8 @@ int main(int argc, char *argv[])
 
     SDL_bool running = SDL_TRUE;
     while (running) {
+        const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
+
         if (!rs_handle_input(&state, &metrics)) {
             break;
         }
@@ -220,6 +227,7 @@ int main(int argc, char *argv[])
         SDL_RenderPresent(renderer);
 
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
+        bench_frame_limit_wait(frame_start_counter);
 
         if (metrics.accumulated_frame_time_ms >= next_status_refresh_ms) {
             char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
