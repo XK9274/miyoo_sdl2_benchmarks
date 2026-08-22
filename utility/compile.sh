@@ -69,6 +69,7 @@ if [ "$LOCAL_MODE" = "true" ]; then
     echo "WARNING: This requires the cross-compilation toolchain to be already set up"
     echo ""
 
+    "$SCRIPT_DIR/prepare-neon.sh" "$REPO_DIR/neon-arm-library"
     cd "$REPO_DIR"
 
     # Build all benchmark binaries locally
