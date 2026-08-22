@@ -6,8 +6,9 @@
 #include "bench_common.h"
 
 #define DB_MAX_PARTICLES 500
-#define DB_SCREEN_W BENCH_SCREEN_W
-#define DB_SCREEN_H BENCH_SCREEN_H
+/* Configured logical size (not the fixed native window size -- see BENCH_NATIVE_W/H). */
+#define DB_SCREEN_W bench_logical_w()
+#define DB_SCREEN_H bench_logical_h()
 #define DB_PARTICLE_PALETTE_SIZE 8
 
 typedef struct {

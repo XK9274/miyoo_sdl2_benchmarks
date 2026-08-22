@@ -11,8 +11,9 @@
 #include "common/loading_screen.h"
 #include "controller_input.h"
 
-#define SCREEN_W BENCH_SCREEN_W
-#define SCREEN_H BENCH_SCREEN_H
+/* Configured logical size (not the fixed native window size -- see BENCH_NATIVE_W/H). */
+#define SCREEN_W bench_logical_w()
+#define SCREEN_H bench_logical_h()
 
 int main(int argc, char *argv[])
 {
@@ -37,7 +38,7 @@ int main(int argc, char *argv[])
 
     SDL_Window *window = SDL_CreateWindow("SDL2 Audio Bench",
                                           SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          SCREEN_W, SCREEN_H,
+                                          BENCH_NATIVE_W, BENCH_NATIVE_H,
                                           SDL_WINDOW_SHOWN);
     if (!window) {
         printf("Window creation failed: %s\n", SDL_GetError());
@@ -57,6 +58,11 @@ int main(int argc, char *argv[])
         SDL_Quit();
         return 1;
     }
+
+    int logical_w, logical_h;
+    bench_display_config_load(&logical_w, &logical_h);
+    bench_display_config_apply(renderer, logical_w, logical_h);
+    bench_frame_limit_load();
 
     bench_driver_init(window, renderer);
 
@@ -113,6 +119,8 @@ int main(int argc, char *argv[])
 
     SDL_bool running = SDL_TRUE;
     while (running) {
+        const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
+
         running = audio_handle_input(&metrics);
         if (!running) {
             break;
@@ -175,6 +183,7 @@ int main(int argc, char *argv[])
         SDL_RenderPresent(renderer);
 
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
+        bench_frame_limit_wait(frame_start_counter);
     }
 
     audio_overlay_stop();

@@ -112,7 +112,7 @@ static void rs_test_logical_scaling(const RenderSuiteState *state,
     rs_draw_test_content(state, renderer, target_width, target_height, phase, metrics);
 
     // Reset logical size
-    SDL_RenderSetLogicalSize(renderer, BENCH_SCREEN_W, BENCH_SCREEN_H);
+    SDL_RenderSetLogicalSize(renderer, bench_logical_w(), bench_logical_h());
 
     Uint64 end_time = SDL_GetPerformanceCounter();
     if (metrics) {
@@ -150,11 +150,11 @@ static void rs_test_viewport_scaling(const RenderSuiteState *state,
         viewport.h += viewport.y;
         viewport.y = 0;
     }
-    if (viewport.x + viewport.w > BENCH_SCREEN_W) {
-        viewport.w = BENCH_SCREEN_W - viewport.x;
+    if (viewport.x + viewport.w > bench_logical_w()) {
+        viewport.w = bench_logical_w() - viewport.x;
     }
-    if (viewport.y + viewport.h > BENCH_SCREEN_H) {
-        viewport.h = BENCH_SCREEN_H - viewport.y;
+    if (viewport.y + viewport.h > bench_logical_h()) {
+        viewport.h = bench_logical_h() - viewport.y;
     }
 
     SDL_RenderSetViewport(renderer, &viewport);
@@ -251,8 +251,8 @@ void rs_scene_scaling_init(RenderSuiteState *state, SDL_Renderer *renderer)
         }
     }
 
-    state->scaling_current_width = BENCH_SCREEN_W;
-    state->scaling_current_height = BENCH_SCREEN_H;
+    state->scaling_current_width = bench_logical_w();
+    state->scaling_current_height = bench_logical_h();
     state->scaling_phase = 0.0f;
 }
 
@@ -284,8 +284,8 @@ void rs_scene_scaling(RenderSuiteState *state,
     }
 
     const float factor = rs_state_stress_factor(state);
-    const int region_height = SDL_max(1, BENCH_SCREEN_H - (int)state->top_margin);
-    const float center_x = BENCH_SCREEN_W * 0.5f;
+    const int region_height = SDL_max(1, bench_logical_h() - (int)state->top_margin);
+    const float center_x = bench_logical_w() * 0.5f;
     const float center_y = (float)state->top_margin + (float)region_height * 0.5f;
 
     // Update animation phase

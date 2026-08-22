@@ -384,7 +384,7 @@ void rs_scene_pixels(RenderSuiteState *state,
     }
 
     const float factor = rs_state_stress_factor(state);
-    const int region_height = SDL_max(1, BENCH_SCREEN_H - (int)state->top_margin);
+    const int region_height = SDL_max(1, bench_logical_h() - (int)state->top_margin);
 
     // Update animation phase
     state->pixel_phase += (float)(delta_seconds * (1.0f + factor * 2.0f));
@@ -456,7 +456,7 @@ void rs_scene_pixels(RenderSuiteState *state,
         const float scale = 2.0f + rs_fast_sin(state->pixel_phase * 0.5f) * 0.5f;
 
         SDL_FRect dest = {
-            BENCH_SCREEN_W * 0.5f - PIXEL_SURFACE_WIDTH * scale * 0.5f,
+            bench_logical_w() * 0.5f - PIXEL_SURFACE_WIDTH * scale * 0.5f,
             state->top_margin + region_height * 0.5f - PIXEL_SURFACE_HEIGHT * scale * 0.5f,
             PIXEL_SURFACE_WIDTH * scale,
             PIXEL_SURFACE_HEIGHT * scale

@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
     SDL_Window *window = SDL_CreateWindow("SDL2 Sprite Bench",
                                           SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          BENCH_SCREEN_W, BENCH_SCREEN_H,
+                                          BENCH_NATIVE_W, BENCH_NATIVE_H,
                                           SDL_WINDOW_SHOWN);
     if (!window) {
         printf("Window creation failed: %s\n", SDL_GetError());
@@ -37,11 +37,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    /* SDL_CreateRenderer (src/render/SDL_render.c:969 in this SDL2 fork)
-     * unconditionally ORs in SDL_RENDERER_PRESENTVSYNC regardless of the
-     * flags passed here -- omitting the flag alone does NOT disable vsync.
-     * The hint is the only way to actually turn it off; this suite exists
-     * specifically to stress the render/present path with vsync off. */
+    /* This SDL2 fork forces renderer vsync unless the hint disables it. */
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
@@ -51,6 +47,11 @@ int main(int argc, char *argv[])
         SDL_Quit();
         return 1;
     }
+
+    int logical_w, logical_h;
+    bench_display_config_load(&logical_w, &logical_h);
+    bench_display_config_apply(renderer, logical_w, logical_h);
+    bench_frame_limit_load();
 
     bench_driver_init(window, renderer);
     srand((unsigned int)time(NULL));
@@ -73,6 +74,8 @@ int main(int argc, char *argv[])
 
     SDL_bool running = SDL_TRUE;
     while (running) {
+        const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
+
         if (!sprite_handle_input(&state, &metrics)) {
             break;
         }
@@ -99,6 +102,7 @@ int main(int argc, char *argv[])
         sprite_state_render_text(&state, renderer, &metrics, delta_seconds);
 
         SDL_RenderPresent(renderer);
+        bench_frame_limit_wait(frame_start_counter);
     }
 
     bench_driver_shutdown();

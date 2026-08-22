@@ -5,8 +5,9 @@
 
 #include "bench_common.h"
 
-#define SPACE_SCREEN_W BENCH_SCREEN_W
-#define SPACE_SCREEN_H BENCH_SCREEN_H
+/* Configured logical size (not the fixed native window size -- see BENCH_NATIVE_W/H). */
+#define SPACE_SCREEN_W bench_logical_w()
+#define SPACE_SCREEN_H bench_logical_h()
 
 #define SPACE_STAR_COUNT 96
 #define SPACE_SPEEDLINE_COUNT 24

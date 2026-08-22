@@ -116,7 +116,7 @@ static void rs_draw_sweeps(const RenderSuiteState *state,
             SDL_RenderDrawLineF(renderer,
                                 0.0f - amplitude,
                                 base_y + offset,
-                                (float)BENCH_SCREEN_W + amplitude,
+                                (float)bench_logical_w() + amplitude,
                                 base_y - offset);
         } else {
             const float base_x = (float)start_x + t * (float)length;
@@ -148,8 +148,8 @@ void rs_scene_lines(RenderSuiteState *state,
 
     const float factor = rs_state_stress_factor(state);
     const float stress_scale = rs_clampf(factor, 0.5f, 4.0f);
-    const int region_height = SDL_max(1, BENCH_SCREEN_H - (int)state->top_margin);
-    const float center_x = BENCH_SCREEN_W * 0.5f;
+    const int region_height = SDL_max(1, bench_logical_h() - (int)state->top_margin);
+    const float center_x = bench_logical_w() * 0.5f;
     const float center_y = (float)state->top_margin + (float)region_height * 0.5f;
 
     /* advance animation */
@@ -167,8 +167,8 @@ void rs_scene_lines(RenderSuiteState *state,
 
     /* radial burst */
     const int radial_segments = rs_clampi((int)(stress_scale * 96.0f), 32, 240);
-    const float radius_min = (float)SDL_min(BENCH_SCREEN_W, region_height) * 0.18f;
-    const float radius_max = (float)SDL_min(BENCH_SCREEN_W, region_height) * (0.25f + stress_scale * 0.12f);
+    const float radius_min = (float)SDL_min(bench_logical_w(), region_height) * 0.18f;
+    const float radius_max = (float)SDL_min(bench_logical_w(), region_height) * (0.25f + stress_scale * 0.12f);
     rs_draw_radial_fan(state, renderer, center_x, center_y, radius_min, radius_max, phase, radial_segments, metrics);
 
     /* horizontal sweeps */

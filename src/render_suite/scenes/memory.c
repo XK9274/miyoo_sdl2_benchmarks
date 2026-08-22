@@ -287,7 +287,7 @@ static void rs_render_resource_textures(SDL_Renderer *renderer, float phase,
 {
     const int columns = 5; // Reduced from 8
     const int rows = 4;    // Reduced from 6
-    const float cell_width = (float)BENCH_SCREEN_W / (float)columns;
+    const float cell_width = (float)bench_logical_w() / (float)columns;
     const float cell_height = (float)region_height / (float)rows;
 
     int texture_index = 0;
@@ -365,7 +365,7 @@ void rs_scene_memory(RenderSuiteState *state,
     }
 
     const float factor = rs_state_stress_factor(state);
-    const int region_height = SDL_max(1, BENCH_SCREEN_H - (int)state->top_margin);
+    const int region_height = SDL_max(1, bench_logical_h() - (int)state->top_margin);
 
     // Update animation phase
     state->resources_phase += (float)(delta_seconds * (1.0f + factor * 2.0f));
