@@ -8,9 +8,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v1.2.0). Leave blank to auto-bump the patch version of the latest release."
+        description: "Release tag (e.g. v0.5.0). Blank bumps PATCH after the first three-part release."
         required: false
         type: string
+      dry_run:
+        description: "Build and package without checking or publishing a GitHub Release (for act)."
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   preflight:
@@ -19,6 +24,8 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
+      target_sha: ${{ steps.version.outputs.target_sha }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
 
     steps:
       - name: Checkout
@@ -28,51 +35,58 @@ jobs:
 
       - name: Resolve tag
         id: version
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+          TRIGGER_TAG: ${{ github.ref_name }}
+          TARGET_SHA: ${{ github.sha }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag }}" ]]; then
-            TAG="${{ inputs.tag }}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "$REQUESTED_TAG" ]]; then
+            TAG="$REQUESTED_TAG"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+            LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | grep -m1 -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
             if [[ -z "$LATEST_TAG" ]]; then
-              TAG="v0.1.0"
-              echo "No existing release tags found -- starting at $TAG"
-            else
-              VER="${LATEST_TAG#v}"
-              MAJOR="${VER%%.*}"
-              REST="${VER#*.}"
-              MINOR="${REST%%.*}"
-              PATCH="${REST#*.}"
-              PATCH="${PATCH%%-*}"
-              TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
-              echo "No tag given -- auto-bumping latest release $LATEST_TAG -> $TAG"
+              echo "No three-part release tag exists yet. Enter v0.5.0 explicitly for the first SemVer release."
+              exit 1
             fi
+            VER="${LATEST_TAG#v}"
+            MAJOR="${VER%%.*}"
+            REST="${VER#*.}"
+            MINOR="${REST%%.*}"
+            PATCH="${REST#*.}"
+            TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+            echo "No tag given -- auto-bumping latest release $LATEST_TAG -> $TAG"
           else
-            TAG="${GITHUB_REF_NAME}"
+            TAG="$TRIGGER_TAG"
           fi
 
-          if ! echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
-            echo "Tag '$TAG' does not match vMAJOR.MINOR.PATCH format"
+          if ! echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$'; then
+            echo "Tag '$TAG' does not match vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-prerelease format"
             exit 1
           fi
 
           VERSION="${TAG#v}"
-          echo "tag=$TAG"     >> "$GITHUB_OUTPUT"
+          PRERELEASE=false
+          [[ "$TAG" == *-* ]] && PRERELEASE=true
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Releasing $TAG"
+          echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "Resolved $TAG at $TARGET_SHA (prerelease=$PRERELEASE)"
 
-      - name: Check for uncommitted changes
-        run: |
-          if [[ -n "$(git status --porcelain)" ]]; then
-            echo "Working tree is dirty — release must be built from a clean tree"
-            git status
-            exit 1
-          fi
-
-      - name: Check tag is not a duplicate release
+      - name: Check release target and duplicates
+        if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
+          TARGET_SHA="${{ steps.version.outputs.target_sha }}"
+          if git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null; then
+            TAG_SHA=$(git rev-list -n1 "$TAG")
+            if [[ "$TAG_SHA" != "$TARGET_SHA" ]]; then
+              echo "Tag '$TAG' points to $TAG_SHA, not release commit $TARGET_SHA"
+              exit 1
+            fi
+          fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release '$TAG' already exists — bump the version"
             exit 1
@@ -91,21 +105,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout local dry run
+        if: ${{ inputs.dry_run }}
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Checkout release commit
+        if: ${{ !inputs.dry_run }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.preflight.outputs.target_sha }}
+          fetch-depth: 0
+
+      - name: Verify local dry-run commit
+        if: ${{ inputs.dry_run }}
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ needs.preflight.outputs.target_sha }}"
 
       - name: Build via docker-compile.sh
+        env:
+          TITLE_GIT_VERSION: ${{ needs.preflight.outputs.tag }}
         run: |
           chmod +x ./docker-compile.sh
           ./docker-compile.sh
 
-      - name: Verify build artifacts
+      - name: Verify build artifacts and embedded version
         run: |
           ls -la app-dist/sdl_bench/bin/
           file app-dist/sdl_bench/bin/*
+          strings app-dist/sdl_bench/bin/sdl2_title | grep -F -- "${{ needs.preflight.outputs.tag }}"
 
       - name: Package release archive
         id: package
@@ -118,6 +145,7 @@ jobs:
           cat "${ARCHIVE}.sha256"
 
       - name: Upload build artifact
+        if: ${{ !inputs.dry_run }}
         uses: actions/upload-artifact@v4
         with:
           name: sdl_bench-${{ needs.preflight.outputs.tag }}
@@ -129,14 +157,12 @@ jobs:
   release:
     name: Publish release
     needs: [preflight, build]
+    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
@@ -148,10 +174,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ needs.preflight.outputs.tag }}"
+          TARGET_SHA="${{ needs.preflight.outputs.target_sha }}"
+          PRERELEASE="${{ needs.preflight.outputs.prerelease }}"
+
+          RELEASE_FLAGS=()
+          if [[ "$PRERELEASE" == "true" ]]; then
+            RELEASE_FLAGS+=(--prerelease)
+          fi
 
           gh release create "$TAG" \
             output/*.tar.gz \
             output/*.sha256 \
+            --target "$TARGET_SHA" \
+            "${RELEASE_FLAGS[@]}" \
             --title "SDL2 Benchmarks (Miyoo Mini) $TAG" \
             --notes "$(cat <<NOTES
           ## SDL2 Benchmarks for Miyoo Mini — $TAG
@@ -168,7 +203,7 @@ jobs:
           Extract to \`/mnt/SDCARD/App/sdl_bench\` on the device, then restart MainUI.
 
           ### Build info
-          - Commit: ${{ github.sha }}
+          - Commit: $TARGET_SHA
           - Toolchain: [XK9274/union-miyoomini-toolchain](https://github.com/XK9274/union-miyoomini-toolchain)
           NOTES
           )"
