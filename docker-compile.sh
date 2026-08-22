@@ -120,6 +120,11 @@ docker_cmd="
     cd /root/workspace/build_source
     export $verbose_env
 
+    # Container runs as root; everything it writes into this bind mount would
+    # otherwise be left root-owned on the host. Reset ownership back to the
+    # invoking user on exit, success or failure, so re-runs never need sudo.
+    trap 'chown -R \"\$HOST_UID:\$HOST_GID\" /root/workspace/build_source 2>/dev/null || true' EXIT
+
     echo 'Compiling SDL2 libraries...'
     ./mksdl2.sh
 
@@ -153,6 +158,8 @@ TITLE_GIT_VERSION="${TITLE_GIT_VERSION:-$(git -C "$SCRIPT_DIR" describe --tags -
 
 docker run --rm \
     -e TITLE_GIT_VERSION="$TITLE_GIT_VERSION" \
+    -e HOST_UID="$(id -u)" \
+    -e HOST_GID="$(id -g)" \
     -v "$WORKSPACE_DIR":/root/workspace/build_source \
     miyoomini-toolchain bash -c "$docker_cmd"
 
