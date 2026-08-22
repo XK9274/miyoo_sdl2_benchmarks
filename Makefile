@@ -10,7 +10,8 @@ LOCAL_LIB_DIR := app-dist/sdl_bench/lib
 GL_ARTIFACT_DIR := build_artifacts/gles_libs
 GL_ARTIFACT_STAMP := $(GL_ARTIFACT_DIR)/.stamp
 
-PROGRAMS      := sdl2_bench_double_buf \
+PROGRAMS      := sdl2_title \
+                 sdl2_bench_double_buf \
                  sdl2_space_bench \
                  sdl2_render_suite \
                  sdl2_gl_fbo_effects \
@@ -38,9 +39,21 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/overlay.c \
     $(SRC_DIR)/common/overlay_grid.c \
     $(SRC_DIR)/common/driver_support.c \
+    $(SRC_DIR)/common/display_config.c \
+    $(SRC_DIR)/common/frame_limit.c \
     $(SRC_DIR)/common/loading_screen.c \
     $(SRC_DIR)/common/gl_effect.c
 COMMON_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(COMMON_SOURCES))
+
+TITLE_SOURCES := \
+    $(SRC_DIR)/title/input.c \
+    $(SRC_DIR)/title/main.c \
+    $(SRC_DIR)/title/menu.c \
+    $(SRC_DIR)/title/config_panel.c \
+    $(SRC_DIR)/title/launcher.c \
+    $(SRC_DIR)/title/state.c
+TITLE_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(TITLE_SOURCES))
+TITLE_TARGET  := $(BIN_DIR)/sdl2_title
 
 SPACE_SOURCES := \
     $(SRC_DIR)/space_bench/input.c \
@@ -121,6 +134,7 @@ SPRITE_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SPRITE_BENCH_
 SPRITE_BENCH_TARGET  := $(BIN_DIR)/sdl2_sprite_bench
 
 ALL_OBJECTS   := $(COMMON_OBJECTS) \
+                 $(TITLE_OBJECTS) \
                  $(SPACE_OBJECTS) \
                  $(DOUBLE_OBJECTS) \
                  $(RENDER_OBJECTS) \
@@ -175,6 +189,10 @@ all: $(TARGETS)
 # Build NEON library
 $(NEON_LIB):
 	$(MAKE) -C $(NEON_DIR) CROSS_COMPILE=$(CROSS_PREFIX)
+
+$(TITLE_TARGET): $(COMMON_OBJECTS) $(TITLE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(TITLE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
 
 $(SPACE_TARGET): $(COMMON_OBJECTS) $(SPACE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(SPACE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
