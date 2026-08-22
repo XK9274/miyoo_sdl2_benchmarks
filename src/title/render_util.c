@@ -34,13 +34,10 @@ static void title_text_cache_reset(void)
     }
 }
 
-void title_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
-                     int x, int y, SDL_Color color, SDL_bool center)
+/* Looks up (or bakes and caches) the glyph texture for (font, bake_color, text). */
+static TitleTextCacheEntry *title_text_cache_get(SDL_Renderer *renderer, TTF_Font *font,
+                                                  const char *text, SDL_Color bake_color)
 {
-    if (!renderer || !font || !text || !text[0]) {
-        return;
-    }
-
     if (g_text_cache_owner != renderer) {
         title_text_cache_reset();
         g_text_cache_owner = renderer;
@@ -53,7 +50,7 @@ void title_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
 
     for (int i = 0; i < TITLE_TEXT_CACHE_SIZE; i++) {
         TitleTextCacheEntry *e = &g_text_cache[i];
-        if (e->used && e->font == font && title_color_eq(e->color, color) && strcmp(e->text, text) == 0) {
+        if (e->used && e->font == font && title_color_eq(e->color, bake_color) && strcmp(e->text, text) == 0) {
             slot = e;
             break;
         }
@@ -68,16 +65,16 @@ void title_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
 
     if (!slot) {
         TitleTextCacheEntry *lru = empty ? empty : oldest;
-        SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
+        SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, bake_color);
         if (!surface) {
-            return;
+            return NULL;
         }
         SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
         const int w = surface->w;
         const int h = surface->h;
         SDL_FreeSurface(surface);
         if (!texture) {
-            return;
+            return NULL;
         }
 
         if (lru->texture) {
@@ -85,7 +82,7 @@ void title_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
         }
         lru->used = SDL_TRUE;
         lru->font = font;
-        lru->color = color;
+        lru->color = bake_color;
         strncpy(lru->text, text, sizeof(lru->text) - 1);
         lru->text[sizeof(lru->text) - 1] = '\0';
         lru->texture = texture;
@@ -95,6 +92,42 @@ void title_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
     }
 
     slot->last_used_ticks = now;
+    return slot;
+}
+
+void title_draw_text(SDL_Renderer *renderer, TTF_Font *font, const char *text,
+                     int x, int y, SDL_Color color, SDL_bool center)
+{
+    if (!renderer || !font || !text || !text[0]) {
+        return;
+    }
+
+    TitleTextCacheEntry *slot = title_text_cache_get(renderer, font, text, color);
+    if (!slot) {
+        return;
+    }
+
+    const SDL_Rect dst = {center ? x - slot->w / 2 : x, y, slot->w, slot->h};
+    SDL_RenderCopy(renderer, slot->texture, NULL, &dst);
+}
+
+/* Same as title_draw_text, but the glyph is baked once in white and tinted via texture
+ * color/alpha mod each call -- lets tint change every frame (e.g. a pulse) at no extra cost. */
+void title_draw_text_tinted(SDL_Renderer *renderer, TTF_Font *font, const char *text,
+                            int x, int y, SDL_Color tint, SDL_bool center)
+{
+    if (!renderer || !font || !text || !text[0]) {
+        return;
+    }
+
+    const SDL_Color bake_white = {255, 255, 255, 255};
+    TitleTextCacheEntry *slot = title_text_cache_get(renderer, font, text, bake_white);
+    if (!slot) {
+        return;
+    }
+
+    SDL_SetTextureColorMod(slot->texture, tint.r, tint.g, tint.b);
+    SDL_SetTextureAlphaMod(slot->texture, tint.a);
     const SDL_Rect dst = {center ? x - slot->w / 2 : x, y, slot->w, slot->h};
     SDL_RenderCopy(renderer, slot->texture, NULL, &dst);
 }
@@ -128,31 +161,75 @@ void title_draw_dim_rect(SDL_Renderer *renderer, SDL_Rect rect, SDL_Color color)
     SDL_RenderCopy(renderer, tex, NULL, &rect);
 }
 
-void title_draw_panel_frame(SDL_Renderer *renderer, TTF_Font *font, const char *label, SDL_Rect box)
+static Uint8 title_lerp_u8(Uint8 a, Uint8 b, float t)
+{
+    return (Uint8)(a + (b - a) * t);
+}
+
+void title_draw_panel_frame(SDL_Renderer *renderer, TTF_Font *font, const char *label, SDL_Rect box,
+                            SDL_bool active)
 {
     if (!renderer) {
         return;
     }
 
     const SDL_Color border = {70, 74, 84, 255};
+    const SDL_Color border_active = {130, 175, 255, 255};
     const SDL_Color label_color = {150, 155, 168, 255};
+    const SDL_Color label_active = {225, 235, 255, 255};
     const SDL_Color dim = {0, 0, 0, 100};
+
+    float pulse = 0.0f;
+    if (active) {
+        const float time = SDL_GetTicks() / 1000.0f;
+        pulse = 0.4f + 0.6f * (0.5f + 0.5f * SDL_sinf(time * 3.0f));
+    }
+
+    const SDL_Color border_draw = active
+        ? (SDL_Color){title_lerp_u8(border.r, border_active.r, pulse),
+                      title_lerp_u8(border.g, border_active.g, pulse),
+                      title_lerp_u8(border.b, border_active.b, pulse), 255}
+        : border;
+
+    /* Same continuous pulse as the border -- safe now since the label's glyph texture is
+     * baked once (white) and just tinted per frame, not re-rasterized (see title_draw_text_tinted). */
+    const SDL_Color label_draw = active
+        ? (SDL_Color){title_lerp_u8(label_color.r, label_active.r, pulse),
+                      title_lerp_u8(label_color.g, label_active.g, pulse),
+                      title_lerp_u8(label_color.b, label_active.b, pulse), 255}
+        : label_color;
 
     title_draw_dim_rect(renderer, box, dim);
 
-    SDL_SetRenderDrawColor(renderer, border.r, border.g, border.b, border.a);
-    SDL_RenderDrawRect(renderer, &box);
+    int label_w = 0, label_h = 0;
+    if (font && label && label[0]) {
+        TTF_SizeUTF8(font, label, &label_w, &label_h);
+    }
+
+    const int label_x = box.x + 10;
+    const int gap_pad = 4;
+    const int right = box.x + box.w - 1;
+    const int bottom = box.y + box.h - 1;
+
+    SDL_SetRenderDrawColor(renderer, border_draw.r, border_draw.g, border_draw.b, border_draw.a);
+
+    if (label_w > 0) {
+        const int gap_start = SDL_clamp(label_x - gap_pad, box.x, right);
+        const int gap_end = SDL_clamp(label_x + label_w + gap_pad, box.x, right);
+        SDL_RenderDrawLine(renderer, box.x, box.y, gap_start, box.y);
+        SDL_RenderDrawLine(renderer, gap_end, box.y, right, box.y);
+    } else {
+        SDL_RenderDrawLine(renderer, box.x, box.y, right, box.y);
+    }
+    SDL_RenderDrawLine(renderer, box.x, box.y, box.x, bottom);
+    SDL_RenderDrawLine(renderer, right, box.y, right, bottom);
+    SDL_RenderDrawLine(renderer, box.x, bottom, right, bottom);
 
     if (!font || !label || !label[0]) {
         return;
     }
 
-    int label_w = 0, label_h = 0;
-    TTF_SizeUTF8(font, label, &label_w, &label_h);
-    (void)label_w;
-
-    const int label_x = box.x + 10;
-    title_draw_text(renderer, font, label, label_x, box.y - label_h / 2, label_color, SDL_FALSE);
+    title_draw_text_tinted(renderer, font, label, label_x, box.y - label_h / 2, label_draw, SDL_FALSE);
 }
 
 int title_wrap_text(TTF_Font *font, const char *text, int max_width,

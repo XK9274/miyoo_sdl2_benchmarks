@@ -97,8 +97,8 @@ void title_menu_render(TitleContext *ctx, const TitleState *state)
 
     const SDL_Rect list_box = {TITLE_LIST_X - 16, box_y, 276, box_h};
     const SDL_Rect config_box = {TITLE_CONFIG_X - 16, box_y, 256, box_h};
-    title_draw_panel_frame(renderer, ui_font, "Suites", list_box);
-    title_draw_panel_frame(renderer, ui_font, "Config", config_box);
+    title_draw_panel_frame(renderer, ui_font, "Suites", list_box, state->focus == TITLE_FOCUS_LIST);
+    title_draw_panel_frame(renderer, ui_font, "Config", config_box, state->focus == TITLE_FOCUS_CONFIG);
 
     /* Suite list, plus a trailing Quit row. */
     for (int i = 0; i < TITLE_LIST_ROWS; i++) {
