@@ -77,7 +77,7 @@ void title_menu_render(TitleContext *ctx, const TitleState *state)
     SDL_snprintf(fps_text, sizeof(fps_text), "%.0f FPS", title_track_fps());
 
     title_statusbar_render_header(renderer, accent_font, title_font, accent_font,
-                                  &ctx->battery_fill, &ctx->backend, fps_text, "SDL2 Demo Suites");
+                                  &ctx->battery_fill, &ctx->battery_glow, &ctx->backend, fps_text, "SDL2 Demo Suites");
     title_statusbar_render_status_header(renderer, ctx->small_font, &ctx->backend,
                                          TITLE_STATUSBAR_HEADER_HEIGHT - 6, TITLE_VERSION_STRING);
 

@@ -6,6 +6,7 @@
 
 #include "title/backend_status.h"
 #include "title/battery_fill.h"
+#include "title/battery_glow.h"
 #include "title/fireflies.h"
 #include "title/state.h"
 
@@ -19,6 +20,7 @@ typedef struct {
     TTF_Font *accent_font; /* clock, battery percentage, version stamp */
     TitleBackendStatus backend;
     TitleBatteryFill battery_fill;
+    TitleBatteryGlow battery_glow;
     TitleFireflies fireflies;
     SDL_Texture *background;
 } TitleContext;

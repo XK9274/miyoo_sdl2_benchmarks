@@ -65,7 +65,8 @@ void title_draw_led(SDL_Renderer *renderer, int x, int y, int size, SDL_bool ok)
 /* Header bar: FPS (left), title (centered), clock+battery+percent (right) -- one aligned row. */
 void title_statusbar_render_header(SDL_Renderer *renderer,
                                    TTF_Font *left_font, TTF_Font *title_font, TTF_Font *accent_font,
-                                   TitleBatteryFill *battery_fill, const TitleBackendStatus *backend,
+                                   TitleBatteryFill *battery_fill, TitleBatteryGlow *battery_glow,
+                                   const TitleBackendStatus *backend,
                                    const char *left_text, const char *title_text)
 {
     if (!renderer || !backend) {
@@ -126,7 +127,7 @@ void title_statusbar_render_header(SDL_Renderer *renderer,
     const int percent_x = icon_x + icon_w + icon_percent_gap;
 
     title_draw_text(renderer, accent_font, clock_text, clock_x, mid - clock_h / 2, accent_color, SDL_FALSE);
-    title_draw_battery_icon(renderer, battery_fill, icon_x, mid - icon_h / 2,
+    title_draw_battery_icon(renderer, battery_fill, battery_glow, icon_x, mid - icon_h / 2,
                             icon_h, live_status.battery_percent, live_status.charging);
     title_draw_text(renderer, accent_font, percent_text, percent_x, mid - percent_h / 2, accent_color, SDL_FALSE);
 }
