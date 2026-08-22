@@ -22,11 +22,12 @@ static const SDL_Color tetrahedron_edge_palette[] = {
     {130, 160, 255, 255},
 };
 
+/* Outward-CCW winding per face. */
 static const int tetrahedron_faces[][3] = {
     {0, 1, 2},
-    {0, 1, 3},
+    {3, 1, 0},
     {0, 2, 3},
-    {1, 2, 3},
+    {3, 2, 1},
 };
 
 static const SDL_Color tetrahedron_face_colors[] = {
@@ -50,6 +51,10 @@ static void bench_render_tetrahedron_faces(SDL_Renderer *renderer,
         const BenchVertex *v0 = &vertices[indices[0]];
         const BenchVertex *v1 = &vertices[indices[1]];
         const BenchVertex *v2 = &vertices[indices[2]];
+
+        if (!bench_triangle_is_front_facing(v0, v1, v2)) {
+            continue;
+        }
 
         const int base = triangle_count * 3;
         bench_setup_sdl_vertex(&triangle_vertices[base + 0], v0, &color);
@@ -78,9 +83,10 @@ void bench_render_tetrahedron(SDL_Renderer *renderer,
 
     if (mode == 0) {
         bench_render_tetrahedron_faces(renderer, vertices, metrics);
+        return;
     }
 
-    if (mode == 0 || mode == 1) {
+    if (mode == 1) {
         bench_render_edge_batch(renderer,
                                 vertices,
                                 tetrahedron_edges,

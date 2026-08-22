@@ -59,6 +59,10 @@ static void bench_render_octahedron_faces(SDL_Renderer *renderer,
         const BenchVertex *v1 = &vertices[indices[1]];
         const BenchVertex *v2 = &vertices[indices[2]];
 
+        if (!bench_triangle_is_front_facing(v0, v1, v2)) {
+            continue;
+        }
+
         const int base = triangle_count * 3;
         bench_setup_sdl_vertex(&triangle_vertices[base + 0], v0, &color);
         bench_setup_sdl_vertex(&triangle_vertices[base + 1], v1, &color);
@@ -86,9 +90,10 @@ void bench_render_octahedron(SDL_Renderer *renderer,
 
     if (mode == 0) {
         bench_render_octahedron_faces(renderer, vertices, metrics);
+        return;
     }
 
-    if (mode == 0 || mode == 1) {
+    if (mode == 1) {
         bench_render_edge_batch(renderer,
                                 vertices,
                                 octahedron_edges,

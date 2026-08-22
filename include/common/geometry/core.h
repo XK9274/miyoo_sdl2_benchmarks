@@ -41,6 +41,11 @@ void bench_setup_sdl_vertex(SDL_Vertex *vert,
                             const BenchVertex *bench_vert,
                             const SDL_Color *color);
 
+/* Screen-space winding test: skips a triangle whose projected face points away from the camera. */
+SDL_bool bench_triangle_is_front_facing(const BenchVertex *v0,
+                                        const BenchVertex *v1,
+                                        const BenchVertex *v2);
+
 void bench_render_triangle_batch(SDL_Renderer *renderer,
                                  SDL_Vertex *vertices,
                                  int triangle_count,

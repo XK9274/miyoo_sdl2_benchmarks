@@ -10,8 +10,9 @@ static const float square_pyramid_base[][3] = {
     { 0.0f,  0.0f,  1.0f},
 };
 
+/* Outward-CCW winding per face. */
 static const int square_pyramid_faces[][3] = {
-    {0, 1, 2}, {0, 2, 3},
+    {2, 1, 0}, {3, 2, 0},
     {0, 1, 4}, {1, 2, 4}, {2, 3, 4}, {3, 0, 4},
 };
 
@@ -63,6 +64,10 @@ void bench_render_square_pyramid(SDL_Renderer *renderer,
             const BenchVertex *v1 = &vertices[indices[1]];
             const BenchVertex *v2 = &vertices[indices[2]];
 
+            if (!bench_triangle_is_front_facing(v0, v1, v2)) {
+                continue;
+            }
+
             const int base = tri_count * 3;
             bench_setup_sdl_vertex(&triangle_vertices[base + 0], v0, &color);
             bench_setup_sdl_vertex(&triangle_vertices[base + 1], v1, &color);
@@ -71,9 +76,10 @@ void bench_render_square_pyramid(SDL_Renderer *renderer,
         }
 
         bench_render_triangle_batch(renderer, triangle_vertices, tri_count, metrics);
+        return;
     }
 
-    if (mode == 0 || mode == 1) {
+    if (mode == 1) {
         bench_render_edge_batch(renderer,
                                 vertices,
                                 square_pyramid_edges,
