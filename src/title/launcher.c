@@ -25,7 +25,12 @@ static TTF_Font *title_load_menu_font(int size)
     }
     char path[PATH_MAX];
     snprintf(path, sizeof(path), "%s/../assets/ThaleahFat.ttf", bin_dir);
-    return TTF_OpenFont(path, size);
+    TTF_Font *font = TTF_OpenFont(path, size);
+    if (font) {
+        /* Keep glyph edges smooth at the native 640x480 title resolution. */
+        TTF_SetFontHinting(font, TTF_HINTING_LIGHT);
+    }
+    return font;
 }
 
 SDL_bool title_context_init(TitleContext *ctx)
@@ -81,7 +86,7 @@ SDL_bool title_context_init(TitleContext *ctx)
 
     ctx->title_font = title_load_menu_font(32);
     ctx->ui_font = title_load_menu_font(18);
-    ctx->small_font = title_load_menu_font(14);
+    ctx->small_font = title_load_menu_font(16);
     ctx->accent_font = title_load_menu_font(24);
 
     return SDL_TRUE;
