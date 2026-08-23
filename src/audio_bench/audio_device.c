@@ -25,7 +25,6 @@ typedef struct {
 static const char *AUDIO_PATHS[] = {
     "assets/bgm.wav",
     "../assets/bgm.wav",
-    "/home/mattpc/HueTesting/union-miyoomini-toolchain/workspace/testSDL2_fps/assets/bgm.wav",
     NULL
 };
 
