@@ -76,6 +76,8 @@ static TitleTextCacheEntry *title_text_cache_get(SDL_Renderer *renderer, TTF_Fon
         if (!texture) {
             return NULL;
         }
+        /* TTF_RenderUTF8_Blended supplies per-pixel alpha; preserve it on copy. */
+        SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
 
         if (lru->texture) {
             SDL_DestroyTexture(lru->texture);
