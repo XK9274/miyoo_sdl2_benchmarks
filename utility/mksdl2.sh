@@ -128,12 +128,12 @@ mkdir -p ./logs
 
 cd ~/workspace/
 
-# SDL2 source packages to download and compile
+# SDL2 source packages to download and compile. Only what's actually linked:
+# -lSDL2 -lSDL2_ttf (see Makefile's LDLIBS). SDL2_image/SDL2_gfx/SDL2_mixer
+# are unused by this codebase and deliberately not built.
 declare -A sdl_packages=(
     ["SDL2-2.26.5.tar.gz"]="https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-2.26.5.tar.gz"
     ["SDL2_ttf-2.20.2.tar.gz"]="https://github.com/libsdl-org/SDL_ttf/releases/download/release-2.20.2/SDL2_ttf-2.20.2.tar.gz"
-    # ["SDL2_net-2.2.0.tar.gz"]="https://github.com/libsdl-org/SDL_net/releases/download/release-2.2.0/SDL2_net-2.2.0.tar.gz"
-    ["SDL2_mixer-2.6.3.tar.gz"]="https://github.com/libsdl-org/SDL_mixer/releases/download/release-2.6.3/SDL2_mixer-2.6.3.tar.gz"
 )
 
 # Download required packages
@@ -268,10 +268,6 @@ fi
 export PATH="$FIN_BIN_DIR/bin:$PATH"
 
 compile_package "SDL2_ttf-2.20.2.tar.gz" "SDL2_TTF" "SDL2_ttf-2.20.2" "" "SDL2_ttf"
-
-# compile_package "SDL2_net-2.2.0.tar.gz" "SDL2_NET" "SDL2_net-2.2.0" "" "SDL2_net"
-
-compile_package "SDL2_mixer-2.6.3.tar.gz" "SDL2_MIXER" "SDL2_mixer-2.6.3" "" "SDL2_mixer"
 
 status_msg "All SDL2 libraries compiled successfully!"
 

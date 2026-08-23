@@ -60,6 +60,7 @@ fi
 echo "Copying scripts to Docker workspace..."
 mkdir -p "$WORKSPACE_DIR"
 "$UTILITY_DIR/prepare-neon.sh" "$WORKSPACE_DIR/neon-arm-library"
+"$UTILITY_DIR/prepare-sdl2-miyoo.sh" "$WORKSPACE_DIR/sdl2_miyoo"
 cp -f "$UTILITY_DIR/mksdl2.sh" "$WORKSPACE_DIR/"
 cp -f "$UTILITY_DIR/compile.sh" "$WORKSPACE_DIR/"
 cp -f "$SCRIPT_DIR/Makefile" "$WORKSPACE_DIR/"
@@ -69,9 +70,10 @@ if [ -d "$SCRIPT_DIR/build_artifacts" ]; then
     mkdir -p "$WORKSPACE_DIR/build_artifacts"
     cp -a "$SCRIPT_DIR/build_artifacts/." "$WORKSPACE_DIR/build_artifacts/"
 fi
-# Ensure GLES libs are available in build artifacts for linking
+# GLES libs for compile-time linking come straight from the sdl2_miyoo checkout
+# (vendored at its repo root, not built) -- available as soon as it's cloned.
 mkdir -p "$WORKSPACE_DIR/build_artifacts/gles_libs"
-cp -a "$SCRIPT_DIR/app-dist/sdl_bench/lib/." "$WORKSPACE_DIR/build_artifacts/gles_libs/" 2>/dev/null || true
+cp -a "$WORKSPACE_DIR/sdl2_miyoo/libEGL.so" "$WORKSPACE_DIR/sdl2_miyoo/libGLESv2.so" "$WORKSPACE_DIR/build_artifacts/gles_libs/"
 echo "Scripts and source files copied to workspace"
 
 # Step 3: Make scripts executable
@@ -150,6 +152,23 @@ docker_cmd="
         echo 'ERROR: Benchmark compilation failed'
         exit 1
     fi
+
+    echo 'Extracting runtime libSDL2_ttf/libz from the toolchain sysroot...'
+    mkdir -p runtime_libs
+    ttf_lib=/opt/miyoomini-toolchain/usr/arm-linux-gnueabihf/sysroot/usr/lib/libSDL2_ttf-2.0.so.0
+    if [ -f \"\$ttf_lib\" ]; then
+        cp -L \"\$ttf_lib\" runtime_libs/
+    else
+        echo 'ERROR: libSDL2_ttf-2.0.so.0 not found in toolchain sysroot'
+        exit 1
+    fi
+    libz_path=\$(find /opt/miyoomini-toolchain -name 'libz.so.1' 2>/dev/null | head -1)
+    if [ -n \"\$libz_path\" ]; then
+        cp -L \"\$libz_path\" runtime_libs/
+    else
+        echo 'ERROR: libz.so.1 not found under /opt/miyoomini-toolchain'
+        exit 1
+    fi
 "
 
 # Release builds provide the resolved tag explicitly. Development builds retain
@@ -177,7 +196,36 @@ if [ -d "$WORKSPACE_DIR/build_artifacts" ]; then
     echo "SDL2 build artifacts updated"
 fi
 
-# Step 5: Copy compiled binaries to distribution directory
+# Step 4b: Build the MMIYOO SDL2 runtime driver (libSDL2-2.0.so.0 + the neon
+# helper it builds as a sub-step). Separate docker invocation, same toolchain
+# image, mirroring how mk_miyoo.sh --docker already runs standalone.
+echo ""
+echo "Building sdl2_miyoo runtime driver..."
+(cd "$WORKSPACE_DIR/sdl2_miyoo" && ./build-scripts/mk_miyoo.sh --docker --enable-gles --clean build)
+
+# Step 5: Populate the runtime lib/ directory. Nothing here is committed to
+# git -- every file is produced fresh by this script or the sdl2_miyoo build.
+echo ""
+echo "Populating runtime libraries..."
+mkdir -p "$SCRIPT_DIR/app-dist/sdl_bench/lib"
+sdl_output="$WORKSPACE_DIR/sdl2_miyoo/output/libSDL2-2.0.so.0"
+neon_lib="$WORKSPACE_DIR/sdl2_miyoo/libneonarmmiyoo.so"
+for required in "$sdl_output" "$neon_lib"; do
+    if [ ! -f "$required" ]; then
+        echo "ERROR: expected sdl2_miyoo build output missing: $required"
+        exit 1
+    fi
+done
+cp -f "$sdl_output" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libSDL2-2.0.so.0"
+cp -f "$neon_lib" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libneonarmmiyoo.so"
+cp -f "$WORKSPACE_DIR/sdl2_miyoo/libEGL.so" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libEGL.so"
+cp -f "$WORKSPACE_DIR/sdl2_miyoo/libGLESv2.so" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libGLESv2.so"
+cp -f "$WORKSPACE_DIR/runtime_libs/libSDL2_ttf-2.0.so.0" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libSDL2_ttf-2.0.so.0"
+cp -f "$WORKSPACE_DIR/runtime_libs/libz.so.1" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libz.so.1"
+echo "Runtime libraries populated:"
+ls -la "$SCRIPT_DIR/app-dist/sdl_bench/lib/"
+
+# Step 6: Copy compiled binaries to distribution directory
 echo "Copying compiled binaries to distribution directory..."
 mkdir -p "$SCRIPT_DIR/app-dist/sdl_bench/bin"
 
@@ -194,7 +242,7 @@ else
     exit 1
 fi
 
-# Step 6: Cleanup workspace files
+# Step 7: Cleanup workspace files
 echo ""
 echo "Cleaning up workspace..."
 rm -rf "$WORKSPACE_DIR/SDL2-*"

@@ -29,6 +29,7 @@ union-miyoomini-toolchain/
 neon-arm-library/
 build_artifacts/
 app-dist/sdl_bench/bin/
+app-dist/sdl_bench/lib/
 
 # Release artifacts
 *.tar.gz
