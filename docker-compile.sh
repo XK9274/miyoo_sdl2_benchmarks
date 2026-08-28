@@ -39,6 +39,16 @@ UTILITY_DIR="${SCRIPT_DIR}/utility"
 TOOLCHAIN_DIR="${SCRIPT_DIR}/union-miyoomini-toolchain"
 WORKSPACE_DIR="${TOOLCHAIN_DIR}/workspace"
 
+EXPECTED_BINARIES=(
+    sdl2_title
+    sdl2_bench_double_buf
+    sdl2_space_bench
+    sdl2_render_suite
+    sdl2_gl_fbo_effects
+    sdl2_audio_bench
+    sdl2_sprite_bench
+)
+
 echo "=========================================="
 echo "SDL2 Benchmarks Docker Build Pipeline"
 echo "=========================================="
@@ -207,7 +217,6 @@ echo "Building sdl2_miyoo runtime driver..."
 # git -- every file is produced fresh by this script or the sdl2_miyoo build.
 echo ""
 echo "Populating runtime libraries..."
-mkdir -p "$SCRIPT_DIR/app-dist/sdl_bench/lib"
 sdl_output="$WORKSPACE_DIR/sdl2_miyoo/output/libSDL2-2.0.so.0"
 neon_lib="$WORKSPACE_DIR/sdl2_miyoo/libneonarmmiyoo.so"
 for required in "$sdl_output" "$neon_lib"; do
@@ -216,6 +225,20 @@ for required in "$sdl_output" "$neon_lib"; do
         exit 1
     fi
 done
+
+for binary in "${EXPECTED_BINARIES[@]}"; do
+    if [ ! -f "$WORKSPACE_DIR/build/bin/$binary" ]; then
+        echo "ERROR: expected benchmark binary missing: $WORKSPACE_DIR/build/bin/$binary"
+        exit 1
+    fi
+done
+
+# Replace generated package outputs so removed or renamed artifacts cannot
+# survive into a later package. Preserve the tracked directory placeholder.
+mkdir -p "$SCRIPT_DIR/app-dist/sdl_bench/bin" "$SCRIPT_DIR/app-dist/sdl_bench/lib"
+find "$SCRIPT_DIR/app-dist/sdl_bench/bin" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+find "$SCRIPT_DIR/app-dist/sdl_bench/lib" -mindepth 1 -maxdepth 1 ! -name '.gitkeep' -exec rm -rf -- {} +
+
 cp -f "$sdl_output" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libSDL2-2.0.so.0"
 cp -f "$neon_lib" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libneonarmmiyoo.so"
 cp -f "$WORKSPACE_DIR/sdl2_miyoo/libEGL.so" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libEGL.so"
@@ -230,7 +253,9 @@ echo "Copying compiled binaries to distribution directory..."
 mkdir -p "$SCRIPT_DIR/app-dist/sdl_bench/bin"
 
 if [ -d "$WORKSPACE_DIR/build/bin" ]; then
-    cp -f "$WORKSPACE_DIR/build/bin"/* "$SCRIPT_DIR/app-dist/sdl_bench/bin/"
+    for binary in "${EXPECTED_BINARIES[@]}"; do
+        cp -f "$WORKSPACE_DIR/build/bin/$binary" "$SCRIPT_DIR/app-dist/sdl_bench/bin/"
+    done
     echo "Binaries copied to: $SCRIPT_DIR/app-dist/sdl_bench/bin/"
 
     # List the compiled binaries

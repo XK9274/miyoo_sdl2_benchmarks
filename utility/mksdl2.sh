@@ -33,6 +33,7 @@ check_dev_tools() {
         ["libtoolize"]="libtool"
         ["m4"]="m4"
         ["automake"]="automake"
+        ["sha256sum"]="coreutils"
     )
 
     missing_packages=()
@@ -136,6 +137,31 @@ declare -A sdl_packages=(
     ["SDL2_ttf-2.20.2.tar.gz"]="https://github.com/libsdl-org/SDL_ttf/releases/download/release-2.20.2/SDL2_ttf-2.20.2.tar.gz"
 )
 
+declare -A sdl_package_sha256=(
+    ["SDL2-2.26.5.tar.gz"]="ad8fea3da1be64c83c45b1d363a6b4ba8fd60f5bde3b23ec73855709ec5eabf7"
+    ["SDL2_ttf-2.20.2.tar.gz"]="9dc71ed93487521b107a2c4a9ca6bf43fb62f6bddd5c26b055e6b91418a22053"
+)
+
+verify_package_checksum() {
+    local package_file="$1"
+    local expected="${sdl_package_sha256[$package_file]}"
+
+    if ! printf '%s  %s\n' "$expected" "$package_file" | sha256sum -c - >/dev/null; then
+        echo "ERROR: SHA-256 verification failed for $package_file" >&2
+        echo "Expected: $expected" >&2
+        return 1
+    fi
+}
+
+download_package() {
+    local package_file="$1"
+    local partial_file="${package_file}.part"
+
+    rm -f "$partial_file"
+    wget -q -O "$partial_file" "${sdl_packages[$package_file]}"
+    mv -f "$partial_file" "$package_file"
+}
+
 # Download required packages
 status_msg "Downloading SDL2 packages..."
 download_pids=()
@@ -144,7 +170,7 @@ for file in "${!sdl_packages[@]}"; do
         if [ "$VERBOSE" = "true" ]; then
             echo "Downloading $file..."
         fi
-        wget -q "${sdl_packages[$file]}" &
+        download_package "$file" &
         download_pids+=($!)
     fi
 done
@@ -152,6 +178,10 @@ done
 # Wait for all downloads to complete
 for pid in "${download_pids[@]}"; do
     wait $pid
+done
+
+for file in "${!sdl_packages[@]}"; do
+    verify_package_checksum "$file" || exit 1
 done
 
 

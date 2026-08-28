@@ -3,7 +3,7 @@ set -euo pipefail
 
 destination="${1:?usage: utility/prepare-neon.sh <destination>}"
 repo_url="${NEON_ARM_REPO_URL:-https://github.com/XK9274/neon-arm-library-miyoo.git}"
-ref="${NEON_ARM_REF:-HEAD}"
+ref="${NEON_ARM_REF:-main}"
 
 if [ -e "$destination" ] && ! git -C "$destination" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "ERROR: Refusing to replace non-Git path: $destination" >&2
