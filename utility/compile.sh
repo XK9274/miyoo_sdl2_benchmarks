@@ -51,6 +51,7 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 --verbose          # Docker build with verbose output"
             echo "  $0 --local            # Local build"
             echo "  $0 --local --verbose  # Local build with verbose output"
+            echo "  CROSS_PREFIX=/path/to/arm-linux-gnueabihf- SYSROOT=/path/to/sysroot $0 --local"
             exit 0
             ;;
         *)

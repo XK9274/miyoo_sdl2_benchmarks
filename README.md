@@ -44,8 +44,10 @@ The root build script automatically uses `union-miyoomini-toolchain/`. If that
 directory does not exist, it clones the toolchain repository. The NEON helper
 is not stored as a submodule: every build clones or refreshes
 `XK9274/neon-arm-library-miyoo` in generated, ignored build space and logs the
-exact commit used. Set `NEON_ARM_REPO_URL` or `NEON_ARM_REF` to override its
-source or ref.
+current commit used. The auxiliary repositories intentionally follow their
+`main` branches; set `SDL2_MIYOO_REPO`, `SDL2_MIYOO_REF`, `NEON_ARM_REPO_URL`,
+or `NEON_ARM_REF` only when deliberately testing a different repository or
+branch.
 
 ## Build
 
@@ -81,6 +83,16 @@ the `Makefile`.
 ```bash
 ./utility/compile.sh --local
 ```
+
+The Makefile accepts `CROSS_PREFIX` and `SYSROOT` overrides. `CROSS_PREFIX`
+must include the compiler-name prefix and trailing dash:
+
+```bash
+CROSS_PREFIX=/opt/custom/bin/arm-linux-gnueabihf- SYSROOT=/opt/custom/arm-linux-gnueabihf/sysroot ./utility/compile.sh --local
+```
+
+The Docker build verifies the SHA-256 checksums of the SDL2 2.26.5 and
+SDL2_ttf 2.20.2 source archives before compiling them.
 
 The Docker build is the supported default because it sets up the toolchain and
 SDL2 compile-time dependencies consistently.
