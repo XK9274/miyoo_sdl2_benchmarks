@@ -76,12 +76,7 @@ export CFLAGS="-Wno-undef -Os -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -march=arm
 export CXXFLAGS="-s -O3 -fPIC -pthread"
 export LDFLAGS="-L/opt/miyoomini-toolchain/usr/arm-linux-gnueabihf/sysroot/lib -L/opt/miyoomini-toolchain/usr/arm-linux-gnueabihf/sysroot/usr/lib"
 
-# PKG_CONFIG setup for SDL2 extension libraries to find SDL2. Also include the
-# toolchain's own default sysroot pkgconfig dir, which already ships zlib and
-# libpng16 (part of the buildroot toolchain itself) -- available to any future
-# extension that wants them via pkg-config, though SDL2_image's PNG support
-# currently comes from its own bundled stb_image decoder (see --enable-png
-# below), not from linking libpng at all.
+# PKG_CONFIG setup for SDL2 extension libraries to find SDL2, plus the toolchain's own sysroot pkgconfig dir (ships zlib/libpng16).
 TOOLCHAIN_SYSROOT_PKGCONFIG=/opt/miyoomini-toolchain/arm-linux-gnueabihf/libc/usr/lib/pkgconfig
 export PKG_CONFIG_PATH="$FIN_BIN_DIR/lib/pkgconfig:$TOOLCHAIN_SYSROOT_PKGCONFIG:$PKG_CONFIG_PATH"
 export PKG_CONFIG_LIBDIR="$FIN_BIN_DIR/lib/pkgconfig:$TOOLCHAIN_SYSROOT_PKGCONFIG"
@@ -137,11 +132,7 @@ mkdir -p ./logs
 
 cd ~/workspace/
 
-# SDL2 source packages to download and compile. Only what's actually linked:
-# -lSDL2 -lSDL2_ttf -lSDL2_gfx -lSDL2_image (see Makefile's LDLIBS).
-# SDL2_mixer is still unused and deliberately not built. zlib/libpng aren't
-# built or linked either -- SDL2_image's PNG support comes from its own
-# bundled stb_image decoder, which needs neither.
+# SDL2 source packages to download and compile (see Makefile's LDLIBS); SDL2_mixer/zlib/libpng stay unbuilt and unlinked.
 declare -A sdl_packages=(
     ["SDL2-2.26.5.tar.gz"]="https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-2.26.5.tar.gz"
     ["SDL2_ttf-2.20.2.tar.gz"]="https://github.com/libsdl-org/SDL_ttf/releases/download/release-2.20.2/SDL2_ttf-2.20.2.tar.gz"
@@ -313,15 +304,10 @@ export PATH="$FIN_BIN_DIR/bin:$PATH"
 
 compile_package "SDL2_ttf-2.20.2.tar.gz" "SDL2_TTF" "SDL2_ttf-2.20.2" "" "SDL2_ttf"
 
-# SDL_gfx's --enable-mmx default is unconditional (its own --help text says
-# "disable this on non-x86 platforms" -- it does not autodetect the target
-# arch), so --disable-mmx must be passed explicitly for this ARM cross-build.
+# SDL_gfx's --enable-mmx defaults on unconditionally and doesn't autodetect the target arch.
 compile_package "SDL2_gfx-1.0.4.tar.gz" "SDL2_GFX" "SDL2_gfx-1.0.4" "--disable-mmx" "SDL2_gfx"
 
-# PNG codec only -- jpg/tif/webp/avif would each pull in their own external
-# dependency this toolchain doesn't otherwise need. PNG itself uses SDL2_image's
-# bundled stb_image decoder by default (--enable-stb-image, on unless disabled),
-# so no libpng dependency is introduced.
+# PNG codec only; uses SDL2_image's bundled stb_image decoder, so no libpng dependency.
 compile_package "SDL2_image-2.8.12.tar.gz" "SDL2_IMAGE" "SDL2_image-2.8.12" "--enable-png --disable-jpg --disable-tif --disable-webp --disable-avif" "SDL2_image"
 
 status_msg "All SDL2 libraries compiled successfully!"
