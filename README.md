@@ -160,6 +160,12 @@ suite's geometry scene only and tags its periodic FPS output for A/B testing.
     overlay/HUD or vsync, to isolate the render/present path from the
     overlay code every other suite carries.
 
+- `sdl2_gfx_bench`
+  - Cycles antialiased shapes, rounded rects, polygons, bezier curves, and
+    thick lines via SDL2_gfx's software primitive renderer.
+  - Exercises CPU-side rasterization independent of the hardware-accelerated
+    `SDL_Renderer` path the other suites use.
+
 ## Build Flow
 
 ```text
@@ -201,6 +207,7 @@ miyoo_sdl2_benchmarks/
 |   |-- audio_bench/
 |   |-- common/
 |   |-- double_buf/
+|   |-- gfx_bench/
 |   |-- gl_fbo_effects/
 |   |-- render_suite/
 |   |-- space_bench/
