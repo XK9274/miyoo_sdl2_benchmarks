@@ -95,10 +95,10 @@ jobs:
             exit 1
           fi
 
-      - name: Verify docker-compile.sh is present
+      - name: Verify build.sh is present
         run: |
-          if [[ ! -f "docker-compile.sh" ]]; then
-            echo "docker-compile.sh missing from repo"
+          if [[ ! -x "build.sh" ]]; then
+            echo "build.sh missing or not executable"
             exit 1
           fi
 
@@ -124,17 +124,17 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "${{ needs.preflight.outputs.target_sha }}"
 
-      - name: Build via docker-compile.sh
+      - name: Build through mm-buildbot
         env:
           TITLE_GIT_VERSION: ${{ needs.preflight.outputs.tag }}
         run: |
-          chmod +x ./docker-compile.sh
-          ./docker-compile.sh
+          ./build.sh
 
       - name: Verify build artifacts and embedded version
         run: |
           ls -la app-dist/sdl_bench/bin/
           file app-dist/sdl_bench/bin/*
+          test "$(find app-dist/sdl_bench/bin -maxdepth 1 -type f | wc -l)" -eq 8
           strings app-dist/sdl_bench/bin/sdl2_title | grep -F -- "${{ needs.preflight.outputs.tag }}"
 
       - name: Package release archive
@@ -195,7 +195,7 @@ jobs:
             --notes "$(cat <<NOTES
           ## SDL2 Benchmarks for Miyoo Mini — $TAG
 
-          Cross-compiled for \`arm-linux-gnueabihf\` via \`docker-compile.sh\`.
+          Cross-compiled for \`arm-linux-gnueabihf\` through the shared \`mm-buildbot\` SDL/toolchain build.
 
           ### Artifacts
           | File | Description |
@@ -208,6 +208,6 @@ jobs:
 
           ### Build info
           - Commit: $TARGET_SHA
-          - Toolchain: [XK9274/union-miyoomini-toolchain](https://github.com/XK9274/union-miyoomini-toolchain)
+          - Build system: [XK9274/mm-buildbot](https://github.com/XK9274/mm-buildbot)
           NOTES
           )"

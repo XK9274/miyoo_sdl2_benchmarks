@@ -24,10 +24,8 @@ build/
 Thumbs.db
 *:Zone.Identifier
 
-# toolchain artifacts
-union-miyoomini-toolchain/
-neon-arm-library/
-build_artifacts/
+# buildbot checkout cache
+.cache/
 app-dist/sdl_bench/bin/
 app-dist/sdl_bench/lib/
 

@@ -6,10 +6,6 @@ BUILD_DIR     ?= build
 BIN_DIR       := $(BUILD_DIR)/bin
 OBJ_DIR       := $(BUILD_DIR)/obj
 
-LOCAL_LIB_DIR := app-dist/sdl_bench/lib
-GL_ARTIFACT_DIR := build_artifacts/gles_libs
-GL_ARTIFACT_STAMP := $(GL_ARTIFACT_DIR)/.stamp
-
 PROGRAMS      := sdl2_title \
                  sdl2_bench_double_buf \
                  sdl2_space_bench \
@@ -20,10 +16,6 @@ PROGRAMS      := sdl2_title \
                  sdl2_gfx_bench
 
 TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
-
-# NEON library
-NEON_DIR       := neon-arm-library
-NEON_LIB       := $(NEON_DIR)/lib/libneonarmmiyoo.a
 
 COMMON_SOURCES := \
     $(SRC_DIR)/common/format.c \
@@ -179,8 +171,12 @@ ifneq ($(SYSROOT),)
 SYSROOT_FLAG  := --sysroot=$(SYSROOT)
 endif
 
-SDL_INCLUDE   := $(SYSROOT)/usr/include/SDL2
-SDL_LIBDIR    := $(SYSROOT)/usr/lib
+SDL_PREFIX         ?= /opt/mmiyoo-sdl2
+SDL_ADDONS_PREFIX  ?= /opt/mmiyoo-sdl2-addons
+SDL_INCLUDE        := $(SDL_PREFIX)/include
+SDL_ADDONS_INCLUDE := $(SDL_ADDONS_PREFIX)/include
+SDL_LIBDIR         := $(SDL_PREFIX)/lib
+SDL_ADDONS_LIBDIR  := $(SDL_ADDONS_PREFIX)/lib
 
 ARM_NEON_DEFINE := -D__ARM_NEON
 ARM_CPU_FLAGS   := -mcpu=cortex-a7 -mfpu=neon -mfloat-abi=hard -ftree-vectorize -fomit-frame-pointer -fdata-sections -ffunction-sections
@@ -195,27 +191,14 @@ ifeq ($(DEBUG),1)
 CFLAGS       := $(filter-out -O2,$(CFLAGS)) -Og -g -fno-omit-frame-pointer
 endif
 CPPFLAGS     := $(filter-out $(ARM_NEON_DEFINE),$(CPPFLAGS))
-CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SYSROOT)/usr/include -I$(INC_DIR) -I$(SRC_DIR) -I$(NEON_DIR)/include $(ARM_NEON_DEFINE)
-LDFLAGS      += $(SYSROOT_FLAG) -L$(SDL_LIBDIR)
-LDFLAGS      += -L$(LOCAL_LIB_DIR) -L$(GL_ARTIFACT_DIR)
+CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SDL_INCLUDE)/SDL2 -I$(SDL_ADDONS_INCLUDE) -I$(SYSROOT)/usr/include -I$(INC_DIR) -I$(SRC_DIR) $(ARM_NEON_DEFINE)
+LDFLAGS      += $(SYSROOT_FLAG) -L$(SDL_LIBDIR) -L$(SDL_ADDONS_LIBDIR)
 LDFLAGS      += $(ARM_CPU_FLAGS) -Wl,--gc-sections
-LDLIBS       += -lSDL2 -lSDL2_ttf -lSDL2_gfx -lSDL2_image -lGLESv2 -lm -lpthread
-LDLIBS       += $(NEON_LIB)
+LDLIBS       += -lSDL2 -lSDL2_ttf -lSDL2_gfx -lSDL2_image -lEGL -lGLESv2 -lneonarmmiyoo -lm -lpthread
 
-# Shared objects to bundle next to the binary
-SDL_SHARED_LIBS := \
-	libSDL2-2.0.so.0 \
-	libSDL2_ttf-2.0.so.0 \
-	libSDL2_gfx-1.0.so.0 \
-	libSDL2_image-2.0.so.0
-
-.PHONY: all clean bundle print-config test
+.PHONY: all clean print-config test
 
 all: $(TARGETS)
-
-# Build NEON library
-$(NEON_LIB):
-	$(MAKE) -C $(NEON_DIR) CROSS_COMPILE=$(CROSS_PREFIX)
 
 TITLE_GIT_VERSION ?= $(shell git -C $(CURDIR) describe --tags --always --dirty 2>/dev/null || echo unknown)
 
@@ -226,38 +209,38 @@ $(TITLE_VERSION_HEADER):
 
 $(TITLE_OBJECTS): $(TITLE_VERSION_HEADER)
 
-$(TITLE_TARGET): $(COMMON_OBJECTS) $(TITLE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+$(TITLE_TARGET): $(COMMON_OBJECTS) $(TITLE_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(TITLE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(SPACE_TARGET): $(COMMON_OBJECTS) $(SPACE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+$(SPACE_TARGET): $(COMMON_OBJECTS) $(SPACE_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(SPACE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(DOUBLE_TARGET): $(COMMON_OBJECTS) $(DOUBLE_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+$(DOUBLE_TARGET): $(COMMON_OBJECTS) $(DOUBLE_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(DOUBLE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(RENDER_TARGET): $(COMMON_OBJECTS) $(RENDER_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+$(RENDER_TARGET): $(COMMON_OBJECTS) $(RENDER_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(RENDER_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(GL_FBO_EFFECTS_TARGET): $(COMMON_OBJECTS) $(GL_FBO_EFFECTS_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+$(GL_FBO_EFFECTS_TARGET): $(COMMON_OBJECTS) $(GL_FBO_EFFECTS_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(GL_FBO_EFFECTS_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
 sdl2_render_suite: $(RENDER_TARGET)
 
 sdl2_gl_fbo_effects: $(GL_FBO_EFFECTS_TARGET)
-$(AUDIO_TARGET): $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+$(AUDIO_TARGET): $(COMMON_OBJECTS) $(AUDIO_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(SPRITE_BENCH_TARGET): $(COMMON_OBJECTS) $(SPRITE_BENCH_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+$(SPRITE_BENCH_TARGET): $(COMMON_OBJECTS) $(SPRITE_BENCH_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(SPRITE_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(GFX_BENCH_TARGET): $(COMMON_OBJECTS) $(GFX_BENCH_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+$(GFX_BENCH_TARGET): $(COMMON_OBJECTS) $(GFX_BENCH_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(GFX_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
@@ -265,18 +248,6 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
-
-bundle: $(TARGETS)
-	@echo "Bundling SDL2 libraries..."
-	@set -e; \
-	for lib in $(SDL_SHARED_LIBS); do \
-		if [ -f $(SDL_LIBDIR)/$$lib ]; then \
-			cp -u $(SDL_LIBDIR)/$$lib $(BIN_DIR)/; \
-			echo "Copied $$lib"; \
-		else \
-			echo "Warning: $$lib not found in $(SDL_LIBDIR)" >&2; \
-		fi; \
-	done
 
 $(BIN_DIR):
 	@mkdir -p $@
@@ -286,7 +257,6 @@ $(OBJ_DIR):
 
 clean:
 	rm -rf $(BUILD_DIR)
-	@if [ -d $(NEON_DIR) ]; then $(MAKE) -C $(NEON_DIR) clean; fi
 	@echo "Cleaned build directory"
 
 print-config:
