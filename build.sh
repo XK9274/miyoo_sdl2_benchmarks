@@ -103,6 +103,6 @@ command -v unzip >/dev/null 2>&1 || {
 printf 'Refreshing generated app-dist output\n'
 rm -rf "$script_dir/app-dist/sdl_bench/bin" "$script_dir/app-dist/sdl_bench/lib"
 mkdir -p "$script_dir/app-dist"
-unzip -q "$artifact" -d "$script_dir/app-dist"
+unzip -q -o "$artifact" -d "$script_dir/app-dist"
 
 printf 'Build complete: %s/app-dist/sdl_bench\n' "$script_dir"
