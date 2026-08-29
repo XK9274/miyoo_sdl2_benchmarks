@@ -91,8 +91,11 @@ must include the compiler-name prefix and trailing dash:
 CROSS_PREFIX=/opt/custom/bin/arm-linux-gnueabihf- SYSROOT=/opt/custom/arm-linux-gnueabihf/sysroot ./utility/compile.sh --local
 ```
 
-The Docker build verifies the SHA-256 checksums of the SDL2 2.26.5 and
-SDL2_ttf 2.20.2 source archives before compiling them.
+The Docker build verifies the SHA-256 checksums of the SDL2 2.26.5,
+SDL2_ttf 2.20.2, SDL2_gfx 1.0.4, and SDL2_image 2.8.12 source archives before
+compiling them. `sdl2_title`'s PNG background loading uses SDL2_image's
+bundled `stb_image` decoder, so no separate libpng dependency is built or
+bundled.
 
 The Docker build is the supported default because it sets up the toolchain and
 SDL2 compile-time dependencies consistently.
