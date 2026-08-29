@@ -66,14 +66,5 @@ void gb_overlay_submit(BenchOverlay *overlay,
                         (unsigned long long)metrics->draw_calls);
     overlay_grid_set_cell(&grid, 4, 1, primary, 0, "SELECT - Reset Metrics");
 
-    // Row 5 - Render type left, exit control right
-    overlay_grid_set_cell(&grid, 5, 0, primary, 0,
-                          "SDL2_gfx primitives are unbatched: each call");
-    overlay_grid_set_cell(&grid, 5, 1, info, 0, "ESC - Exit | START - Input");
-
-    // Row 6 - Continued note left, empty right
-    overlay_grid_set_cell(&grid, 6, 0, primary, 0,
-                          "fans out into many individual hardware draws");
-
     overlay_grid_submit_to_overlay(&grid, overlay);
 }
