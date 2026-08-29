@@ -24,8 +24,6 @@ build/
 Thumbs.db
 *:Zone.Identifier
 
-# buildbot checkout cache
-.cache/
 app-dist/sdl_bench/bin/
 app-dist/sdl_bench/lib/
 

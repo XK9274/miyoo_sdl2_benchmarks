@@ -87,8 +87,8 @@ MMIYOO_SDL2_ADDONS_PREFIX=/path/to/sdl2-mmiyoo-addons/bundle \
 ```
 
 If no checkout is supplied, `build.sh` looks for `../mm-buildbot` and then
-clones `mm-buildbot/main` into `.cache/mm-buildbot`. Override the cache path
-with `MM_BUILDBOT_CACHE_DIR`.
+clones `mm-buildbot/main` into `../.mm-buildbot-cache/mm-buildbot`. Override
+the cache path with `MM_BUILDBOT_CACHE_DIR`.
 
 ```bash
 MM_BUILDBOT_CACHE_DIR=/path/to/cache ./build.sh
@@ -205,7 +205,7 @@ miyoo_sdl2_benchmarks/
 |   |-- space_bench/
 |   |-- sprite_bench/
 |   `-- title/                     # Launcher/title screen (sdl2_title)
-`-- .cache/                        # Ignored local mm-buildbot checkout cache
+`-- ../.mm-buildbot-cache/         # Default mm-buildbot checkout cache (sibling dir)
 ```
 
 ## Asset Credits

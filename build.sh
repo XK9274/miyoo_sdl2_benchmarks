@@ -5,7 +5,7 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 buildbot_dir="${MM_BUILDBOT_DIR:-}"
 buildbot_repo="${MM_BUILDBOT_REPO:-https://github.com/XK9274/mm-buildbot.git}"
 buildbot_ref="${MM_BUILDBOT_REF:-main}"
-cache_dir="${MM_BUILDBOT_CACHE_DIR:-$script_dir/.cache/mm-buildbot}"
+cache_dir="${MM_BUILDBOT_CACHE_DIR:-$(dirname "$script_dir")/.mm-buildbot-cache/mm-buildbot}"
 package_id="sdl2-benchmarks-mmiyoo"
 
 usage() {
