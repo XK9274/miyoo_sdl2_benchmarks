@@ -36,69 +36,66 @@ The generated package is written to `app-dist/sdl_bench/`.
 
 ## Requirements
 
-- Docker, for the default build path.
-- Git, used by the build scripts to obtain the toolchain and NEON helper library.
+- Docker, for the cross-compilation container used by mm-buildbot.
+- Git, used to obtain mm-buildbot when it is not already checked out.
 - A Miyoo Mini SD card or deployment target for running the packaged app.
 
-The root build script automatically uses `union-miyoomini-toolchain/`. If that
-directory does not exist, it clones the toolchain repository. The NEON helper
-is not stored as a submodule: every build clones or refreshes
-`XK9274/neon-arm-library-miyoo` in generated, ignored build space and logs the
-current commit used. The auxiliary repositories intentionally follow their
-`main` branches; set `SDL2_MIYOO_REPO`, `SDL2_MIYOO_REF`, `NEON_ARM_REPO_URL`,
-or `NEON_ARM_REF` only when deliberately testing a different repository or
-branch.
+The build is delegated to the current `main` branch of
+`XK9274/mm-buildbot`. mm-buildbot owns the Miyoo toolchain, SDL2 core, Neon
+helper, and SDL2 add-on builds. The benchmark repository only builds the
+benchmark sources and stages the application.
 
 ## Build
 
 Build all benchmark binaries and prepare the distribution package:
 
 ```bash
-./docker-compile.sh
+./build.sh
 ```
 
 Use verbose output when diagnosing build issues:
 
 ```bash
-./docker-compile.sh --verbose
+./build.sh --verbose
 ```
 
 The build process:
 
-- prepares the Miyoo Mini Docker toolchain;
-- installs or reuses cached SDL2 build artifacts for compile-time linking;
+- locates or clones a local mm-buildbot checkout;
+- builds or reuses the shared SDL2 provider packages;
 - compiles the benchmark binaries with the project `Makefile`;
-- copies the resulting ARM binaries into `app-dist/sdl_bench/bin/`;
-- leaves `app-dist/sdl_bench/` ready to copy to the device.
+- copies the resulting ARM binaries and provider runtime libraries into
+  `app-dist/sdl_bench/`.
 
-Helper scripts live in `utility/`. The root `docker-compile.sh` script remains
-the main entry point.
+The root `build.sh` script is the main entry point.
 
 ## Local Build
 
-`utility/compile.sh --local` can be used when the Miyoo Mini cross-compilation
-toolchain is already installed locally and available at the paths expected by
-the `Makefile`.
+For local development, point the build at an existing mm-buildbot checkout:
 
 ```bash
-./utility/compile.sh --local
+MM_BUILDBOT_DIR=/path/to/mm-buildbot ./build.sh
 ```
 
-The Makefile accepts `CROSS_PREFIX` and `SYSROOT` overrides. `CROSS_PREFIX`
-must include the compiler-name prefix and trailing dash:
+Already-built provider bundles can be supplied for faster local iteration:
 
 ```bash
-CROSS_PREFIX=/opt/custom/bin/arm-linux-gnueabihf- SYSROOT=/opt/custom/arm-linux-gnueabihf/sysroot ./utility/compile.sh --local
+MM_BUILDBOT_DIR=/path/to/mm-buildbot \
+MMIYOO_SDL2_PREFIX=/path/to/sdl2-mmiyoo-lib/bundle \
+MMIYOO_SDL2_ADDONS_PREFIX=/path/to/sdl2-mmiyoo-addons/bundle \
+./build.sh
 ```
 
-The Docker build verifies the SHA-256 checksums of the SDL2 2.26.5,
-SDL2_ttf 2.20.2, SDL2_gfx 1.0.4, and SDL2_image 2.8.12 source archives before
-compiling them. `sdl2_title`'s PNG background loading uses SDL2_image's
-bundled `stb_image` decoder, so no separate libpng dependency is built or
-bundled.
+If no checkout is supplied, `build.sh` looks for `../mm-buildbot` and then
+clones `mm-buildbot/main` into `.cache/mm-buildbot`. Override the cache path
+with `MM_BUILDBOT_CACHE_DIR`.
 
-The Docker build is the supported default because it sets up the toolchain and
-SDL2 compile-time dependencies consistently.
+```bash
+MM_BUILDBOT_CACHE_DIR=/path/to/cache ./build.sh
+```
+
+The buildbot providers supply SDL2, SDL2_ttf, SDL2_gfx, SDL2_image, EGL/GLES,
+and the Neon helper consistently for the benchmark and other applications.
 
 ## Installation
 
@@ -169,25 +166,21 @@ suite's geometry scene only and tags its periodic FPS output for A/B testing.
 ## Build Flow
 
 ```text
-./docker-compile.sh
-  -> ensure union-miyoomini-toolchain exists
-  -> clone/refresh neon-arm-library-miyoo in the toolchain workspace
-  -> copy source, Makefile, utility scripts, and cached artifacts to workspace
-  -> build or reuse the Docker toolchain image
-  -> run utility/mksdl2.sh inside the container as mksdl2.sh
-  -> run make inside the container
-  -> copy build/bin/* to app-dist/sdl_bench/bin/
+./build.sh
+  -> locate or clone mm-buildbot/main
+  -> build sdl2-mmiyoo-lib and sdl2-mmiyoo-addons through mm-buildbot
+  -> compile the benchmark source against those provider bundles
+  -> stage binaries, assets, and runtime libraries
 ```
 
-SDL2 libraries built by `mksdl2.sh` are for compile-time linking in the
-toolchain sysroot. The runtime package uses the libraries already present under
-`app-dist/sdl_bench/lib/`.
+The generated `app-dist/sdl_bench/lib/` directory contains the runtime
+libraries staged by the buildbot SDL providers.
 
 ## Directory Layout
 
 ```text
 miyoo_sdl2_benchmarks/
-|-- docker-compile.sh              # Root Docker build entry point
+|-- build.sh                       # Standalone mm-buildbot-backed build entry point
 |-- Makefile                       # Benchmark build configuration
 |-- README.md
 |-- TODO.md
@@ -201,7 +194,6 @@ miyoo_sdl2_benchmarks/
 |       `-- launch.sh
 |-- assets/                        # README screenshots
 |-- build/                         # Local/generated build output
-|-- build_artifacts/               # Cached compile-time artifacts
 |-- include/                       # Shared headers and GLES headers
 |-- src/
 |   |-- audio_bench/
@@ -213,11 +205,7 @@ miyoo_sdl2_benchmarks/
 |   |-- space_bench/
 |   |-- sprite_bench/
 |   `-- title/                     # Launcher/title screen (sdl2_title)
-|-- union-miyoomini-toolchain/      # Ignored toolchain + cloned build dependencies
-`-- utility/
-    |-- compile.sh                 # Optional local/Docker helper wrapper
-    |-- mksdl2.sh                  # SDL2 compile-time library builder
-    `-- prepare-neon.sh            # Clone/refresh the generated NEON dependency
+`-- .cache/                        # Ignored local mm-buildbot checkout cache
 ```
 
 ## Asset Credits

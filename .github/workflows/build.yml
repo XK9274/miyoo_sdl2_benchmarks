@@ -21,16 +21,15 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build SDL2 benchmarks
-      run: |
-        chmod +x ./docker-compile.sh
-        ./docker-compile.sh
+    - name: Build SDL2 benchmarks through mm-buildbot
+      run: ./build.sh
 
     - name: Verify build artifacts
       run: |
         echo "Checking for compiled binaries..."
         ls -la app-dist/sdl_bench/bin/
         file app-dist/sdl_bench/bin/*
+        test "$(find app-dist/sdl_bench/bin -maxdepth 1 -type f | wc -l)" -eq 8
 
     - name: Create build archive
       run: |

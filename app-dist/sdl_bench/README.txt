@@ -45,7 +45,8 @@ Install/Run
   ./launch.sh --geometry <tag> [duration_s]
 
 Notes
-- Built for the Miyoo Mini using the union-miyoomini-toolchain via Docker.
+- Built for the Miyoo Mini through the shared mm-buildbot SDL/toolchain
+  providers.
 - For source code, build instructions, and updates, see the repository above.
 
 
