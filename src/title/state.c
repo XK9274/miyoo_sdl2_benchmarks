@@ -30,6 +30,10 @@ void title_state_init(TitleState *state)
         {"Audio Bench", "sdl2_audio_bench",
          "Waveform visualizations driven by the MMIYOO audio backend, exercising audio "
          "playback alongside rendering."},
+        {"SDL2_gfx Bench", "sdl2_gfx_bench",
+         "Cycles antialiased shapes, rounded rects, polygons, bezier curves, and thick lines "
+         "via SDL2_gfx's software primitive renderer -- exercises CPU-side rasterization "
+         "independent of the hardware-accelerated SDL_Renderer path."},
     };
     memcpy(state->suites, suites, sizeof(suites));
 
