@@ -16,7 +16,8 @@ PROGRAMS      := sdl2_title \
                  sdl2_render_suite \
                  sdl2_gl_fbo_effects \
                  sdl2_audio_bench \
-                 sdl2_sprite_bench
+                 sdl2_sprite_bench \
+                 sdl2_gfx_bench
 
 TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
 
@@ -143,6 +144,19 @@ SPRITE_BENCH_SOURCES := \
 SPRITE_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SPRITE_BENCH_SOURCES))
 SPRITE_BENCH_TARGET  := $(BIN_DIR)/sdl2_sprite_bench
 
+GFX_BENCH_SOURCES := \
+    $(SRC_DIR)/gfx_bench/input.c \
+    $(SRC_DIR)/gfx_bench/main.c \
+    $(SRC_DIR)/gfx_bench/overlay.c \
+    $(SRC_DIR)/gfx_bench/state.c \
+    $(SRC_DIR)/gfx_bench/scenes/aa_shapes.c \
+    $(SRC_DIR)/gfx_bench/scenes/rounded_rects.c \
+    $(SRC_DIR)/gfx_bench/scenes/polygons.c \
+    $(SRC_DIR)/gfx_bench/scenes/bezier.c \
+    $(SRC_DIR)/gfx_bench/scenes/thick_lines.c
+GFX_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(GFX_BENCH_SOURCES))
+GFX_BENCH_TARGET  := $(BIN_DIR)/sdl2_gfx_bench
+
 ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(TITLE_OBJECTS) \
                  $(SPACE_OBJECTS) \
@@ -150,7 +164,8 @@ ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(RENDER_OBJECTS) \
                  $(GL_FBO_EFFECTS_OBJECTS) \
                  $(AUDIO_OBJECTS) \
-                 $(SPRITE_BENCH_OBJECTS)
+                 $(SPRITE_BENCH_OBJECTS) \
+                 $(GFX_BENCH_OBJECTS)
 DEPS          := $(ALL_OBJECTS:.o=.d)
 
 # Toolchain ------------------------------------------------------------------
@@ -184,13 +199,15 @@ CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SYSROOT)/usr/include -I$(IN
 LDFLAGS      += $(SYSROOT_FLAG) -L$(SDL_LIBDIR)
 LDFLAGS      += -L$(LOCAL_LIB_DIR) -L$(GL_ARTIFACT_DIR)
 LDFLAGS      += $(ARM_CPU_FLAGS) -Wl,--gc-sections
-LDLIBS       += -lSDL2 -lSDL2_ttf -lGLESv2 -lm -lpthread
+LDLIBS       += -lSDL2 -lSDL2_ttf -lSDL2_gfx -lSDL2_image -lGLESv2 -lm -lpthread
 LDLIBS       += $(NEON_LIB)
 
 # Shared objects to bundle next to the binary
 SDL_SHARED_LIBS := \
 	libSDL2-2.0.so.0 \
-	libSDL2_ttf-2.0.so.0
+	libSDL2_ttf-2.0.so.0 \
+	libSDL2_gfx-1.0.so.0 \
+	libSDL2_image-2.0.so.0
 
 .PHONY: all clean bundle print-config test
 
@@ -238,6 +255,10 @@ $(AUDIO_TARGET): $(COMMON_OBJECTS) $(AUDIO_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 
 $(SPRITE_BENCH_TARGET): $(COMMON_OBJECTS) $(SPRITE_BENCH_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(SPRITE_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(GFX_BENCH_TARGET): $(COMMON_OBJECTS) $(GFX_BENCH_OBJECTS) $(NEON_LIB) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(GFX_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)

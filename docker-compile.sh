@@ -47,6 +47,7 @@ EXPECTED_BINARIES=(
     sdl2_gl_fbo_effects
     sdl2_audio_bench
     sdl2_sprite_bench
+    sdl2_gfx_bench
 )
 
 echo "=========================================="
@@ -163,13 +164,27 @@ docker_cmd="
         exit 1
     fi
 
-    echo 'Extracting runtime libSDL2_ttf/libz from the toolchain sysroot...'
+    echo 'Extracting runtime libSDL2_ttf/libSDL2_gfx/libSDL2_image/libz from the toolchain sysroot...'
     mkdir -p runtime_libs
     ttf_lib=/opt/miyoomini-toolchain/usr/arm-linux-gnueabihf/sysroot/usr/lib/libSDL2_ttf-2.0.so.0
     if [ -f \"\$ttf_lib\" ]; then
         cp -L \"\$ttf_lib\" runtime_libs/
     else
         echo 'ERROR: libSDL2_ttf-2.0.so.0 not found in toolchain sysroot'
+        exit 1
+    fi
+    gfx_lib=/opt/miyoomini-toolchain/usr/arm-linux-gnueabihf/sysroot/usr/lib/libSDL2_gfx-1.0.so.0
+    if [ -f \"\$gfx_lib\" ]; then
+        cp -L \"\$gfx_lib\" runtime_libs/
+    else
+        echo 'ERROR: libSDL2_gfx-1.0.so.0 not found in toolchain sysroot'
+        exit 1
+    fi
+    img_lib=/opt/miyoomini-toolchain/usr/arm-linux-gnueabihf/sysroot/usr/lib/libSDL2_image-2.0.so.0
+    if [ -f \"\$img_lib\" ]; then
+        cp -L \"\$img_lib\" runtime_libs/
+    else
+        echo 'ERROR: libSDL2_image-2.0.so.0 not found in toolchain sysroot'
         exit 1
     fi
     libz_path=\$(find /opt/miyoomini-toolchain -name 'libz.so.1' 2>/dev/null | head -1)
@@ -244,6 +259,8 @@ cp -f "$neon_lib" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libneonarmmiyoo.so"
 cp -f "$WORKSPACE_DIR/sdl2_miyoo/libEGL.so" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libEGL.so"
 cp -f "$WORKSPACE_DIR/sdl2_miyoo/libGLESv2.so" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libGLESv2.so"
 cp -f "$WORKSPACE_DIR/runtime_libs/libSDL2_ttf-2.0.so.0" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libSDL2_ttf-2.0.so.0"
+cp -f "$WORKSPACE_DIR/runtime_libs/libSDL2_gfx-1.0.so.0" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libSDL2_gfx-1.0.so.0"
+cp -f "$WORKSPACE_DIR/runtime_libs/libSDL2_image-2.0.so.0" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libSDL2_image-2.0.so.0"
 cp -f "$WORKSPACE_DIR/runtime_libs/libz.so.1" "$SCRIPT_DIR/app-dist/sdl_bench/lib/libz.so.1"
 echo "Runtime libraries populated:"
 ls -la "$SCRIPT_DIR/app-dist/sdl_bench/lib/"
