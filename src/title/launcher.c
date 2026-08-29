@@ -11,6 +11,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <SDL2/SDL_image.h>
+
 #include "controller_input.h"
 #include "common/display_config.h"
 #include "common/frame_limit.h"
@@ -49,6 +51,12 @@ SDL_bool title_context_init(TitleContext *ctx)
         SDL_Quit();
         return SDL_FALSE;
     }
+    if ((IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) == 0) {
+        fprintf(stderr, "title: IMG_Init failed: %s\n", IMG_GetError());
+        TTF_Quit();
+        SDL_Quit();
+        return SDL_FALSE;
+    }
 
     ctx->window = SDL_CreateWindow("SDL2 Demo Suites",
                                    SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -56,6 +64,7 @@ SDL_bool title_context_init(TitleContext *ctx)
                                    SDL_WINDOW_SHOWN);
     if (!ctx->window) {
         fprintf(stderr, "title: window creation failed: %s\n", SDL_GetError());
+        IMG_Quit();
         TTF_Quit();
         SDL_Quit();
         return SDL_FALSE;
@@ -68,6 +77,7 @@ SDL_bool title_context_init(TitleContext *ctx)
         fprintf(stderr, "title: renderer creation failed: %s\n", SDL_GetError());
         SDL_DestroyWindow(ctx->window);
         ctx->window = NULL;
+        IMG_Quit();
         TTF_Quit();
         SDL_Quit();
         return SDL_FALSE;
@@ -132,6 +142,7 @@ void title_context_shutdown(TitleContext *ctx)
         ctx->window = NULL;
     }
 
+    IMG_Quit();
     TTF_Quit();
     SDL_Quit();
 }

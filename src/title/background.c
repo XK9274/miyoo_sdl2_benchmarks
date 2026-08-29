@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <SDL2/SDL_image.h>
+
 #include "title/launcher.h"
 
 SDL_Texture *title_background_load(SDL_Renderer *renderer)
@@ -18,11 +20,11 @@ SDL_Texture *title_background_load(SDL_Renderer *renderer)
     }
 
     char path[PATH_MAX];
-    snprintf(path, sizeof(path), "%s/../assets/title_bg.bmp", bin_dir);
+    snprintf(path, sizeof(path), "%s/../assets/title_bg.png", bin_dir);
 
-    SDL_Surface *surface = SDL_LoadBMP(path);
+    SDL_Surface *surface = IMG_Load(path);
     if (!surface) {
-        fprintf(stderr, "title: failed to load background %s: %s\n", path, SDL_GetError());
+        fprintf(stderr, "title: failed to load background %s: %s\n", path, IMG_GetError());
         return NULL;
     }
 
