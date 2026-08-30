@@ -227,3 +227,7 @@ miyoo_sdl2_benchmarks/
   by [Tiny Worlds](https://tinyworlds.itch.io/).
 - `app-dist/sdl_bench/icon.png`: [Pixel Skill Icons Pack - 250 Warrior Abilities](https://batareya.itch.io/pixel-skill-icons-pack-250-warrior-abilities)
   by [batareya](https://batareya.itch.io/).
+- `app-dist/sdl_bench/assets/models/sheep/`: [Cartoon Low Poly Sheep](https://free3d.com/3d-model/cartoon-low-poly-sheep-211607.html)
+  via [Free3D](https://free3d.com/).
+- `app-dist/sdl_bench/assets/models/miyoo/`: model from [Thingiverse thing 6118345](https://www.thingiverse.com/thing:6118345/files),
+  licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
