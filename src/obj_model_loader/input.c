@@ -4,9 +4,9 @@
 #include "controller_input.h"
 
 #define OBJ_ORBIT_STEP_RADIANS (15.0f * 3.14159265358979323846f / 180.0f)
-#define OBJ_ZOOM_STEP 0.5f
+#define OBJ_ZOOM_FACTOR 0.1f /* fraction of current distance per press -- scales with model size, unlike a fixed step */
 
-SDL_bool obj_handle_input(ObjModelLoaderState *state, BenchMetrics *metrics)
+SDL_bool obj_handle_input(SDL_Renderer *renderer, ObjModelLoaderState *state, BenchMetrics *metrics)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -42,10 +42,16 @@ SDL_bool obj_handle_input(ObjModelLoaderState *state, BenchMetrics *metrics)
                     state->auto_rotate = SDL_FALSE;
                     break;
                 case BTN_L1:
-                    camera3d_zoom(&state->camera, -OBJ_ZOOM_STEP);
+                    camera3d_zoom(&state->camera, -state->camera.distance * OBJ_ZOOM_FACTOR);
                     break;
                 case BTN_R1:
-                    camera3d_zoom(&state->camera, OBJ_ZOOM_STEP);
+                    camera3d_zoom(&state->camera, state->camera.distance * OBJ_ZOOM_FACTOR);
+                    break;
+                case BTN_L2:
+                    obj_state_cycle_model(renderer, state, -1);
+                    break;
+                case BTN_R2:
+                    obj_state_cycle_model(renderer, state, 1);
                     break;
                 case BTN_A:
                     state->auto_rotate = !state->auto_rotate;

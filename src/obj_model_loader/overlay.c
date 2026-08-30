@@ -23,7 +23,9 @@ void obj_overlay_submit(BenchOverlay *overlay, const ObjModelLoaderState *state,
     overlay_grid_set_cell(&grid, 0, 0, accent, 1, "Obj Model Loader");
     overlay_grid_set_cell(&grid, 0, 1, accent, 1, "Control Scheme");
 
-    overlay_grid_set_cell(&grid, 1, 0, primary, 0, "Model: %s", state->model_label);
+    overlay_grid_set_cell(&grid, 1, 0, primary, 0, "Model: %s (%d/%d)", state->model_label,
+                        state->available_model_count > 0 ? state->current_model_index + 1 : 0,
+                        state->available_model_count);
     overlay_grid_set_cell(&grid, 1, 1, primary, 0, "D-Pad - Orbit Camera");
 
     overlay_grid_set_cell(&grid, 2, 0, primary, 0,
@@ -55,6 +57,7 @@ void obj_overlay_submit(BenchOverlay *overlay, const ObjModelLoaderState *state,
                         state->wireframe ? "ON" : "OFF");
     overlay_grid_set_cell(&grid, 5, 1, primary, 0, "SELECT - Reset Metrics");
 
+    overlay_grid_set_cell(&grid, 6, 0, info, 0, "L2/R2 - Previous/Next Model");
     overlay_grid_set_cell(&grid, 6, 1, info, 0, "START - Input Mode  V - Vsync");
 
     overlay_grid_submit_to_overlay(&grid, overlay);

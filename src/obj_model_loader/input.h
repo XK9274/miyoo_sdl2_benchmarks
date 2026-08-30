@@ -6,6 +6,6 @@
 #include "bench_common.h"
 #include "obj_model_loader/state.h"
 
-SDL_bool obj_handle_input(ObjModelLoaderState *state, BenchMetrics *metrics);
+SDL_bool obj_handle_input(SDL_Renderer *renderer, ObjModelLoaderState *state, BenchMetrics *metrics);
 
 #endif /* OBJ_MODEL_LOADER_INPUT_H */
