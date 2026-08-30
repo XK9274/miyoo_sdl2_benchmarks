@@ -25,6 +25,12 @@ typedef struct {
                            * light; need not be unit length */
     float ambient_floor;  /* 0..1, minimum lit brightness for a face facing away from the light */
 
+    /* NDC maps into this sub-rect, not the full screen, so the model
+     * centers below an overlay. No frustum side-plane clipping (only
+     * near-plane), so content can still draw outside this rect without an
+     * explicit clip rect. */
+    int viewport_x;
+    int viewport_y;
     int viewport_width;
     int viewport_height;
     SDL_bool wireframe;

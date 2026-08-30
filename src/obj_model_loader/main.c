@@ -131,19 +131,31 @@ int main(int argc, char *argv[])
         SDL_RenderClear(renderer);
         metrics.draw_calls++;
 
+        const int content_x = 0;
+        const int content_y = (int)state.top_margin;
+        const int content_width = bench_logical_w();
+        const int content_height = SDL_max(1, bench_logical_h() - (int)state.top_margin);
+
         Render3DFrameParams params;
         params.view = camera3d_view_matrix(&state.camera);
         params.projection = camera3d_projection_matrix(&state.camera,
-                                                        (float)bench_logical_w() / (float)bench_logical_h());
+                                                        (float)content_width / (float)content_height);
         params.near_plane = state.camera.near_plane;
         params.light_direction = (Vec3){0.4f, -1.0f, 0.3f};
         params.ambient_floor = state.ambient_floor;
-        params.viewport_width = bench_logical_w();
-        params.viewport_height = bench_logical_h();
+        params.viewport_x = content_x;
+        params.viewport_y = content_y;
+        params.viewport_width = content_width;
+        params.viewport_height = content_height;
         params.wireframe = state.wireframe;
 
+        /* No frustum side-plane clipping in the pipeline (only near-plane), so
+         * this clip rect is the hard guarantee nothing draws over the overlay. */
+        const SDL_Rect content_clip = {content_x, content_y, content_width, content_height};
+        SDL_RenderSetClipRect(renderer, &content_clip);
         render3d_draw_mesh(renderer, &state.model.mesh, state.model.material_textures,
                            &params, state.scratch, &metrics);
+        SDL_RenderSetClipRect(renderer, NULL);
 
         bench_overlay_present(overlay, renderer, &metrics, 0, 0);
         SDL_RenderPresent(renderer);
