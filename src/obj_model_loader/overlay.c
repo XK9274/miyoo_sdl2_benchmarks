@@ -57,8 +57,8 @@ void obj_overlay_submit(BenchOverlay *overlay, const ObjModelLoaderState *state,
                         state->wireframe ? "ON" : "OFF");
     overlay_grid_set_cell(&grid, 5, 1, primary, 0, "SELECT - Reset Metrics");
 
-    overlay_grid_set_cell(&grid, 6, 0, info, 0, "L2/R2 - Previous/Next Model");
     overlay_grid_set_cell(&grid, 6, 1, info, 0, "START - Input Mode  V - Vsync");
+    overlay_grid_set_cell(&grid, 7, 1, info, 0, "L2/R2 - Previous/Next Model");
 
     overlay_grid_submit_to_overlay(&grid, overlay);
 }
