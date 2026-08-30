@@ -103,15 +103,22 @@ int main(int argc, char *argv[])
 
     printf("SDL2 Obj Model Loader initialised (model: %s)\n", state.model_label);
 
+    const char *bench_duration_str = SDL_getenv("OBJ_BENCH_DURATION_S");
+    const double bench_duration_s = bench_duration_str ? SDL_atof(bench_duration_str) : 0.0;
+    const char *bench_tag = SDL_getenv("OBJ_BENCH_TAG");
+
     double next_status_refresh_ms = 0.0;
+    double next_bench_log_ms = 0.0;
 
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
 
-        if (!obj_handle_input(&state, &metrics)) {
+        const Uint64 input_start = SDL_GetPerformanceCounter();
+        if (!obj_handle_input(renderer, &state, &metrics)) {
             break;
         }
+        metrics.stage_input_ms = (double)(SDL_GetPerformanceCounter() - input_start) * 1000.0 / (double)perf_freq;
 
         const double delta_seconds = bench_get_delta_seconds(&last_counter, perf_freq);
 
@@ -122,14 +129,18 @@ int main(int argc, char *argv[])
 
         obj_state_update_layout(&state, overlay);
 
+        const Uint64 camera_start = SDL_GetPerformanceCounter();
         if (state.auto_rotate) {
             camera3d_auto_rotate(&state.camera, state.auto_rotate_radians_per_second, (float)delta_seconds);
         }
+        metrics.stage_camera_ms = (double)(SDL_GetPerformanceCounter() - camera_start) * 1000.0 / (double)perf_freq;
 
+        const Uint64 clear_start = SDL_GetPerformanceCounter();
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-        SDL_SetRenderDrawColor(renderer, 10, 12, 20, 255);
+        SDL_SetRenderDrawColor(renderer, 45, 45, 45, 255);
         SDL_RenderClear(renderer);
         metrics.draw_calls++;
+        metrics.stage_clear_ms = (double)(SDL_GetPerformanceCounter() - clear_start) * 1000.0 / (double)perf_freq;
 
         const int content_x = 0;
         const int content_y = (int)state.top_margin;
@@ -141,7 +152,18 @@ int main(int argc, char *argv[])
         params.projection = camera3d_projection_matrix(&state.camera,
                                                         (float)content_width / (float)content_height);
         params.near_plane = state.camera.near_plane;
-        params.light_direction = (Vec3){0.4f, -1.0f, 0.3f};
+        /* Key light overhead + 3 dimmer fills at 120 degrees azimuth (angled
+         * down) so every face gets some light as the camera orbits. No
+         * shadowing -- each light depends only on that triangle's own normal. */
+        params.light_count = 4;
+        params.light_directions[0] = (Vec3){0.0f, -1.0f, 0.0f};
+        params.light_weights[0] = 0.5f;
+        params.light_directions[1] = (Vec3){0.0f, -0.5f, -1.0f};
+        params.light_weights[1] = 0.22f;
+        params.light_directions[2] = (Vec3){-0.866f, -0.5f, 0.5f};
+        params.light_weights[2] = 0.22f;
+        params.light_directions[3] = (Vec3){0.866f, -0.5f, 0.5f};
+        params.light_weights[3] = 0.22f;
         params.ambient_floor = state.ambient_floor;
         params.viewport_x = content_x;
         params.viewport_y = content_y;
@@ -157,8 +179,13 @@ int main(int argc, char *argv[])
                            &params, state.scratch, &metrics);
         SDL_RenderSetClipRect(renderer, NULL);
 
+        const Uint64 overlay_start = SDL_GetPerformanceCounter();
         bench_overlay_present(overlay, renderer, &metrics, 0, 0);
+        metrics.stage_overlay_ms = (double)(SDL_GetPerformanceCounter() - overlay_start) * 1000.0 / (double)perf_freq;
+
+        const Uint64 present_start = SDL_GetPerformanceCounter();
         SDL_RenderPresent(renderer);
+        metrics.stage_present_ms = (double)(SDL_GetPerformanceCounter() - present_start) * 1000.0 / (double)perf_freq;
 
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         bench_frame_limit_wait(frame_start_counter);
@@ -171,6 +198,27 @@ int main(int argc, char *argv[])
         }
 
         obj_overlay_submit(overlay, &state, &metrics);
+
+        if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {
+            printf("[BENCH] tag=%s elapsed_s=%.1f frame=%llu fps=%.2f avg_fps=%.2f "
+                   "min_fps=%.2f max_fps=%.2f frame_ms=%.3f tris=%llu draw_calls=%llu "
+                   "input_ms=%.3f camera_ms=%.3f transform_ms=%.3f sort_ms=%.3f draw_ms=%.3f "
+                   "clear_ms=%.3f overlay_ms=%.3f present_ms=%.3f\n",
+                   bench_tag, metrics.accumulated_frame_time_ms / 1000.0,
+                   (unsigned long long)metrics.frame_count, metrics.current_fps, metrics.avg_fps,
+                   metrics.min_fps, metrics.max_fps, metrics.frame_time_ms,
+                   (unsigned long long)metrics.triangles_rendered,
+                   (unsigned long long)metrics.draw_calls,
+                   metrics.stage_input_ms, metrics.stage_camera_ms, metrics.stage_transform_ms,
+                   metrics.stage_sort_ms, metrics.stage_draw_ms,
+                   metrics.stage_clear_ms, metrics.stage_overlay_ms, metrics.stage_present_ms);
+            fflush(stdout);
+            next_bench_log_ms = metrics.accumulated_frame_time_ms + 2000.0;
+        }
+
+        if (bench_duration_s > 0.0 && metrics.accumulated_frame_time_ms >= bench_duration_s * 1000.0) {
+            running = SDL_FALSE;
+        }
     }
 
     bench_driver_shutdown();

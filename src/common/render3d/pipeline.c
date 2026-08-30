@@ -1,6 +1,7 @@
 #include "common/render3d/pipeline.h"
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 /* Post-clip vertex: view-space position (depth key + projection) and
@@ -27,6 +28,12 @@ struct Render3DScratch {
      * hand SDL_RenderGeometry in one call. */
     SDL_Vertex *flat_verts;      /* capacity * 3 */
     SDL_Texture **flat_textures; /* capacity */
+
+    /* Per-triangle flat-shaded color, cached here -- invalidated only by a
+     * triangle-count mismatch (a different mesh loaded into this scratch). */
+    SDL_Color *tri_colors;
+    int tri_colors_capacity;
+    int tri_colors_computed_for_count;
 };
 
 Render3DScratch *render3d_scratch_create(void)
@@ -42,7 +49,18 @@ void render3d_scratch_destroy(Render3DScratch *scratch)
     free(scratch->triangles);
     free(scratch->flat_verts);
     free(scratch->flat_textures);
+    free(scratch->tri_colors);
     free(scratch);
+}
+
+void render3d_scratch_reset(Render3DScratch *scratch)
+{
+    if (!scratch) {
+        return;
+    }
+    /* -1 never equals a real triangle_count, forcing the next lighting bake
+     * to recompute rather than risk matching a newly-loaded mesh by chance. */
+    scratch->tri_colors_computed_for_count = -1;
 }
 
 static SDL_bool pipeline_ensure_capacity(Render3DScratch *scratch, int needed)
@@ -159,6 +177,90 @@ static int pipeline_compare_depth(const void *a, const void *b)
     return 0;
 }
 
+#define PIPELINE_HEIGHT_TINT_BASE 0.85f
+#define PIPELINE_HEIGHT_TINT_RANGE 0.30f
+
+/* Color depends only on mesh normals/material and fixed lights, never the
+ * camera -- safe to cache per mesh instead of recomputing per frame. */
+static void pipeline_ensure_tri_colors(Render3DScratch *scratch, const Mesh *mesh, const Render3DFrameParams *params)
+{
+    if (scratch->tri_colors_computed_for_count == mesh->triangle_count) {
+        return;
+    }
+
+    const Uint64 bake_start = SDL_GetPerformanceCounter();
+
+    SDL_Color *tri_colors = (SDL_Color *)realloc(scratch->tri_colors, sizeof(SDL_Color) * (size_t)mesh->triangle_count);
+    if (!tri_colors) {
+        return;
+    }
+    scratch->tri_colors = tri_colors;
+    scratch->tri_colors_capacity = mesh->triangle_count;
+
+    Vec3 center;
+    float radius;
+    mesh_compute_bounds(mesh, &center, &radius);
+    if (radius < 0.01f) {
+        radius = 1.0f;
+    }
+
+    Vec3 to_light[RENDER3D_MAX_LIGHTS];
+    for (int light = 0; light < params->light_count; light++) {
+        to_light[light] = bench_vec3_scale(bench_vec3_normalize(params->light_directions[light]), -1.0f);
+    }
+
+    for (int tri = 0; tri < mesh->triangle_count; tri++) {
+        const MeshVertex *mv0 = &mesh->vertices[tri * 3 + 0];
+        const MeshVertex *mv1 = &mesh->vertices[tri * 3 + 1];
+        const MeshVertex *mv2 = &mesh->vertices[tri * 3 + 2];
+
+        Vec3 shading_normal;
+        if (mv0->has_normal && mv1->has_normal && mv2->has_normal) {
+            shading_normal = bench_vec3_normalize(bench_vec3_add(
+                bench_vec3_add(mv0->normal, mv1->normal), mv2->normal));
+        } else {
+            /* Missing-normal fallback: geometric normal from object-space
+             * positions (object space == world space; the model transform
+             * is always identity in this suite). */
+            shading_normal = bench_vec3_normalize(bench_vec3_cross(
+                bench_vec3_sub(mv1->position, mv0->position),
+                bench_vec3_sub(mv2->position, mv0->position)));
+        }
+
+        const Vec3 centroid = bench_vec3_scale(
+            bench_vec3_add(bench_vec3_add(mv0->position, mv1->position), mv2->position), 1.0f / 3.0f);
+
+        float lit = 0.0f;
+        for (int light = 0; light < params->light_count; light++) {
+            const float ndotl = fmaxf(bench_vec3_dot(shading_normal, to_light[light]), 0.0f);
+            lit += params->light_weights[light] * ndotl;
+        }
+        const float brightness = fmaxf(lit, params->ambient_floor);
+
+        /* Height-based tint so a single flat material still shows depth/edges. */
+        const float normalized_height = fmaxf(0.0f, fminf(1.0f, (centroid.y - (center.y - radius)) / (2.0f * radius)));
+        const float height_tint = PIPELINE_HEIGHT_TINT_BASE + PIPELINE_HEIGHT_TINT_RANGE * normalized_height;
+        const float tinted_brightness = brightness * height_tint;
+
+        const int material_id = mesh->triangle_material_ids[tri];
+        const MeshMaterial *material = &mesh->materials[material_id];
+
+        scratch->tri_colors[tri] = (SDL_Color){
+            pipeline_clamp_channel(material->diffuse_color[0] * tinted_brightness),
+            pipeline_clamp_channel(material->diffuse_color[1] * tinted_brightness),
+            pipeline_clamp_channel(material->diffuse_color[2] * tinted_brightness),
+            pipeline_clamp_channel(material->opacity)
+        };
+    }
+
+    scratch->tri_colors_computed_for_count = mesh->triangle_count;
+
+    const Uint64 bake_end = SDL_GetPerformanceCounter();
+    const double bake_ms = (double)(bake_end - bake_start) * 1000.0 / (double)SDL_GetPerformanceFrequency();
+    printf("[render3d] baked lighting for %d triangles in %.1fms\n", mesh->triangle_count, bake_ms);
+    fflush(stdout);
+}
+
 void render3d_draw_mesh(SDL_Renderer *renderer,
                         const Mesh *mesh,
                         SDL_Texture *const *material_textures,
@@ -176,7 +278,11 @@ void render3d_draw_mesh(SDL_Renderer *renderer,
     }
     scratch->count = 0;
 
-    const Vec3 to_light = bench_vec3_scale(bench_vec3_normalize(params->light_direction), -1.0f);
+    const Uint64 perf_freq = SDL_GetPerformanceFrequency();
+
+    pipeline_ensure_tri_colors(scratch, mesh, params);
+
+    const Uint64 transform_start = SDL_GetPerformanceCounter();
 
     for (int tri = 0; tri < mesh->triangle_count; tri++) {
         const MeshVertex *mv0 = &mesh->vertices[tri * 3 + 0];
@@ -197,31 +303,9 @@ void render3d_draw_mesh(SDL_Renderer *renderer,
             continue; /* back-facing */
         }
 
-        Vec3 shading_normal;
-        if (mv0->has_normal && mv1->has_normal && mv2->has_normal) {
-            shading_normal = bench_vec3_normalize(bench_vec3_add(
-                bench_vec3_add(mv0->normal, mv1->normal), mv2->normal));
-        } else {
-            /* Missing-normal fallback: geometric normal from object-space
-             * positions (object space == world space; the model transform
-             * is always identity in this suite). */
-            shading_normal = bench_vec3_normalize(bench_vec3_cross(
-                bench_vec3_sub(mv1->position, mv0->position),
-                bench_vec3_sub(mv2->position, mv0->position)));
-        }
-
-        const float brightness = fmaxf(bench_vec3_dot(shading_normal, to_light), params->ambient_floor);
-
         const int material_id = mesh->triangle_material_ids[tri];
-        const MeshMaterial *material = &mesh->materials[material_id];
         SDL_Texture *texture = material_textures ? material_textures[material_id] : NULL;
-
-        const SDL_Color color = {
-            pipeline_clamp_channel(material->diffuse_color[0] * brightness),
-            pipeline_clamp_channel(material->diffuse_color[1] * brightness),
-            pipeline_clamp_channel(material->diffuse_color[2] * brightness),
-            pipeline_clamp_channel(material->opacity)
-        };
+        const SDL_Color color = scratch->tri_colors[tri];
 
         const ClipVertex clip_in[3] = {
             {view_pos0, mv0->texcoord},
@@ -249,13 +333,21 @@ void render3d_draw_mesh(SDL_Renderer *renderer,
         }
     }
 
+    const Uint64 transform_end = SDL_GetPerformanceCounter();
+    metrics->stage_transform_ms = (double)(transform_end - transform_start) * 1000.0 / (double)perf_freq;
+
     if (scratch->count == 0) {
+        metrics->stage_sort_ms = 0.0;
+        metrics->stage_draw_ms = 0.0;
         return;
     }
 
     /* Global back-to-front sort, kept intact afterward -- depth correctness
      * takes priority over grouping by texture for batching. */
     qsort(scratch->triangles, (size_t)scratch->count, sizeof(PipelineTriangle), pipeline_compare_depth);
+
+    const Uint64 sort_end = SDL_GetPerformanceCounter();
+    metrics->stage_sort_ms = (double)(sort_end - transform_end) * 1000.0 / (double)perf_freq;
 
     if (params->wireframe) {
         for (int i = 0; i < scratch->count; i++) {
@@ -267,6 +359,7 @@ void render3d_draw_mesh(SDL_Renderer *renderer,
             metrics->vertices_rendered += 3;
             metrics->triangles_rendered += 1;
         }
+        metrics->stage_draw_ms = (double)(SDL_GetPerformanceCounter() - sort_end) * 1000.0 / (double)perf_freq;
         return;
     }
 
@@ -298,4 +391,6 @@ void render3d_draw_mesh(SDL_Renderer *renderer,
 
         run_start = run_end;
     }
+
+    metrics->stage_draw_ms = (double)(SDL_GetPerformanceCounter() - sort_end) * 1000.0 / (double)perf_freq;
 }

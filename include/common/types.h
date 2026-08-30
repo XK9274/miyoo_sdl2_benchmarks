@@ -54,6 +54,16 @@ typedef struct {
     double lock_unlock_overhead_ms;
     double scaling_overhead_ms;
     double allocation_time_ms;
+
+    // Per-render-stage timing breakdown
+    double stage_input_ms;
+    double stage_camera_ms;
+    double stage_transform_ms;
+    double stage_sort_ms;
+    double stage_draw_ms;
+    double stage_clear_ms;
+    double stage_overlay_ms;
+    double stage_present_ms;
 } BenchMetrics;
 
 typedef struct {
