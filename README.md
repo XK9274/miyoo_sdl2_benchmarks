@@ -163,6 +163,16 @@ suite's geometry scene only and tags its periodic FPS output for A/B testing.
   - Exercises CPU-side rasterization independent of the hardware-accelerated
     `SDL_Renderer` path the other suites use.
 
+- `sdl2_obj_model_loader`
+  - Loads a low-poly Wavefront OBJ/MTL model (falling back to a built-in
+    placeholder cube if none is bundled) and renders it as an auto-rotating
+    turntable, with manual orbit/zoom and a wireframe toggle.
+  - Exercises OBJ/MTL parsing (via tinyobjloader-c) and texture loading
+    entirely separately from a hand-written CPU-side model/view/projection,
+    near-plane clipping, backface culling, and flat-lit shading pipeline,
+    drawn through `SDL_RenderGeometry` -- no OpenGL is used for this suite's
+    3D rendering.
+
 ## Build Flow
 
 ```text
@@ -201,6 +211,7 @@ miyoo_sdl2_benchmarks/
 |   |-- double_buf/
 |   |-- gfx_bench/
 |   |-- gl_fbo_effects/
+|   |-- obj_model_loader/
 |   |-- render_suite/
 |   |-- space_bench/
 |   |-- sprite_bench/
