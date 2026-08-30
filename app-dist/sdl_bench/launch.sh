@@ -10,19 +10,17 @@ export LD_LIBRARY_PATH=$bench_dir/lib:$LD_LIBRARY_PATH
 # export SDL_AUDIODRIVER=mmiyoo
 # export EGL_VIDEODRIVER=mmiyoo
 
-# SDL_MMIYOO_VSYNC_MODE: "off" (no wait), "adaptive" (FBIO_WAITFORVSYNC, skipped if running late), "strict" (real FBIOPAN_DISPLAY panning paced by /dev/l; hard-steps to 30fps under load, killing /dev/l regains control but introduces flickering).
-# The title screen's config panel sets this per launched suite; uncomment to force a value for the title screen itself too.
+# SDL_MMIYOO_VSYNC_MODE: off (no wait), adaptive (skip wait if running late),
+# or strict (hard 30fps steps under load -- more consistent pacing but can
+# flicker). Title screen's config panel sets this per suite; uncomment to
+# force it for the title screen too.
 # export SDL_MMIYOO_VSYNC_MODE=strict
 
-freemma="/mnt/SDCARD/.tmp_update/bin/freemma"
 cpuclock="/mnt/SDCARD/.tmp_update/bin/cpuclock"
 
 # MainUI's App/ folder convention doesn't track or kill a previously launched
-# process -- re-tapping the icon (e.g. after backing out via the system
-# Menu/Home button instead of this app's own Exit control) spawns a second
-# full process tree that fights the first over the MMIYOO driver's singleton
-# joystick/framebuffer resources. Clear out any stale instance first so every
-# launch starts clean.
+# process, so re-tapping the icon can spawn a second process tree that fights
+# the first over the driver's singleton joystick/framebuffer resources.
 my_pid=$$
 for stale_pid in $(pgrep -f "bin/sdl2_" 2>/dev/null); do
     if [ "$stale_pid" != "$my_pid" ]; then
@@ -30,25 +28,11 @@ for stale_pid in $(pgrep -f "bin/sdl2_" 2>/dev/null); do
     fi
 done
 
-# Stop audio services
 if [ -f /mnt/SDCARD/.tmp_update/script/stop_audioserver.sh ]; then
     /mnt/SDCARD/.tmp_update/script/stop_audioserver.sh
 else
     killall audioserver audioserver.mod 2>/dev/null
 fi
-
-# Execute freemma if available
-# The current SDL2 doesn't correctly release MI_SYS resources, causing OOM and screen flip on exit
-# Not actually needed now as backend is fixed.
-exe_freemma() {
-    if [ -f "$freemma" ]; then
-        echo "Running memory cleanup..."
-        "$freemma"
-        sleep 0.1
-    else
-        echo "Warning: freemma not found at $freemma"
-    fi
-}
 
 exe_cpuclock() {
     if [ -f "$cpuclock" ]; then
@@ -60,9 +44,8 @@ exe_cpuclock() {
 
 cd "$bench_dir"
 
-# TEMP DIAGNOSTIC (universal segfault investigation): launch a single
-# benchmark directly under gdbserver instead of running the full suite, so
-# gdb attaches before the process runs rather than racing a fast crash.
+# Launches a single benchmark directly under gdbserver so gdb attaches
+# before the process runs, instead of racing a fast crash.
 # Usage: ./launch.sh --gdb <bin-name-under-bin/> [port]
 #   e.g. ./launch.sh --gdb sdl2_render_suite 2345
 # On the host: gdb-multiarch -> target remote <device-ip>:<port>
@@ -90,10 +73,8 @@ if [ "$1" = "--gdb" ]; then
     exec "$gdbserver_bin" ":$gdb_port" "$gdb_bench_path"
 fi
 
-# Isolated single-scene A/B perf run: forces one render_suite scene, disables
-# auto-cycle, runs for a fixed duration, and logs periodic [BENCH] fps lines
-# tagged for comparison across builds. No env vars other than the ones below
-# are set, so vsync mode etc. stays at the binary's own default.
+# Isolated single-scene A/B perf run, tagged fps logging. No env vars other
+# than these are set, so vsync mode etc. stays at the binary's default.
 # Usage: ./launch.sh --geometry <tag> [duration_s]
 #   e.g. ./launch.sh --geometry neon 30
 if [ "$1" = "--geometry" ]; then
@@ -121,6 +102,33 @@ if [ "$1" = "--geometry" ]; then
     exit $geo_exit
 fi
 
+# Usage: ./launch.sh --obj-model <tag> [duration_s]
+#   e.g. ./launch.sh --obj-model perf1 30
+if [ "$1" = "--obj-model" ]; then
+    obj_tag="${2:-untagged}"
+    obj_duration="${3:-30}"
+    obj_log="$bench_dir/logs/obj_model_loader_${obj_tag}.log"
+
+    if [ -z "$2" ]; then
+        echo "Usage: $0 --obj-model <tag> [duration_s]"
+        exit 1
+    fi
+
+    mkdir -p "$bench_dir/logs"
+    echo "Running obj_model_loader stage-timing benchmark, tag=$obj_tag duration=${obj_duration}s"
+    echo "===== START obj-model ($obj_tag): $(date) =====" > "$obj_log"
+    ps >> "$obj_log"
+    echo "-----" >> "$obj_log"
+    OBJ_BENCH_DURATION_S="$obj_duration" OBJ_BENCH_TAG="$obj_tag" \
+        "bin/sdl2_obj_model_loader" >> "$obj_log" 2>&1
+    obj_exit=$?
+    echo "-----" >> "$obj_log"
+    ps >> "$obj_log"
+    echo "===== END obj-model ($obj_tag): $(date) exit=$obj_exit =====" >> "$obj_log"
+    echo "Done. Log: $obj_log"
+    exit $obj_exit
+fi
+
 echo "Starting SDL2 Demo Suites title screen..."
 echo "Directory: $bench_dir"
 
@@ -131,7 +139,17 @@ if [ ! -f "bin/sdl2_title" ]; then
     exit 1
 fi
 
-bin/sdl2_title
+# Suites launched from the title menu inherit this process's stdio with no
+# separate per-suite log capture, so route the whole session to one log file.
+session_log="$bench_dir/logs/session_$(date +%Y%m%d_%H%M%S).log"
+mkdir -p "$bench_dir/logs"
+
+# Direct-writes untextured triangle fill spans and lines into the mapped
+# framebuffer instead of dispatching one hardware call per span/line. Off by
+# default in the driver.
+export SDL_MMIYOO_GEOMETRY_DIRECT_WRITE=1
+
+bin/sdl2_title >> "$session_log" 2>&1
 
 if [ -f /mnt/SDCARD/.tmp_update/script/start_audioserver.sh ]; then
     echo "Restarting audio services..."
