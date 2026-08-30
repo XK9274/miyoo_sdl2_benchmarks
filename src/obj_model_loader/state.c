@@ -9,8 +9,8 @@
 /* Same access()-probing pattern audio_bench uses for assets/bgm.wav --
  * relies on launch.sh's `cd "$bench_dir"` before exec'ing suite binaries. */
 static const char *OBJ_MODEL_PATHS[] = {
-    "assets/models/sample/model.obj",
-    "../assets/models/sample/model.obj",
+    "assets/models/sheep/sheep.obj",
+    "../assets/models/sheep/sheep.obj",
     NULL
 };
 
