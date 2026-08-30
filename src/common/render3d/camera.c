@@ -22,7 +22,9 @@ void camera3d_init(Camera3D *camera, Vec3 target, float distance)
     camera->pitch_radians = 0.0f;
     camera->fov_y_radians = 60.0f * CAMERA3D_PI / 180.0f;
     camera->near_plane = 0.1f;
-    camera->far_plane = 100.0f;
+    /* far_plane scales with framing distance (floored at 100) so large-scale
+     * models keep zoom-out headroom without affecting small models. */
+    camera->far_plane = fmaxf(100.0f, camera->distance * 4.0f);
 }
 
 void camera3d_auto_rotate(Camera3D *camera, float radians_per_second, float dt)
