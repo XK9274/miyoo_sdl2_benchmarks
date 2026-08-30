@@ -104,6 +104,33 @@ static void obj_set_default_material(MeshMaterial *dst)
     dst->opacity = 1.0f;
 }
 
+static void obj_copy_vertex(const tinyobj_attrib_t *attrib, tinyobj_vertex_index_t idx, MeshVertex *out)
+{
+    memset(out, 0, sizeof(*out));
+
+    out->position.x = attrib->vertices[3 * (size_t)idx.v_idx + 0];
+    out->position.y = attrib->vertices[3 * (size_t)idx.v_idx + 1];
+    out->position.z = attrib->vertices[3 * (size_t)idx.v_idx + 2];
+
+    /* tinyobjloader-c returns a large negative sentinel (not -1) for absent
+     * vt/vn indices -- treat any negative value as absent. */
+    if (idx.vn_idx >= 0) {
+        out->normal.x = attrib->normals[3 * (size_t)idx.vn_idx + 0];
+        out->normal.y = attrib->normals[3 * (size_t)idx.vn_idx + 1];
+        out->normal.z = attrib->normals[3 * (size_t)idx.vn_idx + 2];
+        out->has_normal = 1;
+    }
+
+    if (idx.vt_idx >= 0) {
+        out->texcoord.u = attrib->texcoords[2 * (size_t)idx.vt_idx + 0];
+        /* OBJ's V=0-at-bottom vs SDL's texture V=0-at-top -- flipped
+         * exactly once, here, so every downstream consumer already sees
+         * SDL-convention UVs. */
+        out->texcoord.v = 1.0f - attrib->texcoords[2 * (size_t)idx.vt_idx + 1];
+        out->has_texcoord = 1;
+    }
+}
+
 ObjLoaderResult obj_loader_load(const char *obj_path, Mesh *mesh)
 {
     mesh_init(mesh);
@@ -120,9 +147,12 @@ ObjLoaderResult obj_loader_load(const char *obj_path, Mesh *mesh)
     tinyobj_material_t *materials = NULL;
     size_t num_materials = 0;
 
+    /* Untriangulated parse + fan-triangulation by hand below --
+     * tinyobjloader-c's own TRIANGULATE flag aborts on any face with 6+
+     * vertices, which real low-poly exports routinely have. */
     tinyobj_attrib_init(&attrib);
     const int ret = tinyobj_parse_obj(&attrib, &shapes, &num_shapes, &materials, &num_materials,
-                                      obj_path, obj_file_reader, NULL, TINYOBJ_FLAG_TRIANGULATE);
+                                      obj_path, obj_file_reader, NULL, 0);
     if (ret != TINYOBJ_SUCCESS) {
         tinyobj_attrib_free(&attrib);
         tinyobj_shapes_free(shapes, num_shapes);
@@ -149,7 +179,15 @@ ObjLoaderResult obj_loader_load(const char *obj_path, Mesh *mesh)
     }
     obj_set_default_material(&out_materials[default_material_index]);
 
-    const int triangle_count = (int)attrib.num_face_num_verts;
+    /* Fan-triangulate every polygon ourselves (tinyobjloader-c's own
+     * triangulation is not used). */
+    int triangle_count = 0;
+    for (unsigned int p = 0; p < attrib.num_face_num_verts; p++) {
+        const int n = attrib.face_num_verts[p];
+        if (n >= 3) {
+            triangle_count += n - 2;
+        }
+    }
     const int vertex_count = triangle_count * 3;
 
     MeshVertex *out_vertices = NULL;
@@ -168,37 +206,31 @@ ObjLoaderResult obj_loader_load(const char *obj_path, Mesh *mesh)
         return OBJ_LOADER_ERROR_OUT_OF_MEMORY;
     }
 
-    for (int tri = 0; tri < triangle_count; tri++) {
-        const int raw_material_id = attrib.material_ids[tri];
-        out_material_ids[tri] = (raw_material_id >= 0) ? raw_material_id : default_material_index;
-
-        for (int corner = 0; corner < 3; corner++) {
-            const tinyobj_vertex_index_t idx = attrib.faces[tri * 3 + corner];
-            MeshVertex *v = &out_vertices[tri * 3 + corner];
-            memset(v, 0, sizeof(*v));
-
-            v->position.x = attrib.vertices[3 * (size_t)idx.v_idx + 0];
-            v->position.y = attrib.vertices[3 * (size_t)idx.v_idx + 1];
-            v->position.z = attrib.vertices[3 * (size_t)idx.v_idx + 2];
-
-            /* tinyobjloader-c returns a large negative sentinel (not -1) for
-             * absent vt/vn indices -- treat any negative value as absent. */
-            if (idx.vn_idx >= 0) {
-                v->normal.x = attrib.normals[3 * (size_t)idx.vn_idx + 0];
-                v->normal.y = attrib.normals[3 * (size_t)idx.vn_idx + 1];
-                v->normal.z = attrib.normals[3 * (size_t)idx.vn_idx + 2];
-                v->has_normal = 1;
-            }
-
-            if (idx.vt_idx >= 0) {
-                v->texcoord.u = attrib.texcoords[2 * (size_t)idx.vt_idx + 0];
-                /* OBJ's V=0-at-bottom vs SDL's texture V=0-at-top -- flipped
-                 * exactly once, here, so every downstream consumer already
-                 * sees SDL-convention UVs. */
-                v->texcoord.v = 1.0f - attrib.texcoords[2 * (size_t)idx.vt_idx + 1];
-                v->has_texcoord = 1;
-            }
+    int out_tri = 0;
+    unsigned int face_vertex_offset = 0;
+    for (unsigned int p = 0; p < attrib.num_face_num_verts; p++) {
+        const int n = attrib.face_num_verts[p];
+        if (n < 3) {
+            face_vertex_offset += (unsigned int)(n > 0 ? n : 0);
+            continue;
         }
+
+        const int raw_material_id = attrib.material_ids[p];
+        const int material_id = (raw_material_id >= 0) ? raw_material_id : default_material_index;
+        const tinyobj_vertex_index_t idx0 = attrib.faces[face_vertex_offset + 0];
+
+        for (int t = 0; t < n - 2; t++) {
+            const tinyobj_vertex_index_t idx1 = attrib.faces[face_vertex_offset + (unsigned int)t + 1];
+            const tinyobj_vertex_index_t idx2 = attrib.faces[face_vertex_offset + (unsigned int)t + 2];
+
+            out_material_ids[out_tri] = material_id;
+            obj_copy_vertex(&attrib, idx0, &out_vertices[out_tri * 3 + 0]);
+            obj_copy_vertex(&attrib, idx1, &out_vertices[out_tri * 3 + 1]);
+            obj_copy_vertex(&attrib, idx2, &out_vertices[out_tri * 3 + 2]);
+            out_tri++;
+        }
+
+        face_vertex_offset += (unsigned int)n;
     }
 
     mesh->vertices = out_vertices;
