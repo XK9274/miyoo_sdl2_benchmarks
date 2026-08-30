@@ -1,0 +1,11 @@
+#ifndef OBJ_MODEL_LOADER_INPUT_H
+#define OBJ_MODEL_LOADER_INPUT_H
+
+#include <SDL2/SDL.h>
+
+#include "bench_common.h"
+#include "obj_model_loader/state.h"
+
+SDL_bool obj_handle_input(ObjModelLoaderState *state, BenchMetrics *metrics);
+
+#endif /* OBJ_MODEL_LOADER_INPUT_H */
