@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common/memory_opt.h"
+
 /* Reads filename verbatim into a malloc'd buffer; path resolution has
  * already happened before this is called. */
 static void obj_file_reader(void *ctx, const char *filename, int is_mtl,
@@ -63,7 +65,7 @@ static void obj_dirname(const char *path, char *out_dir, size_t out_size)
     if (len >= out_size) {
         len = out_size - 1;
     }
-    memcpy(out_dir, path, len);
+    rs_memcpy_bytes(out_dir, path, len);
     out_dir[len] = '\0';
 }
 
