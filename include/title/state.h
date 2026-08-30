@@ -5,7 +5,7 @@
 
 #include "bench_common.h"
 
-#define TITLE_SUITE_COUNT 7
+#define TITLE_SUITE_COUNT 8
 
 typedef struct {
     const char *label;

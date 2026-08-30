@@ -13,7 +13,8 @@ PROGRAMS      := sdl2_title \
                  sdl2_gl_fbo_effects \
                  sdl2_audio_bench \
                  sdl2_sprite_bench \
-                 sdl2_gfx_bench
+                 sdl2_gfx_bench \
+                 sdl2_obj_model_loader
 
 TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
 
@@ -35,7 +36,15 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/display_config.c \
     $(SRC_DIR)/common/frame_limit.c \
     $(SRC_DIR)/common/loading_screen.c \
-    $(SRC_DIR)/common/gl_effect.c
+    $(SRC_DIR)/common/gl_effect.c \
+    $(SRC_DIR)/common/math3d/vec3.c \
+    $(SRC_DIR)/common/math3d/mat4.c \
+    $(SRC_DIR)/common/model/mesh.c \
+    $(SRC_DIR)/common/model/obj_loader.c \
+    $(SRC_DIR)/common/render3d/material_texture.c \
+    $(SRC_DIR)/common/render3d/model_instance.c \
+    $(SRC_DIR)/common/render3d/camera.c \
+    $(SRC_DIR)/common/render3d/pipeline.c
 COMMON_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(COMMON_SOURCES))
 
 TITLE_SOURCES := \
@@ -149,6 +158,15 @@ GFX_BENCH_SOURCES := \
 GFX_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(GFX_BENCH_SOURCES))
 GFX_BENCH_TARGET  := $(BIN_DIR)/sdl2_gfx_bench
 
+OBJ_MODEL_LOADER_SOURCES := \
+    $(SRC_DIR)/obj_model_loader/input.c \
+    $(SRC_DIR)/obj_model_loader/main.c \
+    $(SRC_DIR)/obj_model_loader/overlay.c \
+    $(SRC_DIR)/obj_model_loader/placeholder_model.c \
+    $(SRC_DIR)/obj_model_loader/state.c
+OBJ_MODEL_LOADER_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(OBJ_MODEL_LOADER_SOURCES))
+OBJ_MODEL_LOADER_TARGET  := $(BIN_DIR)/sdl2_obj_model_loader
+
 ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(TITLE_OBJECTS) \
                  $(SPACE_OBJECTS) \
@@ -157,7 +175,8 @@ ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(GL_FBO_EFFECTS_OBJECTS) \
                  $(AUDIO_OBJECTS) \
                  $(SPRITE_BENCH_OBJECTS) \
-                 $(GFX_BENCH_OBJECTS)
+                 $(GFX_BENCH_OBJECTS) \
+                 $(OBJ_MODEL_LOADER_OBJECTS)
 DEPS          := $(ALL_OBJECTS:.o=.d)
 
 # Toolchain ------------------------------------------------------------------
@@ -242,6 +261,10 @@ $(SPRITE_BENCH_TARGET): $(COMMON_OBJECTS) $(SPRITE_BENCH_OBJECTS) | $(BIN_DIR)
 
 $(GFX_BENCH_TARGET): $(COMMON_OBJECTS) $(GFX_BENCH_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(GFX_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(OBJ_MODEL_LOADER_TARGET): $(COMMON_OBJECTS) $(OBJ_MODEL_LOADER_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(OBJ_MODEL_LOADER_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)

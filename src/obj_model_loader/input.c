@@ -1,0 +1,65 @@
+#include "obj_model_loader/input.h"
+
+#include "common/driver_support.h"
+#include "controller_input.h"
+
+#define OBJ_ORBIT_STEP_RADIANS (15.0f * 3.14159265358979323846f / 180.0f)
+#define OBJ_ZOOM_STEP 0.5f
+
+SDL_bool obj_handle_input(ObjModelLoaderState *state, BenchMetrics *metrics)
+{
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) {
+            return SDL_FALSE;
+        }
+        const SDL_Keycode sym = bench_driver_translate_event(&e);
+        if (sym != 0) {
+            switch (sym) {
+                case BTN_EXIT:
+                case SDLK_ESCAPE:
+                    return SDL_FALSE;
+                case BTN_START:
+                    bench_driver_toggle_input_mode();
+                    break;
+                case BTN_VSYNC_TOGGLE:
+                    bench_driver_toggle_vsync();
+                    break;
+                case BTN_UP:
+                    camera3d_orbit(&state->camera, 0.0f, OBJ_ORBIT_STEP_RADIANS);
+                    state->auto_rotate = SDL_FALSE;
+                    break;
+                case BTN_DOWN:
+                    camera3d_orbit(&state->camera, 0.0f, -OBJ_ORBIT_STEP_RADIANS);
+                    state->auto_rotate = SDL_FALSE;
+                    break;
+                case BTN_LEFT:
+                    camera3d_orbit(&state->camera, -OBJ_ORBIT_STEP_RADIANS, 0.0f);
+                    state->auto_rotate = SDL_FALSE;
+                    break;
+                case BTN_RIGHT:
+                    camera3d_orbit(&state->camera, OBJ_ORBIT_STEP_RADIANS, 0.0f);
+                    state->auto_rotate = SDL_FALSE;
+                    break;
+                case BTN_L1:
+                    camera3d_zoom(&state->camera, -OBJ_ZOOM_STEP);
+                    break;
+                case BTN_R1:
+                    camera3d_zoom(&state->camera, OBJ_ZOOM_STEP);
+                    break;
+                case BTN_A:
+                    state->auto_rotate = !state->auto_rotate;
+                    break;
+                case BTN_B:
+                    state->wireframe = !state->wireframe;
+                    break;
+                case BTN_SELECT:
+                    bench_reset_metrics(metrics);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+    return SDL_TRUE;
+}

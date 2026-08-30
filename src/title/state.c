@@ -34,6 +34,10 @@ void title_state_init(TitleState *state)
          "Cycles antialiased shapes, rounded rects, polygons, bezier curves, and thick lines "
          "via SDL2_gfx's software primitive renderer -- exercises CPU-side rasterization "
          "independent of the hardware-accelerated SDL_Renderer path."},
+        {"Obj Model Loader", "sdl2_obj_model_loader",
+         "Loads a Wavefront OBJ/MTL model and renders it as an auto-rotating turntable "
+         "via SDL_RenderGeometry -- exercises OBJ/MTL parsing, texture loading, and a "
+         "hand-written CPU-side model/view/projection, clipping, culling, and lighting pipeline."},
     };
     memcpy(state->suites, suites, sizeof(suites));
 
