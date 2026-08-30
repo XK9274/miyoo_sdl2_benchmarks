@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "common/memory_opt.h"
 
@@ -67,6 +68,22 @@ static void obj_dirname(const char *path, char *out_dir, size_t out_size)
     }
     rs_memcpy_bytes(out_dir, path, len);
     out_dir[len] = '\0';
+}
+
+static void obj_basename(const char *path, char *out_name, size_t out_size)
+{
+    const char *slash = strrchr(path, '/');
+    const char *name = slash ? slash + 1 : path;
+    size_t len = strlen(name);
+    const size_t ext_len = strlen(".obj");
+    if (len > ext_len && strcmp(name + len - ext_len, ".obj") == 0) {
+        len -= ext_len;
+    }
+    if (len >= out_size) {
+        len = out_size - 1;
+    }
+    rs_memcpy_bytes(out_name, name, len);
+    out_name[len] = '\0';
 }
 
 static void obj_convert_material(const tinyobj_material_t *src, MeshMaterial *dst, const char *obj_dir)
@@ -165,21 +182,51 @@ ObjLoaderResult obj_loader_load(const char *obj_path, Mesh *mesh)
     char obj_dir[512];
     obj_dirname(obj_path, obj_dir, sizeof(obj_dir));
 
-    /* One extra slot for the synthetic default material (unassigned triangles). */
-    const int material_count = (int)num_materials + 1;
-    const int default_material_index = (int)num_materials;
+    /* An .obj with no materials of its own falls back to a twinned
+     * <name>.mtl next to it, if one exists, instead of the synthetic
+     * default -- the .obj itself is never touched either way. */
+    tinyobj_material_t *fallback_materials = NULL;
+    size_t num_fallback_materials = 0;
+    if (num_materials == 0) {
+        char base_name[256];
+        obj_basename(obj_path, base_name, sizeof(base_name));
+        char mtl_path[512];
+        if (obj_dir[0] != '\0') {
+            snprintf(mtl_path, sizeof(mtl_path), "%s/%s.mtl", obj_dir, base_name);
+        } else {
+            snprintf(mtl_path, sizeof(mtl_path), "%s.mtl", base_name);
+        }
+        if (access(mtl_path, F_OK) == 0) {
+            tinyobj_parse_mtl_file(&fallback_materials, &num_fallback_materials,
+                                   mtl_path, NULL, obj_file_reader, NULL);
+        }
+    }
+    const int use_fallback_materials = num_fallback_materials > 0;
+
+    /* One extra slot for the synthetic default material (unassigned triangles),
+     * unless a fallback material set is used instead. */
+    const int material_count = use_fallback_materials ? (int)num_fallback_materials : (int)num_materials + 1;
+    const int default_material_index = use_fallback_materials ? 0 : (int)num_materials;
 
     MeshMaterial *out_materials = (MeshMaterial *)malloc(sizeof(MeshMaterial) * (size_t)material_count);
     if (!out_materials) {
+        tinyobj_materials_free(fallback_materials, num_fallback_materials);
         tinyobj_attrib_free(&attrib);
         tinyobj_shapes_free(shapes, num_shapes);
         tinyobj_materials_free(materials, num_materials);
         return OBJ_LOADER_ERROR_OUT_OF_MEMORY;
     }
-    for (size_t i = 0; i < num_materials; i++) {
-        obj_convert_material(&materials[i], &out_materials[i], obj_dir);
+    if (use_fallback_materials) {
+        for (size_t i = 0; i < num_fallback_materials; i++) {
+            obj_convert_material(&fallback_materials[i], &out_materials[i], obj_dir);
+        }
+        tinyobj_materials_free(fallback_materials, num_fallback_materials);
+    } else {
+        for (size_t i = 0; i < num_materials; i++) {
+            obj_convert_material(&materials[i], &out_materials[i], obj_dir);
+        }
+        obj_set_default_material(&out_materials[default_material_index]);
     }
-    obj_set_default_material(&out_materials[default_material_index]);
 
     /* Fan-triangulate every polygon ourselves (tinyobjloader-c's own
      * triangulation is not used). */
