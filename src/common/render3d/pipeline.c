@@ -129,7 +129,7 @@ static int pipeline_clip_near(const ClipVertex in[3], ClipVertex out[4], float n
 }
 
 static SDL_Vertex pipeline_project_vertex(const ClipVertex *cv, const Mat4 *projection,
-                                          int viewport_w, int viewport_h, SDL_Color color)
+                                          const Render3DFrameParams *params, SDL_Color color)
 {
     const Vec4 clip = bench_mat4_transform_point(projection, cv->view_pos);
     const float inv_w = (fabsf(clip.w) > 1e-6f) ? (1.0f / clip.w) : 1.0f;
@@ -137,10 +137,13 @@ static SDL_Vertex pipeline_project_vertex(const ClipVertex *cv, const Mat4 *proj
     const float ndc_y = clip.y * inv_w;
 
     SDL_Vertex v;
-    v.position.x = (ndc_x * 0.5f + 0.5f) * (float)viewport_w;
+    /* NDC (-1..1) maps into the content sub-rectangle (viewport_x/y/w/h),
+     * not necessarily the whole screen, so the model centers below an
+     * overlay/HUD rather than behind it. */
+    v.position.x = (float)params->viewport_x + (ndc_x * 0.5f + 0.5f) * (float)params->viewport_width;
     /* NDC +Y is up, SDL screen +Y is down -- flipped here (separate from the
      * earlier OBJ-to-SDL texture V flip). */
-    v.position.y = (1.0f - (ndc_y * 0.5f + 0.5f)) * (float)viewport_h;
+    v.position.y = (float)params->viewport_y + (1.0f - (ndc_y * 0.5f + 0.5f)) * (float)params->viewport_height;
     v.color = color;
     v.tex_coord.x = cv->texcoord.u;
     v.tex_coord.y = cv->texcoord.v;
@@ -238,9 +241,9 @@ void render3d_draw_mesh(SDL_Renderer *renderer,
             const ClipVertex *c = &clip_out[t + 2];
 
             PipelineTriangle *dst = &scratch->triangles[scratch->count++];
-            dst->verts[0] = pipeline_project_vertex(a, &params->projection, params->viewport_width, params->viewport_height, color);
-            dst->verts[1] = pipeline_project_vertex(b, &params->projection, params->viewport_width, params->viewport_height, color);
-            dst->verts[2] = pipeline_project_vertex(c, &params->projection, params->viewport_width, params->viewport_height, color);
+            dst->verts[0] = pipeline_project_vertex(a, &params->projection, params, color);
+            dst->verts[1] = pipeline_project_vertex(b, &params->projection, params, color);
+            dst->verts[2] = pipeline_project_vertex(c, &params->projection, params, color);
             dst->texture = texture;
             dst->depth_key = (a->view_pos.z + b->view_pos.z + c->view_pos.z) / 3.0f;
         }
