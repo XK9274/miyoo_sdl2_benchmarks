@@ -117,10 +117,13 @@ The launcher also has two diagnostic entry points:
 ```bash
 ./launch.sh --gdb <binary-name> [port]
 ./launch.sh --geometry <tag> [duration_s]
+./launch.sh --obj-model <tag> [duration_s]
 ```
 
 `--gdb` starts one binary under `gdbserver`. `--geometry` runs the render
 suite's geometry scene only and tags its periodic FPS output for A/B testing.
+`--obj-model` runs `sdl2_obj_model_loader` standalone and tags its periodic
+per-stage timing output the same way.
 
 ## Benchmarks
 
@@ -163,15 +166,16 @@ suite's geometry scene only and tags its periodic FPS output for A/B testing.
   - Exercises CPU-side rasterization independent of the hardware-accelerated
     `SDL_Renderer` path the other suites use.
 
-- `sdl2_obj_model_loader`
-  - Loads a low-poly Wavefront OBJ/MTL model (falling back to a built-in
-    placeholder cube if none is bundled) and renders it as an auto-rotating
-    turntable, with manual orbit/zoom and a wireframe toggle.
+- `sdl2_obj_model_loader` **(WIP)**
+  - Loads low-poly Wavefront OBJ/MTL models from `assets/models/` (falling
+    back to a built-in placeholder cube if none is bundled), with L2/R2
+    cycling between every bundled model at runtime and manual orbit/zoom/
+    wireframe controls.
   - Exercises OBJ/MTL parsing (via tinyobjloader-c) and texture loading
     entirely separately from a hand-written CPU-side model/view/projection,
-    near-plane clipping, backface culling, and flat-lit shading pipeline,
-    drawn through `SDL_RenderGeometry` -- no OpenGL is used for this suite's
-    3D rendering.
+    near-plane clipping, backface culling, and multi-light flat-shading
+    pipeline, drawn through `SDL_RenderGeometry` -- no OpenGL is used for
+    this suite's 3D rendering.
 
 ## Build Flow
 
