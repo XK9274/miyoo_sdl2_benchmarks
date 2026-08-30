@@ -13,6 +13,10 @@
 *.pc text eol=lf
 .gitignore text eol=lf
 
+# 3D model assets
+*.obj text eol=lf
+*.mtl text eol=lf
+
 # Binary files
 *.a binary
 *.la binary
