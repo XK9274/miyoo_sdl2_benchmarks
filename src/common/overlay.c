@@ -37,7 +37,7 @@ static const char *g_font_paths[] = {
 #define OVERLAY_CHART_ROW_SPAN 4   /* two 2-row-tall charts */
 #define OVERLAY_HEADER_ROW_SPAN 1
 #define OVERLAY_BACKENDS_ROW_SPAN 4 /* 2 columns: Render/Audio, Input/Power, Threads/Display, Build/CPU Freq */
-#define OVERLAY_FONT_SIZE_MARGIN 10
+#define OVERLAY_FONT_SIZE_MARGIN 8
 #define OVERLAY_BOLT_GLYPH_MARGIN 5
 #define OVERLAY_CLOCK_FONT_DELTA 2
 #define OVERLAY_BATTERY_FONT_DELTA 3
