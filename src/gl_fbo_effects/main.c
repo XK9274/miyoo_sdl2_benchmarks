@@ -7,10 +7,28 @@
 
 #include "bench_common.h"
 #include "gl_fbo_effects/input.h"
-#include "gl_fbo_effects/overlay.h"
 #include "gl_fbo_effects/scenes/effects.h"
 #include "gl_fbo_effects/state.h"
+#include "common/hotkeys.h"
 #include "common/loading_screen.h"
+#include "common/overlay_rows.h"
+
+static const OverlayRowSpec g_rsgl_rows[] = {
+    {OVERLAY_ROW_CUSTOM, {240, 194, 94, 255}, 0, "%s"},
+    {OVERLAY_ROW_FPS, {255, 255, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_FRAME_TIME, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_TEXTURE_SWITCHES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_CUSTOM, {255, 200, 0, 255}, 0, "%s"},
+};
+
+static const OverlayKeybind g_rsgl_keybinds[] = {
+    {"SELECT", "Toggle overlay"},
+    {"MENU", "Reset metrics"},
+    {"Y", "Next effect"},
+    {"A", "Toggle auto cycle"},
+    {"X", "Change FBO size"},
+};
 
 static void rsgl_print_info(void)
 {
@@ -110,7 +128,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    rsgl_state_update_layout(&state, overlay);
     if (loading_active) {
         /* GL effects acquire the shared context lazily during init. */
         bench_loading_step(&loading, 0.45f, "Preparing GL context");
@@ -139,7 +156,8 @@ int main(int argc, char *argv[])
     if (loading_active) {
         bench_loading_step(&loading, 0.9f, "Warming up shaders");
     }
-    rsgl_overlay_submit(overlay, &state, &metrics);
+    bench_overlay_configure(overlay, g_rsgl_rows, (int)SDL_arraysize(g_rsgl_rows),
+                            g_rsgl_keybinds, (int)SDL_arraysize(g_rsgl_keybinds));
 
     if (loading_active) {
         bench_loading_step(&loading, 1.0f, "GL suite ready");
@@ -150,13 +168,11 @@ int main(int argc, char *argv[])
     Uint64 counter = SDL_GetPerformanceCounter();
     const Uint64 freq = SDL_GetPerformanceFrequency();
 
-    double next_status_refresh_ms = 0.0;
-
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
 
-        if (!rsgl_handle_input(&state, &metrics)) {
+        if (!rsgl_handle_input(&state, &metrics, overlay)) {
             break;
         }
 
@@ -173,8 +189,6 @@ int main(int argc, char *argv[])
             rsgl_effects_apply_fbo_size(&state, renderer);
         }
 
-        rsgl_state_update_layout(&state, overlay);
-
         SDL_SetRenderDrawColor(renderer, 8, 10, 18, 255);
         SDL_RenderClear(renderer);
 
@@ -187,14 +201,23 @@ int main(int argc, char *argv[])
         bench_frame_limit_wait(frame_start_counter);
         state.running = running;
 
-        if (metrics.accumulated_frame_time_ms >= next_status_refresh_ms) {
-            char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
-            bench_driver_format_status_grid(status_fields);
-            bench_overlay_set_status_grid(overlay, status_fields, (SDL_Color){255, 255, 255, 255});
-            next_status_refresh_ms = metrics.accumulated_frame_time_ms + 150.0;
+        const int effect_count = state.effect_count;
+        const int effect_index = (effect_count > 0) ? state.effect_index % effect_count : 0;
+        const char *fbo_label = "N/A";
+        if (state.fbo_size_index >= 0 && state.fbo_size_index < RSGL_FBO_PRESET_COUNT) {
+            const RsglFboPreset *preset = &rsgl_fbo_presets[state.fbo_size_index];
+            if (preset && preset->label) {
+                fbo_label = preset->label;
+            }
         }
-
-        rsgl_overlay_submit(overlay, &state, &metrics);
+        char effect_label[64];
+        snprintf(effect_label, sizeof(effect_label), "Effect: %s (%d/%d) | Auto %s",
+                 rsgl_effect_name(effect_index), effect_index + 1, effect_count,
+                 state.auto_cycle ? "ON" : "OFF");
+        char timer_label[64];
+        snprintf(timer_label, sizeof(timer_label), "FBO %s | Timer %.2fs", fbo_label, state.elapsed_time);
+        const char *custom_values[] = {effect_label, timer_label};
+        bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
     }
 
     bench_driver_shutdown();

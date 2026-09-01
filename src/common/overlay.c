@@ -38,6 +38,8 @@ static const char *g_font_paths[] = {
 #define OVERLAY_HEADER_ROW_SPAN 1
 #define OVERLAY_BACKENDS_ROW_SPAN 8 /* Render, Audio, Input, Power, Threads, Display, Build, CPU Freq */
 #define OVERLAY_FONT_SIZE_MARGIN 4
+#define OVERLAY_CLOCK_FONT_DELTA 2
+#define OVERLAY_BATTERY_FONT_DELTA 3
 
 typedef struct {
     BenchOverlay *overlay;
@@ -140,13 +142,17 @@ static int overlay_effective_rows(const BenchOverlay *snap)
     return SDL_max(total, OVERLAY_MIN_EFFECTIVE_ROWS);
 }
 
-static void overlay_render_header(SDL_Surface *surface, TTF_Font *font, int panel_w, int row_height)
+static void overlay_render_header(SDL_Surface *surface, TTF_Font *battery_font, TTF_Font *clock_font,
+                                  int panel_w, int row_height)
 {
     BenchDriverStatus status;
     bench_driver_get_status(&status);
 
-    const SDL_Rect bounds = {OVERLAY_EDGE_PAD, 0, panel_w - 2 * OVERLAY_EDGE_PAD, row_height};
     const SDL_Color text_color = {243, 241, 234, 255};
+    const int battery_h = row_height + OVERLAY_BATTERY_FONT_DELTA;
+    const int clock_h = row_height + OVERLAY_CLOCK_FONT_DELTA;
+    const SDL_Rect battery_bounds = {OVERLAY_EDGE_PAD, 0, panel_w - 2 * OVERLAY_EDGE_PAD, battery_h};
+    const SDL_Rect clock_bounds = {OVERLAY_EDGE_PAD, 0, panel_w - 2 * OVERLAY_EDGE_PAD, clock_h};
 
     char battery_text[32];
     if (status.battery_percent >= 0) {
@@ -154,7 +160,7 @@ static void overlay_render_header(SDL_Surface *surface, TTF_Font *font, int pane
     } else {
         snprintf(battery_text, sizeof(battery_text), "n/a");
     }
-    overlay_draw_text_line(surface, font, bounds, 0, text_color, battery_text);
+    overlay_draw_text_line(surface, battery_font, battery_bounds, 0, text_color, battery_text);
 
     if (status.charging) {
         const int glyph_size = SDL_max(row_height - OVERLAY_FONT_SIZE_MARGIN, 4);
@@ -168,7 +174,7 @@ static void overlay_render_header(SDL_Surface *surface, TTF_Font *font, int pane
     localtime_r(&now, &tm_now);
     char clock_text[16];
     strftime(clock_text, sizeof(clock_text), "%H:%M:%S", &tm_now);
-    overlay_draw_text_line(surface, font, bounds, 2, text_color, clock_text);
+    overlay_draw_text_line(surface, clock_font, clock_bounds, 2, text_color, clock_text);
 }
 
 static int overlay_render_backends_block(SDL_Renderer *renderer, SDL_Surface *surface,
@@ -278,7 +284,8 @@ static void overlay_render_charts(const BenchOverlay *snap, SDL_Surface *surface
 }
 
 static void overlay_render_new_panel(const BenchOverlay *snap, SDL_Surface *surface,
-                                     TTF_Font *font, int row_height)
+                                     TTF_Font *font, TTF_Font *battery_font, TTF_Font *clock_font,
+                                     int row_height)
 {
     SDL_FillRect(surface, NULL,
                  SDL_MapRGBA(surface->format, OVERLAY_PANEL_BG_R, OVERLAY_PANEL_BG_G,
@@ -287,7 +294,7 @@ static void overlay_render_new_panel(const BenchOverlay *snap, SDL_Surface *surf
     const int panel_w = snap->width;
     int y = 0;
 
-    overlay_render_header(surface, font, panel_w, row_height);
+    overlay_render_header(surface, battery_font, clock_font, panel_w, row_height);
     y += row_height;
 
     overlay_render_charts(snap, surface, font, panel_w, y, row_height);
@@ -380,6 +387,10 @@ static int bench_overlay_thread(void *userdata)
 
     TTF_Font *font = NULL;
     int font_size = 0;
+    TTF_Font *battery_font = NULL;
+    int battery_font_size = 0;
+    TTF_Font *clock_font = NULL;
+    int clock_font_size = 0;
     SDL_Surface *surface = NULL;
     int surface_w = 0;
     int surface_h = 0;
@@ -426,6 +437,24 @@ static int bench_overlay_thread(void *userdata)
             font = bench_load_font(desired_font_size);
             font_size = desired_font_size;
         }
+        if (snap.row_registry_configured) {
+            const int desired_battery_size = desired_font_size + OVERLAY_BATTERY_FONT_DELTA;
+            const int desired_clock_size = desired_font_size + OVERLAY_CLOCK_FONT_DELTA;
+            if (desired_battery_size != battery_font_size || !battery_font) {
+                if (battery_font) {
+                    TTF_CloseFont(battery_font);
+                }
+                battery_font = bench_load_font(desired_battery_size);
+                battery_font_size = desired_battery_size;
+            }
+            if (desired_clock_size != clock_font_size || !clock_font) {
+                if (clock_font) {
+                    TTF_CloseFont(clock_font);
+                }
+                clock_font = bench_load_font(desired_clock_size);
+                clock_font_size = desired_clock_size;
+            }
+        }
 
         SDL_FillRect(surface, NULL, SDL_MapRGBA(surface->format, 0, 0, 0, 0));
 
@@ -433,7 +462,7 @@ static int bench_overlay_thread(void *userdata)
             if (snap.collapsed) {
                 overlay_render_collapsed(&snap, surface, font, row_height);
             } else {
-                overlay_render_new_panel(&snap, surface, font, row_height);
+                overlay_render_new_panel(&snap, surface, font, battery_font, clock_font, row_height);
             }
         } else {
             SDL_FillRect(surface, NULL,
@@ -463,6 +492,12 @@ static int bench_overlay_thread(void *userdata)
 
     if (font) {
         TTF_CloseFont(font);
+    }
+    if (battery_font) {
+        TTF_CloseFont(battery_font);
+    }
+    if (clock_font) {
+        TTF_CloseFont(clock_font);
     }
     if (surface) {
         SDL_FreeSurface(surface);

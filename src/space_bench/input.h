@@ -3,6 +3,6 @@
 
 #include "space_bench/state.h"
 
-SDL_bool space_handle_input(SpaceBenchState *state, BenchMetrics *metrics);
+SDL_bool space_handle_input(SpaceBenchState *state, BenchMetrics *metrics, BenchOverlay *overlay);
 
 #endif /* SPACE_BENCH_INPUT_H */

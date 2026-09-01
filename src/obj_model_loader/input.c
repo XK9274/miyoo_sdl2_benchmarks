@@ -1,12 +1,13 @@
 #include "obj_model_loader/input.h"
 
 #include "common/driver_support.h"
+#include "common/hotkeys.h"
 #include "controller_input.h"
 
 #define OBJ_ORBIT_STEP_RADIANS (15.0f * 3.14159265358979323846f / 180.0f)
 #define OBJ_ZOOM_FACTOR 0.1f /* fraction of current distance per press -- scales with model size, unlike a fixed step */
 
-SDL_bool obj_handle_input(SDL_Renderer *renderer, ObjModelLoaderState *state, BenchMetrics *metrics)
+SDL_bool obj_handle_input(SDL_Renderer *renderer, ObjModelLoaderState *state, BenchMetrics *metrics, BenchOverlay *overlay)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -59,8 +60,11 @@ SDL_bool obj_handle_input(SDL_Renderer *renderer, ObjModelLoaderState *state, Be
                 case BTN_B:
                     state->wireframe = !state->wireframe;
                     break;
-                case BTN_SELECT:
+                case BTN_METRICS_RESET:
                     bench_reset_metrics(metrics);
+                    break;
+                case BTN_OVERLAY_TOGGLE:
+                    bench_overlay_toggle_collapsed(overlay);
                     break;
                 default:
                     break;

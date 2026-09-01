@@ -4,9 +4,10 @@
 
 #include "controller_input.h"
 #include "common/driver_support.h"
+#include "common/hotkeys.h"
 #include "gl_fbo_effects/scenes/effects.h"
 
-SDL_bool rsgl_handle_input(RsglState *state, BenchMetrics *metrics)
+SDL_bool rsgl_handle_input(RsglState *state, BenchMetrics *metrics, BenchOverlay *overlay)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -36,8 +37,11 @@ SDL_bool rsgl_handle_input(RsglState *state, BenchMetrics *metrics)
                 case BTN_X:
                     rsgl_state_cycle_fbo_size(state);
                     break;
-                case BTN_SELECT:
+                case BTN_METRICS_RESET:
                     bench_reset_metrics(metrics);
+                    break;
+                case BTN_OVERLAY_TOGGLE:
+                    bench_overlay_toggle_collapsed(overlay);
                     break;
                 default:
                     break;

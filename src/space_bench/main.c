@@ -5,10 +5,27 @@
 
 #include "space_bench/gl_effects.h"
 #include "space_bench/input.h"
-#include "space_bench/overlay.h"
 #include "space_bench/render.h"
 #include "space_bench/state.h"
+#include "common/hotkeys.h"
 #include "common/loading_screen.h"
+#include "common/overlay_rows.h"
+
+static const OverlayRowSpec g_space_rows[] = {
+    {OVERLAY_ROW_FPS, {255, 255, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_FRAME_TIME, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_CUSTOM, {0, 255, 160, 255}, 0, "%s"},
+    {OVERLAY_ROW_CUSTOM, {255, 180, 120, 255}, 0, "%s"},
+};
+
+static const OverlayKeybind g_space_keybinds[] = {
+    {"SELECT", "Toggle overlay"},
+    {"MENU", "Reset metrics"},
+    {"D-Pad", "Move"},
+    {"A", "Fire gun"},
+    {"B", "Fire laser"},
+    {"START", "Input mode"},
+};
 
 int main(int argc, char *argv[])
 {
@@ -69,7 +86,7 @@ int main(int argc, char *argv[])
 
     SpaceBenchState state;
     space_state_init(&state);
-    space_state_update_layout(&state, SPACE_HUD_STRIP_HEIGHT);
+    space_state_update_layout(&state, 0);
 
     if (loading_active) {
         bench_loading_step(&loading, 0.4f, "Compiling effect shaders");
@@ -87,6 +104,23 @@ int main(int argc, char *argv[])
 
     BenchMetrics metrics;
     bench_reset_metrics(&metrics);
+
+    BenchOverlay *overlay = bench_overlay_create(renderer, bench_logical_w(), 16, 12);
+    if (!overlay) {
+        printf("Overlay creation failed\n");
+        if (loading_active) {
+            bench_loading_abort(&loading);
+        }
+        space_gl_effects_shutdown();
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        TTF_Quit();
+        SDL_Quit();
+        return 1;
+    }
+    bench_overlay_configure(overlay, g_space_rows, (int)SDL_arraysize(g_space_rows),
+                            g_space_keybinds, (int)SDL_arraysize(g_space_keybinds));
+
     if (loading_active) {
         bench_loading_finish(&loading);
         loading_active = SDL_FALSE;
@@ -98,7 +132,7 @@ int main(int argc, char *argv[])
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
 
-        running = space_handle_input(&state, &metrics);
+        running = space_handle_input(&state, &metrics, overlay);
         if (!running) {
             break;
         }
@@ -114,14 +148,26 @@ int main(int argc, char *argv[])
         space_state_update(&state, (float)delta_seconds);
 
         space_render_scene(&state, renderer, &metrics);
-        space_hud_render(renderer, &state, &metrics);
+        bench_overlay_present(overlay, renderer, &metrics, 0, 0);
         SDL_RenderPresent(renderer);
 
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         bench_frame_limit_wait(frame_start_counter);
+
+        const char *guidance = state.weapon_upgrades.guidance_active ? "ON" : "--";
+        const char *thumper = state.weapon_upgrades.thumper_active ? "ON" : "--";
+        char status_line[96];
+        snprintf(status_line, sizeof(status_line), "Score %d | Enemies %d | Missed %d",
+                 state.score, state.total_enemies_killed, state.player_hits);
+        char upgrades_line[96];
+        snprintf(upgrades_line, sizeof(upgrades_line), "Split %d | Guide %s | Drones %d | Thumper %s",
+                 state.weapon_upgrades.split_level, guidance, state.weapon_upgrades.drone_count, thumper);
+        const char *custom_values[] = {status_line, upgrades_line};
+        bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
     }
 
     bench_driver_shutdown();
+    bench_overlay_destroy(overlay);
     space_gl_effects_shutdown();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
