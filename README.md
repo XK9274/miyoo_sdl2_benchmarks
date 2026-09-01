@@ -190,6 +190,12 @@ per-stage timing output the same way.
 The generated `app-dist/sdl_bench/lib/` directory contains the runtime
 libraries staged by the buildbot SDL providers.
 
+## Known Bugs
+
+- Memory management in `render_suite` is broken/regressed.
+- The overlay has a blending issue in most suites, visible in the obj model
+  loader.
+
 ## Directory Layout
 
 ```text
