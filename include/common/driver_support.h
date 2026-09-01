@@ -80,7 +80,4 @@ void bench_driver_toggle_vsync(void);
 /* Copies the current status snapshot out under lock. */
 void bench_driver_get_status(BenchDriverStatus *out_status);
 
-/* Formats the 2x4 driver status grid. */
-void bench_driver_format_status_grid(char fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN]);
-
 #endif /* COMMON_DRIVER_SUPPORT_H */

@@ -4,11 +4,36 @@
 #include <stdio.h>
 
 #include "double_buf/input.h"
-#include "double_buf/overlay.h"
 #include "double_buf/particles.h"
 #include "double_buf/render.h"
 #include "double_buf/state.h"
+#include "common/geometry/shapes.h"
+#include "common/hotkeys.h"
 #include "common/loading_screen.h"
+#include "common/overlay_rows.h"
+
+static const OverlayRowSpec g_db_rows[] = {
+    {OVERLAY_ROW_CUSTOM, {255, 180, 120, 255}, 0, "%s"},
+    {OVERLAY_ROW_CUSTOM, {255, 255, 255, 255}, 0, "%s"},
+    {OVERLAY_ROW_FPS, {255, 255, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_FRAME_TIME, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_VERTICES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_TRIANGLES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_CUSTOM, {255, 180, 120, 255}, 0, "%s"},
+};
+
+static const OverlayKeybind g_db_keybinds[] = {
+    {"SELECT", "Toggle overlay"},
+    {"MENU", "Reset metrics"},
+    {"A/B", "+/-150 particles"},
+    {"X", "Change render mode"},
+    {"Y", "Toggle particles"},
+    {"L1", "Toggle backdrop"},
+    {"R1", "Toggle cube"},
+    {"L2/R2", "Particle speed"},
+    {"UP/DOWN", "Change shape"},
+};
 
 int main(int argc, char *argv[])
 {
@@ -83,7 +108,8 @@ int main(int argc, char *argv[])
 
     BenchMetrics metrics;
     bench_reset_metrics(&metrics);
-    db_overlay_submit(overlay, &state, &metrics);
+    bench_overlay_configure(overlay, g_db_rows, (int)SDL_arraysize(g_db_rows),
+                            g_db_keybinds, (int)SDL_arraysize(g_db_keybinds));
     if (loading_active) {
         bench_loading_mark_idle(&loading, "GL modules idle - renderer path");
         bench_loading_finish(&loading);
@@ -92,13 +118,11 @@ int main(int argc, char *argv[])
 
     printf("SDL2 hardware double buffer benchmark started\n");
 
-    double next_status_refresh_ms = 0.0;
-
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
 
-        running = db_handle_input(&state, &metrics);
+        running = db_handle_input(&state, &metrics, overlay);
         if (!running) {
             break;
         }
@@ -109,7 +133,6 @@ int main(int argc, char *argv[])
         metrics.vertices_rendered = 0;
         metrics.triangles_rendered = 0;
 
-        db_state_update_layout(&state, bench_overlay_height(overlay));
         db_particles_update(&state, delta_seconds);
         state.cube_rotation += (float)(delta_seconds * 1.8f);
 
@@ -122,14 +145,18 @@ int main(int argc, char *argv[])
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         bench_frame_limit_wait(frame_start_counter);
 
-        if (metrics.accumulated_frame_time_ms >= next_status_refresh_ms) {
-            char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
-            bench_driver_format_status_grid(status_fields);
-            bench_overlay_set_status_grid(overlay, status_fields, (SDL_Color){255, 255, 255, 255});
-            next_status_refresh_ms = metrics.accumulated_frame_time_ms + 150.0;
-        }
-
-        db_overlay_submit(overlay, &state, &metrics);
+        char shape_label[64];
+        snprintf(shape_label, sizeof(shape_label), "Shape %d/%d: %s",
+                 state.shape_type + 1, SHAPE_COUNT, bench_get_shape_name(state.shape_type));
+        char particle_label[96];
+        snprintf(particle_label, sizeof(particle_label), "Particles %d/%d | Cube %s | Grid %s",
+                 state.particle_count, DB_MAX_PARTICLES,
+                 state.show_cube ? "ON" : "OFF", state.backdrop_grid ? "ON" : "OFF");
+        char state_label[64];
+        snprintf(state_label, sizeof(state_label), "Speed %.0f | Mode %d | Rot %.2f",
+                 state.particle_speed, state.render_mode, state.cube_rotation);
+        const char *custom_values[] = {shape_label, particle_label, state_label};
+        bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
     }
 
     bench_driver_shutdown();

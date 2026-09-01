@@ -5,8 +5,9 @@
 #include "controller_input.h"
 #include "common/driver_support.h"
 #include "common/geometry/shapes.h"
+#include "common/hotkeys.h"
 
-SDL_bool db_handle_input(DoubleBenchState *state, BenchMetrics *metrics)
+SDL_bool db_handle_input(DoubleBenchState *state, BenchMetrics *metrics, BenchOverlay *overlay)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -61,8 +62,11 @@ SDL_bool db_handle_input(DoubleBenchState *state, BenchMetrics *metrics)
                         state->particle_speed = 800.0f;
                     }
                     break;
-                case BTN_SELECT:
+                case BTN_METRICS_RESET:
                     bench_reset_metrics(metrics);
+                    break;
+                case BTN_OVERLAY_TOGGLE:
+                    bench_overlay_toggle_collapsed(overlay);
                     break;
                 case BTN_UP:
                     state->shape_type = (state->shape_type + 1) % SHAPE_COUNT;

@@ -5,11 +5,35 @@
 #include <stdio.h>
 
 #include "bench_common.h"
+#include "common/hotkeys.h"
 #include "common/loading_screen.h"
+#include "common/overlay_rows.h"
 #include "common/render3d/pipeline.h"
 #include "obj_model_loader/input.h"
-#include "obj_model_loader/overlay.h"
 #include "obj_model_loader/state.h"
+
+static const OverlayRowSpec g_obj_rows[] = {
+    {OVERLAY_ROW_CUSTOM, {240, 194, 94, 255}, 0, "%s"},
+    {OVERLAY_ROW_FPS, {255, 255, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_FRAME_TIME, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_TRIANGLES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_VERTICES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_TEXTURE_SWITCHES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_CUSTOM, {255, 180, 120, 255}, 0, "%s"},
+};
+
+static const OverlayKeybind g_obj_keybinds[] = {
+    {"SELECT", "Toggle overlay"},
+    {"MENU", "Reset metrics"},
+    {"D-Pad", "Orbit camera"},
+    {"L1/R1", "Zoom in/out"},
+    {"A", "Toggle auto-rotate"},
+    {"B", "Toggle wireframe"},
+    {"L2/R2", "Previous/next model"},
+    {"START", "Input mode"},
+    {"V", "Vsync"},
+};
 
 int main(int argc, char *argv[])
 {
@@ -93,8 +117,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    obj_state_update_layout(&state, overlay);
-    obj_overlay_submit(overlay, &state, &metrics);
+    bench_overlay_configure(overlay, g_obj_rows, (int)SDL_arraysize(g_obj_rows),
+                            g_obj_keybinds, (int)SDL_arraysize(g_obj_keybinds));
     if (loading_active) {
         bench_loading_step(&loading, 1.0f, "Obj model loader ready");
         bench_loading_finish(&loading);
@@ -107,7 +131,6 @@ int main(int argc, char *argv[])
     const double bench_duration_s = bench_duration_str ? SDL_atof(bench_duration_str) : 0.0;
     const char *bench_tag = SDL_getenv("OBJ_BENCH_TAG");
 
-    double next_status_refresh_ms = 0.0;
     double next_bench_log_ms = 0.0;
 
     SDL_bool running = SDL_TRUE;
@@ -115,7 +138,7 @@ int main(int argc, char *argv[])
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
 
         const Uint64 input_start = SDL_GetPerformanceCounter();
-        if (!obj_handle_input(renderer, &state, &metrics)) {
+        if (!obj_handle_input(renderer, &state, &metrics, overlay)) {
             break;
         }
         metrics.stage_input_ms = (double)(SDL_GetPerformanceCounter() - input_start) * 1000.0 / (double)perf_freq;
@@ -126,8 +149,6 @@ int main(int argc, char *argv[])
         metrics.vertices_rendered = 0;
         metrics.triangles_rendered = 0;
         metrics.texture_switches = 0;
-
-        obj_state_update_layout(&state, overlay);
 
         const Uint64 camera_start = SDL_GetPerformanceCounter();
         if (state.auto_rotate) {
@@ -190,14 +211,15 @@ int main(int argc, char *argv[])
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         bench_frame_limit_wait(frame_start_counter);
 
-        if (metrics.accumulated_frame_time_ms >= next_status_refresh_ms) {
-            char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
-            bench_driver_format_status_grid(status_fields);
-            bench_overlay_set_status_grid(overlay, status_fields, (SDL_Color){255, 255, 255, 255});
-            next_status_refresh_ms = metrics.accumulated_frame_time_ms + 150.0;
-        }
-
-        obj_overlay_submit(overlay, &state, &metrics);
+        char model_label[160];
+        snprintf(model_label, sizeof(model_label), "Model: %s (%d/%d)", state.model_label,
+                 state.available_model_count > 0 ? state.current_model_index + 1 : 0,
+                 state.available_model_count);
+        char flags_label[64];
+        snprintf(flags_label, sizeof(flags_label), "Auto-Rotate %s | Wireframe %s",
+                 state.auto_rotate ? "ON" : "OFF", state.wireframe ? "ON" : "OFF");
+        const char *custom_values[] = {model_label, flags_label};
+        bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
         if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {
             printf("[BENCH] tag=%s elapsed_s=%.1f frame=%llu fps=%.2f avg_fps=%.2f "

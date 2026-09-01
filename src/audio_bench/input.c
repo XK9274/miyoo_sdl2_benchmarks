@@ -6,9 +6,10 @@
 #include "audio_bench/waveform.h"
 #include "controller_input.h"
 #include "common/driver_support.h"
+#include "common/hotkeys.h"
 #include "common/metrics.h"
 
-SDL_bool audio_handle_input(BenchMetrics *metrics)
+SDL_bool audio_handle_input(BenchMetrics *metrics, BenchOverlay *overlay)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -55,10 +56,14 @@ SDL_bool audio_handle_input(BenchMetrics *metrics)
                     audio_device_adjust_volume(-0.1f);
                     break;
                 case BTN_X:
+                case BTN_METRICS_RESET:
                     bench_reset_metrics(metrics);
                     break;
                 case BTN_Y:
                     waveform_toggle_mode();
+                    break;
+                case BTN_OVERLAY_TOGGLE:
+                    bench_overlay_toggle_collapsed(overlay);
                     break;
                 default:
                     break;
