@@ -196,6 +196,7 @@ libraries staged by the buildbot SDL providers.
   loader.
 - The overlay's own render/update frequency measurably costs framerate;
   needs throttling instead of running every frame.
+- Issue with culling.
 
 ## Directory Layout
 
