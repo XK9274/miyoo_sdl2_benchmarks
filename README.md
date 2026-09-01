@@ -155,9 +155,8 @@ per-stage timing output the same way.
     overlay rendering, and runtime metrics.
 
 - `sdl2_sprite_bench`
-  - Fullscreen bouncing/morphing sprite stress test, deliberately without an
-    overlay/HUD or vsync, to isolate the render/present path from the
-    overlay code every other suite carries.
+  - Fullscreen bouncing/morphing sprite stress test, deliberately without
+    vsync, to isolate the render/present path's own throughput.
 
 - `sdl2_gfx_bench`
   - Cycles antialiased shapes, rounded rects, polygons, bezier curves, and
@@ -237,6 +236,9 @@ miyoo_sdl2_benchmarks/
   by [NoCopyrightSound633](https://pixabay.com/users/nocopyrightsound633-47610058/).
 - `app-dist/sdl_bench/assets/ThaleahFat.ttf`: [Free Pixel Font Thaleah](https://tinyworlds.itch.io/free-pixel-font-thaleah)
   by [Tiny Worlds](https://tinyworlds.itch.io/).
+- `app-dist/sdl_bench/assets/Metrophobic-Regular.ttf`: [Metrophobic](https://github.com/googlefonts/MetrophobicFont)
+  by The Metrophobic Project Authors, licensed [SIL OFL 1.1](https://openfontlicense.org)
+  (see the accompanying `OFL.txt`).
 - `app-dist/sdl_bench/icon.png`: [Pixel Skill Icons Pack - 250 Warrior Abilities](https://batareya.itch.io/pixel-skill-icons-pack-250-warrior-abilities)
   by [batareya](https://batareya.itch.io/).
 - `app-dist/sdl_bench/assets/models/sheep/`: [Cartoon Low Poly Sheep](https://free3d.com/3d-model/cartoon-low-poly-sheep-211607.html)
