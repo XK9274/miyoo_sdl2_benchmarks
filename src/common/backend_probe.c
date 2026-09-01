@@ -9,7 +9,12 @@
 #define BENCH_MMA_HEAP_PROC "/proc/mi_modules/mi_sys_mma/mma_heap_name0"
 #define BENCH_SELF_STATUS_PROC "/proc/self/status"
 #define BENCH_SELF_STAT_PROC "/proc/self/stat"
-#define BENCH_CPU_FREQ_PROC "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"
+
+/* cpuclock (no args) reads the SoC's real PLL register via /dev/mem --
+ * the standard cpufreq sysfs nodes are capped at this device's stock
+ * table max and never reflect an actual overclock above it. */
+#define BENCH_CPUCLOCK_BIN "/mnt/SDCARD/.tmp_update/bin/cpuclock"
+#define BENCH_CPU_FREQ_REFRESH_MS 2000
 
 void bench_backend_probe_mma_pool(Uint32 *out_used_bytes, Uint32 *out_max_bytes)
 {
@@ -63,15 +68,37 @@ Uint32 bench_backend_probe_thread_count(void)
 
 Uint32 bench_backend_probe_cpu_freq_mhz(void)
 {
-    FILE *f = fopen(BENCH_CPU_FREQ_PROC, "r");
-    if (!f) {
+    static Uint32 cached_mhz = 0;
+    static Uint32 last_refresh_ms = 0;
+    static SDL_bool checked_binary = SDL_FALSE;
+    static SDL_bool binary_present = SDL_FALSE;
+
+    if (!checked_binary) {
+        checked_binary = SDL_TRUE;
+        binary_present = (access(BENCH_CPUCLOCK_BIN, X_OK) == 0);
+    }
+    if (!binary_present) {
         return 0;
     }
 
-    unsigned int khz = 0;
-    const int scanned = fscanf(f, "%u", &khz);
-    fclose(f);
-    return (scanned == 1) ? (khz / 1000) : 0;
+    const Uint32 now_ms = SDL_GetTicks();
+    if (cached_mhz != 0 && (now_ms - last_refresh_ms) < BENCH_CPU_FREQ_REFRESH_MS) {
+        return cached_mhz;
+    }
+
+    FILE *p = popen(BENCH_CPUCLOCK_BIN, "r");
+    if (!p) {
+        return cached_mhz;
+    }
+    unsigned int mhz = 0;
+    const int scanned = fscanf(p, "%u", &mhz);
+    pclose(p);
+
+    if (scanned == 1) {
+        cached_mhz = mhz;
+        last_refresh_ms = now_ms;
+    }
+    return cached_mhz;
 }
 
 float bench_backend_probe_cpu_percent(void)
