@@ -16,7 +16,7 @@ void gb_scene_thick_lines(GfxBenchState *state,
     (void)delta_seconds;
 
     const float factor = gb_state_stress_factor(state);
-    const int start_y = (int)state->top_margin;
+    const int start_y = 0;
     const int region_height = SDL_max(1, bench_logical_h() - start_y);
     const int region_width = bench_logical_w();
     const float center_x = (float)region_width * 0.5f;
