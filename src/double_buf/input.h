@@ -3,6 +3,6 @@
 
 #include "double_buf/state.h"
 
-SDL_bool db_handle_input(DoubleBenchState *state, BenchMetrics *metrics);
+SDL_bool db_handle_input(DoubleBenchState *state, BenchMetrics *metrics, BenchOverlay *overlay);
 
 #endif /* DOUBLE_BUF_INPUT_H */

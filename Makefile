@@ -19,6 +19,8 @@ PROGRAMS      := sdl2_title \
 TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
 
 COMMON_SOURCES := \
+    $(SRC_DIR)/common/asset_path.c \
+    $(SRC_DIR)/common/backend_probe.c \
     $(SRC_DIR)/common/format.c \
     $(SRC_DIR)/common/geometry/core.c \
     $(SRC_DIR)/common/geometry/shapes.c \
@@ -31,7 +33,8 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/geometry/square_pyramid.c \
     $(SRC_DIR)/common/metrics.c \
     $(SRC_DIR)/common/overlay.c \
-    $(SRC_DIR)/common/overlay_grid.c \
+    $(SRC_DIR)/common/overlay_rows.c \
+    $(SRC_DIR)/common/rolling_chart.c \
     $(SRC_DIR)/common/driver_support.c \
     $(SRC_DIR)/common/display_config.c \
     $(SRC_DIR)/common/frame_limit.c \
@@ -45,6 +48,9 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/render3d/model_instance.c \
     $(SRC_DIR)/common/render3d/camera.c \
     $(SRC_DIR)/common/render3d/pipeline.c
+ifeq ($(DEBUG),1)
+COMMON_SOURCES += $(SRC_DIR)/common/overlay_debug_stats.c
+endif
 COMMON_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(COMMON_SOURCES))
 
 TITLE_SOURCES := \
@@ -70,7 +76,6 @@ TITLE_VERSION_HEADER := $(INC_DIR)/title/version.h
 SPACE_SOURCES := \
     $(SRC_DIR)/space_bench/input.c \
     $(SRC_DIR)/space_bench/main.c \
-    $(SRC_DIR)/space_bench/overlay.c \
     $(SRC_DIR)/space_bench/gl_effects.c \
     $(SRC_DIR)/space_bench/render/render_main.c \
     $(SRC_DIR)/space_bench/render/util.c \
@@ -97,7 +102,6 @@ SPACE_TARGET  := $(BIN_DIR)/sdl2_space_bench
 DOUBLE_SOURCES := \
     $(SRC_DIR)/double_buf/input.c \
     $(SRC_DIR)/double_buf/main.c \
-    $(SRC_DIR)/double_buf/overlay.c \
     $(SRC_DIR)/double_buf/particles.c \
     $(SRC_DIR)/double_buf/render.c \
     $(SRC_DIR)/double_buf/state.c
@@ -107,7 +111,6 @@ DOUBLE_TARGET  := $(BIN_DIR)/sdl2_bench_double_buf
 RENDER_SOURCES := \
     $(SRC_DIR)/render_suite/input.c \
     $(SRC_DIR)/render_suite/main.c \
-    $(SRC_DIR)/render_suite/overlay.c \
     $(SRC_DIR)/render_suite/resources.c \
     $(SRC_DIR)/render_suite/state.c \
     $(SRC_DIR)/render_suite/scenes/fill.c \
@@ -123,7 +126,6 @@ RENDER_TARGET  := $(BIN_DIR)/sdl2_render_suite
 GL_FBO_EFFECTS_SOURCES := \
     $(SRC_DIR)/gl_fbo_effects/input.c \
     $(SRC_DIR)/gl_fbo_effects/main.c \
-    $(SRC_DIR)/gl_fbo_effects/overlay.c \
     $(SRC_DIR)/gl_fbo_effects/state.c \
     $(SRC_DIR)/gl_fbo_effects/scenes/effects.c
 GL_FBO_EFFECTS_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(GL_FBO_EFFECTS_SOURCES))
@@ -133,7 +135,6 @@ AUDIO_SOURCES := \
     $(SRC_DIR)/audio_bench/audio_device.c \
     $(SRC_DIR)/audio_bench/input.c \
     $(SRC_DIR)/audio_bench/main.c \
-    $(SRC_DIR)/audio_bench/overlay.c \
     $(SRC_DIR)/audio_bench/waveform.c
 AUDIO_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(AUDIO_SOURCES))
 AUDIO_TARGET  := $(BIN_DIR)/sdl2_audio_bench
@@ -148,7 +149,6 @@ SPRITE_BENCH_TARGET  := $(BIN_DIR)/sdl2_sprite_bench
 GFX_BENCH_SOURCES := \
     $(SRC_DIR)/gfx_bench/input.c \
     $(SRC_DIR)/gfx_bench/main.c \
-    $(SRC_DIR)/gfx_bench/overlay.c \
     $(SRC_DIR)/gfx_bench/state.c \
     $(SRC_DIR)/gfx_bench/scenes/aa_shapes.c \
     $(SRC_DIR)/gfx_bench/scenes/rounded_rects.c \
@@ -161,7 +161,6 @@ GFX_BENCH_TARGET  := $(BIN_DIR)/sdl2_gfx_bench
 OBJ_MODEL_LOADER_SOURCES := \
     $(SRC_DIR)/obj_model_loader/input.c \
     $(SRC_DIR)/obj_model_loader/main.c \
-    $(SRC_DIR)/obj_model_loader/overlay.c \
     $(SRC_DIR)/obj_model_loader/placeholder_model.c \
     $(SRC_DIR)/obj_model_loader/state.c
 OBJ_MODEL_LOADER_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(OBJ_MODEL_LOADER_SOURCES))
@@ -207,7 +206,7 @@ CFLAGS       := $(filter-out $(ARM_NEON_DEFINE),$(CFLAGS))
 CFLAGS       += -std=c11 -Wall -Wextra -D_REENTRANT -DMMIYOO $(ARM_CPU_FLAGS)
 ifeq ($(DEBUG),1)
 # Must come after ARM_CPU_FLAGS to override its -fomit-frame-pointer.
-CFLAGS       := $(filter-out -O2,$(CFLAGS)) -Og -g -fno-omit-frame-pointer
+CFLAGS       := $(filter-out -O2,$(CFLAGS)) -Og -g -fno-omit-frame-pointer -DDEBUG_BUILD
 endif
 CPPFLAGS     := $(filter-out $(ARM_NEON_DEFINE),$(CPPFLAGS))
 CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SDL_INCLUDE)/SDL2 -I$(SDL_ADDONS_INCLUDE) -I$(SYSROOT)/usr/include -I$(INC_DIR) -I$(SRC_DIR) $(ARM_NEON_DEFINE)

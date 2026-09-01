@@ -17,6 +17,10 @@ BenchOverlay *bench_overlay_create(SDL_Renderer *renderer,
 void bench_overlay_destroy(BenchOverlay *overlay);
 void bench_overlay_request_stop(BenchOverlay *overlay);
 
+/* Toggles the collapsed (top-left FPS/frame-time-only) view for overlays
+ * configured via bench_overlay_configure (common/overlay_rows.h). */
+void bench_overlay_toggle_collapsed(BenchOverlay *overlay);
+
 void bench_overlay_submit(BenchOverlay *overlay,
                           const BenchOverlayLine *lines,
                           int line_count,

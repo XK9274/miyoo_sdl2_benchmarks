@@ -4,8 +4,9 @@
 
 #include "controller_input.h"
 #include "common/driver_support.h"
+#include "common/hotkeys.h"
 
-SDL_bool space_handle_input(SpaceBenchState *state, BenchMetrics *metrics)
+SDL_bool space_handle_input(SpaceBenchState *state, BenchMetrics *metrics, BenchOverlay *overlay)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -67,9 +68,14 @@ SDL_bool space_handle_input(SpaceBenchState *state, BenchMetrics *metrics)
                         bench_driver_toggle_vsync();
                     }
                     break;
-                case BTN_SELECT:
+                case BTN_METRICS_RESET:
                     if (pressed && metrics) {
                         bench_reset_metrics(metrics);
+                    }
+                    break;
+                case BTN_OVERLAY_TOGGLE:
+                    if (pressed) {
+                        bench_overlay_toggle_collapsed(overlay);
                     }
                     break;
                 case BTN_UP:

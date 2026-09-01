@@ -7,7 +7,6 @@
 
 #include "bench_common.h"
 #include "render_suite/input.h"
-#include "render_suite/overlay.h"
 #include "render_suite/resources.h"
 #include "render_suite/scenes/fill.h"
 #include "render_suite/scenes/lines.h"
@@ -17,7 +16,42 @@
 #include "render_suite/scenes/memory.h"
 #include "render_suite/scenes/pixels.h"
 #include "render_suite/state.h"
+#include "common/hotkeys.h"
 #include "common/loading_screen.h"
+#include "common/overlay_rows.h"
+
+static const char *g_rs_scene_names[SCENE_MAX] = {
+    "Fill Rate", "Texture", "Lines/Geometry", "3D Geometry",
+    "Resolution Scaling", "Memory Management", "Pixel Operations",
+};
+
+static const char *g_rs_geometry_mode_labels[RS_GEOMETRY_RENDER_MODE_MAX] = {
+    "Filled Faces", "Wireframe", "Vertex Points",
+};
+
+static const OverlayRowSpec g_rs_rows[] = {
+    {OVERLAY_ROW_CUSTOM, {240, 194, 94, 255}, 0, "%s"},
+    {OVERLAY_ROW_CUSTOM, {240, 194, 94, 255}, 0, "%s"},
+    {OVERLAY_ROW_FPS, {255, 255, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_FRAME_TIME, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_VERTICES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_TRIANGLES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_TEXTURE_SWITCHES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_MEMORY, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_RESOURCE_OPS, {255, 180, 120, 255}, 0, NULL},
+    {OVERLAY_ROW_TIMING_OVERHEAD, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_CUSTOM, {255, 180, 120, 255}, 0, "%s"},
+};
+
+static const OverlayKeybind g_rs_keybinds[] = {
+    {"SELECT", "Toggle overlay"},
+    {"MENU", "Reset metrics"},
+    {"L2/R2", "Switch scene"},
+    {"A", "Toggle auto cycle"},
+    {"B", "Adjust stress level"},
+    {"X", "Cycle geometry mode"},
+};
 
 /* RS_FORCE_SCENE=<name> pins active_scene and disables auto-cycle; used for
  * isolated A/B perf comparisons (e.g. geometry-scene NEON vs scalar). */
@@ -155,8 +189,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    rs_state_update_layout(&state, overlay);
-    rs_overlay_submit(overlay, &state, &metrics);
+    bench_overlay_configure(overlay, g_rs_rows, (int)SDL_arraysize(g_rs_rows),
+                            g_rs_keybinds, (int)SDL_arraysize(g_rs_keybinds));
     if (loading_active) {
         bench_loading_step(&loading, 0.8f, "Render suite ready");
         bench_loading_finish(&loading);
@@ -165,14 +199,13 @@ int main(int argc, char *argv[])
 
     printf("SDL2 Render Suite initialised\n");
 
-    double next_status_refresh_ms = 0.0;
     double next_bench_log_ms = 0.0;
 
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
 
-        if (!rs_handle_input(&state, &metrics)) {
+        if (!rs_handle_input(&state, &metrics, overlay)) {
             break;
         }
 
@@ -181,8 +214,6 @@ int main(int argc, char *argv[])
         metrics.draw_calls = 0;
         metrics.vertices_rendered = 0;
         metrics.triangles_rendered = 0;
-
-        rs_state_update_layout(&state, overlay);
 
         if (state.auto_cycle) {
             const double elapsed_seconds = metrics.accumulated_frame_time_ms / 1000.0;
@@ -229,14 +260,20 @@ int main(int argc, char *argv[])
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         bench_frame_limit_wait(frame_start_counter);
 
-        if (metrics.accumulated_frame_time_ms >= next_status_refresh_ms) {
-            char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
-            bench_driver_format_status_grid(status_fields);
-            bench_overlay_set_status_grid(overlay, status_fields, (SDL_Color){255, 255, 255, 255});
-            next_status_refresh_ms = metrics.accumulated_frame_time_ms + 150.0;
+        char scene_label[64];
+        snprintf(scene_label, sizeof(scene_label), "Scene: %s | Auto %s",
+                 g_rs_scene_names[state.active_scene], state.auto_cycle ? "ON" : "OFF");
+        char stress_label[48];
+        snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f",
+                 state.stress_level, rs_state_stress_factor(&state));
+        char mode_label[48] = "";
+        if (state.active_scene == SCENE_GEOMETRY) {
+            const int mode_index = (state.geometry_render_mode >= 0) ?
+                (state.geometry_render_mode % RS_GEOMETRY_RENDER_MODE_MAX) : 0;
+            snprintf(mode_label, sizeof(mode_label), "Geometry Mode: %s", g_rs_geometry_mode_labels[mode_index]);
         }
-
-        rs_overlay_submit(overlay, &state, &metrics);
+        const char *custom_values[] = {scene_label, stress_label, mode_label};
+        bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
         if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {
             printf("[BENCH] tag=%s scene=%d elapsed_s=%.1f frame=%llu fps=%.2f avg_fps=%.2f "

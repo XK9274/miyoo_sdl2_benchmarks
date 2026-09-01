@@ -5,6 +5,6 @@
 
 #include "sprite_bench/state.h"
 
-SDL_bool sprite_handle_input(SpriteBenchState *state, BenchMetrics *metrics);
+SDL_bool sprite_handle_input(SpriteBenchState *state, BenchMetrics *metrics, BenchOverlay *overlay);
 
 #endif /* SPRITE_BENCH_INPUT_H */

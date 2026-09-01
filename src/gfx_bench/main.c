@@ -5,14 +5,46 @@
 
 #include "bench_common.h"
 #include "gfx_bench/input.h"
-#include "gfx_bench/overlay.h"
 #include "gfx_bench/scenes/aa_shapes.h"
 #include "gfx_bench/scenes/rounded_rects.h"
 #include "gfx_bench/scenes/polygons.h"
 #include "gfx_bench/scenes/bezier.h"
 #include "gfx_bench/scenes/thick_lines.h"
 #include "gfx_bench/state.h"
+#include "common/hotkeys.h"
 #include "common/loading_screen.h"
+#include "common/overlay_rows.h"
+#ifdef DEBUG_BUILD
+#include "common/overlay_debug_stats.h"
+#endif
+
+static const char *g_gb_scene_names[GB_SCENE_MAX] = {
+    "AA Shapes", "Rounded Rects", "Polygons", "Bezier Curves", "Thick Lines",
+};
+
+static const OverlayRowSpec g_gb_rows[] = {
+    {OVERLAY_ROW_CUSTOM, {240, 194, 94, 255}, 0, "%s"},
+    {OVERLAY_ROW_CUSTOM, {240, 194, 94, 255}, 0, "%s"},
+    {OVERLAY_ROW_FPS, {255, 255, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_FRAME_TIME, {255, 255, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_VERTICES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_TRIANGLES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_CPU_PERCENT, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_RAM_USAGE, {0, 200, 255, 255}, 0, NULL},
+#ifdef DEBUG_BUILD
+    {OVERLAY_ROW_CMDQUEUE_TIME, {255, 155, 106, 255}, 0, NULL},
+    {OVERLAY_ROW_PRESENT_TIME, {255, 155, 106, 255}, 0, NULL},
+#endif
+};
+
+static const OverlayKeybind g_gb_keybinds[] = {
+    {"SELECT", "Toggle overlay"},
+    {"MENU", "Reset metrics"},
+    {"L2/R2", "Switch scene"},
+    {"A", "Toggle auto cycle"},
+    {"B", "Adjust stress level"},
+};
 
 int main(int argc, char *argv[])
 {
@@ -43,6 +75,9 @@ int main(int argc, char *argv[])
 
     /* Hint is the only way to disable vsync -- this SDL2 fork forces it on regardless of flags. */
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
+#ifdef DEBUG_BUILD
+    overlay_debug_stats_enable_hints();
+#endif
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
         printf("Renderer creation failed: %s\n", SDL_GetError());
@@ -86,8 +121,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    gb_state_update_layout(&state, overlay);
-    gb_overlay_submit(overlay, &state, &metrics);
+    bench_overlay_configure(overlay, g_gb_rows, (int)SDL_arraysize(g_gb_rows),
+                            g_gb_keybinds, (int)SDL_arraysize(g_gb_keybinds));
     if (loading_active) {
         bench_loading_step(&loading, 0.8f, "SDL2_gfx bench ready");
         bench_loading_finish(&loading);
@@ -96,13 +131,11 @@ int main(int argc, char *argv[])
 
     printf("SDL2_gfx bench initialised\n");
 
-    double next_status_refresh_ms = 0.0;
-
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
 
-        if (!gb_handle_input(&state, &metrics)) {
+        if (!gb_handle_input(&state, &metrics, overlay)) {
             break;
         }
 
@@ -112,7 +145,6 @@ int main(int argc, char *argv[])
         metrics.vertices_rendered = 0;
         metrics.triangles_rendered = 0;
 
-        gb_state_update_layout(&state, overlay);
         state.phase += (float)delta_seconds;
 
         if (state.auto_cycle) {
@@ -152,14 +184,14 @@ int main(int argc, char *argv[])
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         bench_frame_limit_wait(frame_start_counter);
 
-        if (metrics.accumulated_frame_time_ms >= next_status_refresh_ms) {
-            char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
-            bench_driver_format_status_grid(status_fields);
-            bench_overlay_set_status_grid(overlay, status_fields, (SDL_Color){255, 255, 255, 255});
-            next_status_refresh_ms = metrics.accumulated_frame_time_ms + 150.0;
-        }
-
-        gb_overlay_submit(overlay, &state, &metrics);
+        char scene_label[64];
+        snprintf(scene_label, sizeof(scene_label), "%s | Auto %s",
+                 g_gb_scene_names[state.active_scene], state.auto_cycle ? "ON" : "OFF");
+        char stress_label[48];
+        snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f",
+                 state.stress_level, gb_state_stress_factor(&state));
+        const char *custom_values[] = {scene_label, stress_label};
+        bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
     }
 
     bench_driver_shutdown();

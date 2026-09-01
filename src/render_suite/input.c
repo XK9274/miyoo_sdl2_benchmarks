@@ -4,8 +4,9 @@
 
 #include "controller_input.h"
 #include "common/driver_support.h"
+#include "common/hotkeys.h"
 
-SDL_bool rs_handle_input(RenderSuiteState *state, BenchMetrics *metrics)
+SDL_bool rs_handle_input(RenderSuiteState *state, BenchMetrics *metrics, BenchOverlay *overlay)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -45,12 +46,13 @@ SDL_bool rs_handle_input(RenderSuiteState *state, BenchMetrics *metrics)
                     if (state->active_scene == SCENE_GEOMETRY) {
                         state->geometry_render_mode =
                             (state->geometry_render_mode + 1) % RS_GEOMETRY_RENDER_MODE_MAX;
-                    } else {
-                        bench_reset_metrics(metrics);
                     }
                     break;
-                case BTN_SELECT:
+                case BTN_METRICS_RESET:
                     bench_reset_metrics(metrics);
+                    break;
+                case BTN_OVERLAY_TOGGLE:
+                    bench_overlay_toggle_collapsed(overlay);
                     break;
                 default:
                     break;

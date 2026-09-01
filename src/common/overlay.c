@@ -1,15 +1,23 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "common/overlay.h"
+#include "common/overlay_internal.h"
 
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <SDL2/SDL_mutex.h>
 #include <SDL2/SDL_thread.h>
 
+#include "common/asset_path.h"
+#include "common/backend_probe.h"
+#include "common/display_config.h"
+#include "common/driver_support.h"
 #include "common/memory_opt.h"
 #include "common/metrics.h"
 
@@ -21,38 +29,18 @@ static const char *g_font_paths[] = {
     NULL
 };
 
-struct BenchOverlay {
-    SDL_Renderer *renderer;
-    SDL_Texture *texture;
-    int width;
-    int height;
-    int line_height;
-    int max_rows;
-    int max_lines;
-    SDL_Color background;
-
-    SDL_mutex *mutex;
-    SDL_cond *cond;
-    SDL_Thread *thread;
-    SDL_bool running;
-    SDL_bool dirty;
-    SDL_bool has_pixels;
-
-    int refresh_divisor;
-    int refresh_counter;
-
-    BenchOverlayLine pending_lines[BENCH_OVERLAY_MAX_LINES];
-    int line_count;
-
-    char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
-    SDL_Color status_color;
-    SDL_bool has_status;
-
-    Uint8 *pixel_buffer;
-    Uint8 *visible_buffer;
-    size_t buffer_bytes;
-    int pitch;
-};
+#define OVERLAY_PANEL_BG_R 0x17
+#define OVERLAY_PANEL_BG_G 0x17
+#define OVERLAY_PANEL_BG_B 0x17
+#define OVERLAY_PANEL_BG_A 165
+#define OVERLAY_MIN_EFFECTIVE_ROWS 24
+#define OVERLAY_CHART_ROW_SPAN 4   /* two 2-row-tall charts */
+#define OVERLAY_HEADER_ROW_SPAN 1
+#define OVERLAY_BACKENDS_ROW_SPAN 4 /* 2 columns: Render/Audio, Input/Power, Threads/Display, Build/CPU Freq */
+#define OVERLAY_FONT_SIZE_MARGIN 8
+#define OVERLAY_BOLT_GLYPH_MARGIN 5
+#define OVERLAY_CLOCK_FONT_DELTA 2
+#define OVERLAY_BATTERY_FONT_DELTA 3
 
 typedef struct {
     BenchOverlay *overlay;
@@ -61,6 +49,15 @@ typedef struct {
 
 TTF_Font *bench_load_font(int size)
 {
+    char bundled_path[512];
+    if (bench_resolve_asset_path(BENCH_APP_FONT_FILE, bundled_path, sizeof(bundled_path))) {
+        TTF_Font *bundled = TTF_OpenFont(bundled_path, size);
+        if (bundled) {
+            SDL_Log("Loaded font: %s", bundled_path);
+            return bundled;
+        }
+    }
+
     for (int i = 0; g_font_paths[i] != NULL; ++i) {
         if (access(g_font_paths[i], F_OK) == 0) {
             TTF_Font *candidate = TTF_OpenFont(g_font_paths[i], size);
@@ -74,6 +71,22 @@ TTF_Font *bench_load_font(int size)
     return NULL;
 }
 
+/* Overlay text uses Metrophobic instead of the app's bitmap-style default --
+ * the latter is hard to read at the small sizes the panel renders at. Falls
+ * back to bench_load_font if the bundled asset isn't there. */
+static TTF_Font *overlay_load_font(int size)
+{
+    char bundled_path[512];
+    if (bench_resolve_asset_path(BENCH_OVERLAY_FONT_FILE, bundled_path, sizeof(bundled_path))) {
+        TTF_Font *bundled = TTF_OpenFont(bundled_path, size);
+        if (bundled) {
+            SDL_Log("Loaded font: %s", bundled_path);
+            return bundled;
+        }
+    }
+    return bench_load_font(size);
+}
+
 static void bench_overlay_free_texture_locked(BenchOverlay *overlay)
 {
     if (overlay->texture) {
@@ -82,24 +95,320 @@ static void bench_overlay_free_texture_locked(BenchOverlay *overlay)
     }
 }
 
+void overlay_draw_text_line(SDL_Surface *surface, TTF_Font *font, SDL_Rect bounds,
+                            int alignment, SDL_Color color, const char *text)
+{
+    if (!surface || !font || !text || text[0] == '\0') {
+        return;
+    }
+
+    SDL_Surface *line_surface = TTF_RenderUTF8_Blended(font, text, color);
+    if (!line_surface) {
+        return;
+    }
+
+    int x = bounds.x;
+    if (alignment == 1) {
+        x += (bounds.w - line_surface->w) / 2;
+    } else if (alignment == 2) {
+        x += bounds.w - line_surface->w;
+    }
+    const int y = bounds.y + (bounds.h - line_surface->h) / 2;
+
+    SDL_Rect dst = {x, y, line_surface->w, line_surface->h};
+    SDL_SetClipRect(surface, &bounds);
+    SDL_SetSurfaceBlendMode(line_surface, SDL_BLENDMODE_BLEND);
+    SDL_BlitSurface(line_surface, NULL, surface, &dst);
+    SDL_SetClipRect(surface, NULL);
+    SDL_FreeSurface(line_surface);
+}
+
+/* Hand-drawn zigzag lightning bolt -- bitmap fonts can't be relied on to
+ * carry a real glyph for this. */
+static void overlay_draw_charge_glyph(SDL_Surface *surface, int x, int y, int size, SDL_Color color)
+{
+    const Uint32 pixel = SDL_MapRGBA(surface->format, color.r, color.g, color.b, 255);
+    const SDL_Point pts[] = {
+        {x + size / 2, y},
+        {x, y + size / 2},
+        {x + size / 3, y + size / 2},
+        {x, y + size},
+        {x + size, y + size / 3},
+        {x + size * 2 / 3, y + size / 3},
+    };
+    for (int i = 0; i + 1 < (int)SDL_arraysize(pts); ++i) {
+        SDL_Rect seg = {SDL_min(pts[i].x, pts[i + 1].x),
+                        SDL_min(pts[i].y, pts[i + 1].y),
+                        SDL_max(1, abs(pts[i + 1].x - pts[i].x)),
+                        SDL_max(1, abs(pts[i + 1].y - pts[i].y))};
+        SDL_FillRect(surface, &seg, pixel);
+    }
+}
+
+static void overlay_draw_divider(SDL_Surface *surface, int x, int y, int w)
+{
+    SDL_Rect divider = {x, y, w, 1};
+    SDL_FillRect(surface, &divider, SDL_MapRGBA(surface->format, 255, 255, 255, 36));
+}
+
+static int overlay_effective_rows(const BenchOverlay *snap)
+{
+    const int data_rows = overlay_rows_visual_count(snap->configured_rows, snap->configured_row_count);
+    const int total = OVERLAY_HEADER_ROW_SPAN + data_rows +
+                      OVERLAY_CHART_ROW_SPAN + OVERLAY_BACKENDS_ROW_SPAN +
+                      snap->configured_keybind_count;
+    return SDL_max(total, OVERLAY_MIN_EFFECTIVE_ROWS);
+}
+
+static void overlay_render_header(SDL_Surface *surface, TTF_Font *battery_font, TTF_Font *clock_font,
+                                  int panel_w, int row_height)
+{
+    BenchDriverStatus status;
+    bench_driver_get_status(&status);
+
+    const SDL_Color text_color = {243, 241, 234, 255};
+    const int battery_h = row_height + OVERLAY_BATTERY_FONT_DELTA;
+    const int clock_h = row_height + OVERLAY_CLOCK_FONT_DELTA;
+    const SDL_Rect battery_bounds = {OVERLAY_EDGE_PAD, 0, panel_w - 2 * OVERLAY_EDGE_PAD, battery_h};
+    const SDL_Rect clock_bounds = {OVERLAY_EDGE_PAD, 0, panel_w - 2 * OVERLAY_EDGE_PAD, clock_h};
+
+    char battery_text[32];
+    if (status.battery_percent >= 0) {
+        snprintf(battery_text, sizeof(battery_text), "%d%%", status.battery_percent);
+    } else {
+        snprintf(battery_text, sizeof(battery_text), "n/a");
+    }
+    overlay_draw_text_line(surface, battery_font, battery_bounds, 0, text_color, battery_text);
+
+    if (status.charging) {
+        const int glyph_size = SDL_max(row_height - OVERLAY_BOLT_GLYPH_MARGIN, 4);
+        const SDL_Color bolt_color = {244, 211, 94, 255};
+        overlay_draw_charge_glyph(surface, OVERLAY_EDGE_PAD + 34, (row_height - glyph_size) / 2,
+                                  glyph_size, bolt_color);
+    }
+
+    const time_t now = time(NULL);
+    struct tm tm_now;
+    localtime_r(&now, &tm_now);
+    char clock_text[16];
+    strftime(clock_text, sizeof(clock_text), "%H:%M:%S", &tm_now);
+    overlay_draw_text_line(surface, clock_font, clock_bounds, 2, text_color, clock_text);
+}
+
+static void overlay_draw_two_col(SDL_Surface *surface, TTF_Font *font, int panel_w, int y, int row_height,
+                                 SDL_Color color, const char *left, const char *right)
+{
+    const int half_w = (panel_w - 2 * OVERLAY_EDGE_PAD) / 2;
+    const SDL_Rect left_bounds = {OVERLAY_EDGE_PAD, y, half_w - 4, row_height};
+    const SDL_Rect right_bounds = {OVERLAY_EDGE_PAD + half_w + 4, y, half_w - 4, row_height};
+    overlay_draw_text_line(surface, font, left_bounds, 0, color, left);
+    overlay_draw_text_line(surface, font, right_bounds, 0, color, right);
+}
+
+static int overlay_render_backends_block(SDL_Renderer *renderer, SDL_Surface *surface,
+                                         TTF_Font *font, int panel_w, int y, int row_height)
+{
+    overlay_draw_divider(surface, OVERLAY_EDGE_PAD, y, panel_w - 2 * OVERLAY_EDGE_PAD);
+
+    const SDL_Color value_color = {243, 241, 234, 255};
+    char left[80], right[80];
+
+    SDL_RendererInfo info;
+    const char *render_name = (renderer && SDL_GetRendererInfo(renderer, &info) == 0) ? info.name : "unknown";
+    const char *audio_driver = SDL_GetCurrentAudioDriver();
+    snprintf(left, sizeof(left), "Render %s", render_name);
+    snprintf(right, sizeof(right), "Audio %s", audio_driver ? audio_driver : "off");
+    overlay_draw_two_col(surface, font, panel_w, y, row_height, value_color, left, right);
+    y += row_height;
+
+    BenchDriverStatus status;
+    bench_driver_get_status(&status);
+    if (status.joystick_attached) {
+        snprintf(left, sizeof(left), "Input Joy (%s)", status.joystick_name);
+    } else {
+        snprintf(left, sizeof(left), "Input Keyboard");
+    }
+    const char *power_label = "Unknown";
+    if (status.power_info_valid) {
+        switch (status.power_state) {
+            case SDL_POWERSTATE_ON_BATTERY: power_label = "Battery"; break;
+            case SDL_POWERSTATE_CHARGING:   power_label = "Charging"; break;
+            case SDL_POWERSTATE_CHARGED:    power_label = "Charged"; break;
+            case SDL_POWERSTATE_NO_BATTERY: power_label = "No battery"; break;
+            default: break;
+        }
+    }
+    snprintf(right, sizeof(right), "Power %s", power_label);
+    overlay_draw_two_col(surface, font, panel_w, y, row_height, value_color, left, right);
+    y += row_height;
+
+    snprintf(left, sizeof(left), "Threads %u", (unsigned)bench_backend_probe_thread_count());
+    snprintf(right, sizeof(right), "Display %dx%d %s", status.display_w, status.display_h,
+             status.vsync_verified_active ? "vsync" : "no-vsync");
+    overlay_draw_two_col(surface, font, panel_w, y, row_height, value_color, left, right);
+    y += row_height;
+
+    SDL_version v;
+    SDL_GetVersion(&v);
+#ifdef DEBUG_BUILD
+    const char *build_tag = "DEBUG";
+#else
+    const char *build_tag = "RELEASE";
+#endif
+    snprintf(left, sizeof(left), "SDL %d.%d.%d %s", v.major, v.minor, v.patch, build_tag);
+    const Uint32 cpu_freq = bench_backend_probe_cpu_freq_mhz();
+    if (cpu_freq > 0) {
+        snprintf(right, sizeof(right), "%u MHz", (unsigned)cpu_freq);
+    } else {
+        right[0] = '\0';
+    }
+    overlay_draw_two_col(surface, font, panel_w, y, row_height, value_color, left, right);
+    y += row_height;
+
+    return y;
+}
+
+static SDL_Rect overlay_chart_rect(int panel_w, int y, int row_height, int index)
+{
+    const SDL_Rect rect = {OVERLAY_EDGE_PAD, y + index * (2 * row_height),
+                           panel_w - 2 * OVERLAY_EDGE_PAD, 2 * row_height};
+    return rect;
+}
+
+static void overlay_render_charts(const BenchOverlay *snap, SDL_Surface *surface, TTF_Font *font,
+                                  int panel_w, int charts_y, int row_height)
+{
+    const SDL_Rect fps_rect = overlay_chart_rect(panel_w, charts_y, row_height, 0);
+    const SDL_Rect frame_rect = overlay_chart_rect(panel_w, charts_y, row_height, 1);
+
+    const SDL_Color fps_color = {139, 224, 139, 255};
+    const SDL_Color frame_color = {111, 211, 255, 255};
+
+    rolling_chart_render(&snap->fps_chart, surface, fps_rect, fps_color);
+    rolling_chart_render(&snap->frametime_chart, surface, frame_rect, frame_color);
+
+    char fps_text[32];
+    snprintf(fps_text, sizeof(fps_text), "%.1f FPS", snap->latest_metrics.current_fps);
+    overlay_draw_text_line(surface, font, (SDL_Rect){fps_rect.x, fps_rect.y, fps_rect.w, row_height},
+                           0, fps_color, fps_text);
+
+    char frame_text[32];
+    snprintf(frame_text, sizeof(frame_text), "%.2f ms", snap->latest_metrics.frame_time_ms);
+    overlay_draw_text_line(surface, font, (SDL_Rect){frame_rect.x, frame_rect.y, frame_rect.w, row_height},
+                           0, frame_color, frame_text);
+}
+
+static void overlay_render_new_panel(const BenchOverlay *snap, SDL_Surface *surface,
+                                     TTF_Font *font, TTF_Font *battery_font, TTF_Font *clock_font,
+                                     int row_height)
+{
+    SDL_FillRect(surface, NULL,
+                 SDL_MapRGBA(surface->format, OVERLAY_PANEL_BG_R, OVERLAY_PANEL_BG_G,
+                            OVERLAY_PANEL_BG_B, OVERLAY_PANEL_BG_A));
+
+    const int panel_w = snap->width;
+    int y = 0;
+
+    overlay_render_header(surface, battery_font, clock_font, panel_w, row_height);
+    y += row_height;
+
+    overlay_render_charts(snap, surface, font, panel_w, y, row_height);
+    y += OVERLAY_CHART_ROW_SPAN * row_height;
+
+    y = overlay_rows_render_data(snap, surface, font, panel_w, y, row_height);
+
+    y = overlay_render_backends_block(snap->renderer, surface, font, panel_w, y, row_height);
+
+    overlay_rows_render_keybinds(snap, surface, font, panel_w, y, row_height);
+}
+
+static void overlay_render_collapsed(const BenchOverlay *snap, SDL_Surface *surface,
+                                     TTF_Font *font, int row_height)
+{
+    const int panel_w = snap->width;
+    const SDL_Rect bg_rect = {0, 0, panel_w, row_height + OVERLAY_CHART_ROW_SPAN * row_height};
+    SDL_FillRect(surface, &bg_rect,
+                 SDL_MapRGBA(surface->format, OVERLAY_PANEL_BG_R, OVERLAY_PANEL_BG_G,
+                            OVERLAY_PANEL_BG_B, OVERLAY_PANEL_BG_A));
+    overlay_render_charts(snap, surface, font, panel_w, row_height, row_height);
+}
+
+static void overlay_render_legacy(const BenchOverlay *snap, SDL_Surface *surface, TTF_Font *font)
+{
+    if (!font) {
+        return;
+    }
+
+    const int line_adv = snap->line_height;
+    const int column_width = snap->width / 2;
+    const int divider_x = column_width;
+    const int status_band_height = snap->line_height * 2;
+    int left_y = status_band_height + 4;
+    int right_y = status_band_height + 4;
+
+    if (snap->has_status) {
+        const int cell_w = snap->width / BENCH_STATUS_GRID_COLS;
+        const int cell_h = snap->line_height;
+        const int cell_pad = 4;
+
+        for (int cell = 0; cell < BENCH_STATUS_GRID_CELLS; ++cell) {
+            if (snap->status_fields[cell][0] == '\0') {
+                continue;
+            }
+            const int col = cell % BENCH_STATUS_GRID_COLS;
+            const int row = cell / BENCH_STATUS_GRID_COLS;
+            const SDL_Rect cell_rect = {col * cell_w + cell_pad, row * cell_h, cell_w - cell_pad, cell_h};
+            overlay_draw_text_line(surface, font, cell_rect, 0, snap->status_color, snap->status_fields[cell]);
+        }
+
+        SDL_Rect status_divider = {4, status_band_height, snap->width - 8, 1};
+        SDL_FillRect(surface, &status_divider, SDL_MapRGBA(surface->format, 60, 80, 120, 140));
+    }
+
+    for (int i = 0; i < snap->line_count; ++i) {
+        if (snap->pending_lines[i].text[0] == '\0') {
+            if (snap->pending_lines[i].column == 1) {
+                right_y += line_adv;
+            } else {
+                left_y += line_adv;
+            }
+            continue;
+        }
+
+        const int x_offset = (snap->pending_lines[i].column == 1) ? (divider_x + 8) : 8;
+        const int y_pos = (snap->pending_lines[i].column == 1) ? right_y : left_y;
+        const int available_width = column_width - 16;
+        const SDL_Rect bounds = {x_offset, y_pos, available_width, line_adv};
+        overlay_draw_text_line(surface, font, bounds, snap->pending_lines[i].alignment,
+                               snap->pending_lines[i].color, snap->pending_lines[i].text);
+
+        if (snap->pending_lines[i].column == 1) {
+            right_y += line_adv;
+        } else {
+            left_y += line_adv;
+        }
+    }
+
+    SDL_Rect divider = {divider_x - 1, status_band_height + 4, 2, snap->height - status_band_height - 8};
+    SDL_FillRect(surface, &divider, SDL_MapRGBA(surface->format, 60, 80, 120, 180));
+}
+
 static int bench_overlay_thread(void *userdata)
 {
     BenchOverlayThreadArgs *args = (BenchOverlayThreadArgs *)userdata;
     BenchOverlay *overlay = args->overlay;
-    const int font_size = args->font_size;
+    const int legacy_font_size = args->font_size;
     free(args);
 
-    TTF_Font *font = bench_load_font(font_size);
-    SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0,
-                                                         overlay->width,
-                                                         overlay->height,
-                                                         32,
-                                                         SDL_PIXELFORMAT_RGBA32);
-    if (!surface) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "bench_overlay_thread: failed to create surface (%s)",
-                     SDL_GetError());
-    }
+    TTF_Font *font = NULL;
+    int font_size = 0;
+    TTF_Font *battery_font = NULL;
+    int battery_font_size = 0;
+    TTF_Font *clock_font = NULL;
+    int clock_font_size = 0;
+    SDL_Surface *surface = NULL;
+    int surface_w = 0;
+    int surface_h = 0;
 
     while (overlay->running) {
         SDL_LockMutex(overlay->mutex);
@@ -111,154 +420,99 @@ static int bench_overlay_thread(void *userdata)
             break;
         }
 
-        BenchOverlayLine lines[BENCH_OVERLAY_MAX_LINES];
-        SDL_Color background = overlay->background;
-        const int line_count = SDL_min(overlay->line_count, overlay->max_lines);
-        if (line_count > 0) {
-            rs_memcpy(lines, overlay->pending_lines, (size_t)line_count * sizeof(BenchOverlayLine));
-        }
-        char status_fields[BENCH_STATUS_GRID_CELLS][BENCH_STATUS_FIELD_LEN];
-        SDL_Color status_color = overlay->status_color;
-        const SDL_bool has_status = overlay->has_status;
-        rs_memcpy(status_fields, overlay->status_fields, sizeof(status_fields));
+        BenchOverlay snap = *overlay;
         overlay->dirty = SDL_FALSE;
         SDL_UnlockMutex(overlay->mutex);
 
+        if (surface_w != snap.width || surface_h != snap.height) {
+            if (surface) {
+                SDL_FreeSurface(surface);
+            }
+            surface = SDL_CreateRGBSurfaceWithFormat(0, snap.width, snap.height, 32, SDL_PIXELFORMAT_RGBA32);
+            surface_w = snap.width;
+            surface_h = snap.height;
+        }
         if (!surface) {
             continue;
         }
 
-        SDL_FillRect(surface, NULL,
-                     SDL_MapRGBA(surface->format,
-                                 background.r,
-                                 background.g,
-                                 background.b,
-                                 background.a));
-
-        if (font) {
-            const int line_adv = overlay->line_height;
-            const int column_width = overlay->width / 2;
-            const int divider_x = column_width;
-            const int status_band_height = overlay->line_height * 2;
-            int left_y = status_band_height + 4;
-            int right_y = status_band_height + 4;
-
-            if (has_status) {
-                const int cell_w = overlay->width / BENCH_STATUS_GRID_COLS;
-                const int cell_h = overlay->line_height;
-                const int cell_pad = 4;
-
-                for (int cell = 0; cell < BENCH_STATUS_GRID_CELLS; ++cell) {
-                    if (status_fields[cell][0] == '\0') {
-                        continue;
-                    }
-
-                    const int col = cell % BENCH_STATUS_GRID_COLS;
-                    const int row = cell / BENCH_STATUS_GRID_COLS;
-                    const SDL_Rect cell_rect = {col * cell_w, row * cell_h, cell_w, cell_h};
-
-                    SDL_Surface *field_surface = TTF_RenderUTF8_Blended(font, status_fields[cell], status_color);
-                    if (!field_surface) {
-                        continue;
-                    }
-
-                    SDL_Rect dst = {cell_rect.x + cell_pad,
-                                    cell_rect.y + (cell_h - field_surface->h) / 2,
-                                    field_surface->w, field_surface->h};
-
-                    /* Clip to the cell's own bounds so overflowing text is
-                       truncated at the cell edge instead of drawing over the
-                       next cell. */
-                    SDL_SetClipRect(surface, &cell_rect);
-                    SDL_SetSurfaceBlendMode(field_surface, SDL_BLENDMODE_BLEND);
-                    SDL_BlitSurface(field_surface, NULL, surface, &dst);
-                    SDL_FreeSurface(field_surface);
-                }
-                SDL_SetClipRect(surface, NULL);
-
-                SDL_Rect status_divider = {4, status_band_height, overlay->width - 8, 1};
-                SDL_FillRect(surface, &status_divider,
-                             SDL_MapRGBA(surface->format, 60, 80, 120, 140));
+        int desired_font_size;
+        int row_height = snap.line_height;
+        if (snap.row_registry_configured) {
+            const int effective_rows = overlay_effective_rows(&snap);
+            row_height = snap.height / effective_rows;
+            desired_font_size = SDL_max(row_height - OVERLAY_FONT_SIZE_MARGIN, 6);
+        } else {
+            desired_font_size = legacy_font_size;
+        }
+        if (desired_font_size != font_size || !font) {
+            if (font) {
+                TTF_CloseFont(font);
             }
-
-            for (int i = 0; i < line_count; ++i) {
-                if (lines[i].text[0] == '\0') {
-                    if (lines[i].column == 1) {
-                        right_y += line_adv;
-                    } else {
-                        left_y += line_adv;
-                    }
-                    continue;
+            font = overlay_load_font(desired_font_size);
+            font_size = desired_font_size;
+        }
+        if (snap.row_registry_configured) {
+            const int desired_battery_size = desired_font_size + OVERLAY_BATTERY_FONT_DELTA;
+            const int desired_clock_size = desired_font_size + OVERLAY_CLOCK_FONT_DELTA;
+            if (desired_battery_size != battery_font_size || !battery_font) {
+                if (battery_font) {
+                    TTF_CloseFont(battery_font);
                 }
-
-                SDL_Surface *line_surface = TTF_RenderUTF8_Blended(font,
-                                                                   lines[i].text,
-                                                                   lines[i].color);
-                if (!line_surface) {
-                    if (lines[i].column == 1) {
-                        right_y += line_adv;
-                    } else {
-                        left_y += line_adv;
-                    }
-                    continue;
-                }
-
-                int x_offset = 8;
-                int y_pos;
-
-                if (lines[i].column == 1) {
-                    // Right column
-                    x_offset = divider_x + 8;
-                    y_pos = right_y;
-                    right_y += line_adv;
-                } else {
-                    // Left column
-                    x_offset = 8;
-                    y_pos = left_y;
-                    left_y += line_adv;
-                }
-
-                // Apply alignment within column
-                const int available_width = column_width - 16;
-                if (lines[i].alignment == 1) {
-                    // Center align
-                    x_offset += (available_width - line_surface->w) / 2;
-                } else if (lines[i].alignment == 2) {
-                    // Right align
-                    x_offset += available_width - line_surface->w;
-                }
-
-                SDL_Rect dst = {x_offset, y_pos, line_surface->w, line_surface->h};
-                SDL_SetSurfaceBlendMode(line_surface, SDL_BLENDMODE_BLEND);
-                SDL_BlitSurface(line_surface, NULL, surface, &dst);
-                SDL_FreeSurface(line_surface);
+                battery_font = overlay_load_font(desired_battery_size);
+                battery_font_size = desired_battery_size;
             }
+            if (desired_clock_size != clock_font_size || !clock_font) {
+                if (clock_font) {
+                    TTF_CloseFont(clock_font);
+                }
+                clock_font = overlay_load_font(desired_clock_size);
+                clock_font_size = desired_clock_size;
+            }
+        }
 
-            // Draw column divider
-            SDL_Rect divider = {divider_x - 1, status_band_height + 4, 2, overlay->height - status_band_height - 8};
-            SDL_FillRect(surface, &divider,
-                         SDL_MapRGBA(surface->format, 60, 80, 120, 180));
+        SDL_FillRect(surface, NULL, SDL_MapRGBA(surface->format, 0, 0, 0, 0));
+
+        if (snap.row_registry_configured) {
+            if (snap.collapsed) {
+                overlay_render_collapsed(&snap, surface, font, row_height);
+            } else {
+                overlay_render_new_panel(&snap, surface, font, battery_font, clock_font, row_height);
+            }
+        } else {
+            SDL_FillRect(surface, NULL,
+                         SDL_MapRGBA(surface->format, snap.background.r, snap.background.g,
+                                    snap.background.b, snap.background.a));
+            overlay_render_legacy(&snap, surface, font);
         }
 
         SDL_LockMutex(overlay->mutex);
         const size_t bytes = (size_t)surface->pitch * (size_t)surface->h;
-        overlay->pitch = surface->pitch;
-        overlay->buffer_bytes = bytes;
-        if (!overlay->pixel_buffer) {
+        if (overlay->buffer_bytes != bytes) {
+            SDL_free(overlay->pixel_buffer);
+            SDL_free(overlay->visible_buffer);
             overlay->pixel_buffer = (Uint8 *)SDL_malloc(bytes);
-        }
-        if (!overlay->visible_buffer) {
             overlay->visible_buffer = (Uint8 *)SDL_malloc(bytes);
+            overlay->buffer_bytes = bytes;
         }
+        overlay->pitch = surface->pitch;
         if (overlay->pixel_buffer && overlay->visible_buffer) {
             rs_memcpy(overlay->pixel_buffer, surface->pixels, bytes);
             overlay->has_pixels = SDL_TRUE;
         }
+        overlay->width = snap.width;
+        overlay->height = snap.height;
         SDL_UnlockMutex(overlay->mutex);
     }
 
     if (font) {
         TTF_CloseFont(font);
+    }
+    if (battery_font) {
+        TTF_CloseFont(battery_font);
+    }
+    if (clock_font) {
+        TTF_CloseFont(clock_font);
     }
     if (surface) {
         SDL_FreeSurface(surface);
@@ -294,11 +548,9 @@ BenchOverlay *bench_overlay_create(SDL_Renderer *renderer,
     overlay->height = overlay->line_height * overlay->max_rows + overlay->line_height * 2;
     overlay->background = (SDL_Color){0, 0, 0, 255};
     overlay->running = SDL_TRUE;
-    overlay->refresh_divisor = 10;
-    if (overlay->refresh_divisor < 1) {
-        overlay->refresh_divisor = 1;
-    }
-    overlay->refresh_counter = overlay->refresh_divisor - 1;
+
+    rolling_chart_init(&overlay->fps_chart);
+    rolling_chart_init(&overlay->frametime_chart);
 
     overlay->mutex = SDL_CreateMutex();
     overlay->cond = SDL_CreateCond();
@@ -393,17 +645,8 @@ void bench_overlay_submit(BenchOverlay *overlay,
                   (size_t)overlay->line_count * sizeof(BenchOverlayLine));
     }
     overlay->background = background;
-    if (overlay->refresh_divisor <= 1) {
-        overlay->dirty = SDL_TRUE;
-        SDL_CondSignal(overlay->cond);
-    } else {
-        overlay->refresh_counter++;
-        if (overlay->refresh_counter >= overlay->refresh_divisor) {
-            overlay->refresh_counter = 0;
-            overlay->dirty = SDL_TRUE;
-            SDL_CondSignal(overlay->cond);
-        }
-    }
+    overlay->dirty = SDL_TRUE;
+    SDL_CondSignal(overlay->cond);
     SDL_UnlockMutex(overlay->mutex);
 }
 
@@ -415,10 +658,6 @@ void bench_overlay_set_status_grid(BenchOverlay *overlay,
         return;
     }
 
-    /* Only force an immediate repaint when a field actually changed --
-     * unconditionally forcing one every call fights the normal throttled
-     * repaint cadence and flickers; never forcing one makes real changes
-     * wait up to a full refresh_divisor cycle to become visible. */
     SDL_LockMutex(overlay->mutex);
     SDL_bool any_set = SDL_FALSE;
     SDL_bool changed = SDL_FALSE;
@@ -442,18 +681,33 @@ void bench_overlay_set_status_grid(BenchOverlay *overlay,
     SDL_UnlockMutex(overlay->mutex);
 }
 
+void bench_overlay_toggle_collapsed(BenchOverlay *overlay)
+{
+    if (!overlay) {
+        return;
+    }
+    SDL_LockMutex(overlay->mutex);
+    overlay->collapsed = !overlay->collapsed;
+    overlay->dirty = SDL_TRUE;
+    SDL_CondSignal(overlay->cond);
+    SDL_UnlockMutex(overlay->mutex);
+}
+
 void bench_overlay_present(BenchOverlay *overlay,
                            SDL_Renderer *renderer,
                            BenchMetrics *metrics,
                            int x,
                            int y)
 {
+    (void)metrics;
     if (!overlay || !renderer) {
         return;
     }
 
     Uint8 *pixels = NULL;
     int pitch = 0;
+    int tex_w;
+    int tex_h;
 
     SDL_LockMutex(overlay->mutex);
     if (overlay->has_pixels && overlay->pixel_buffer && overlay->visible_buffer) {
@@ -466,16 +720,23 @@ void bench_overlay_present(BenchOverlay *overlay,
         }
         overlay->has_pixels = SDL_FALSE;
     }
+    tex_w = overlay->width;
+    tex_h = overlay->height;
     SDL_UnlockMutex(overlay->mutex);
 
     if (pixels) {
-        if (!overlay->texture || renderer != overlay->renderer) {
+        int cur_tex_w = 0, cur_tex_h = 0;
+        if (overlay->texture) {
+            SDL_QueryTexture(overlay->texture, NULL, NULL, &cur_tex_w, &cur_tex_h);
+        }
+        if (!overlay->texture || renderer != overlay->renderer ||
+            cur_tex_w != tex_w || cur_tex_h != tex_h) {
             bench_overlay_free_texture_locked(overlay);
             overlay->texture = SDL_CreateTexture(renderer,
                                                  SDL_PIXELFORMAT_RGBA8888,
                                                  SDL_TEXTUREACCESS_STREAMING,
-                                                 overlay->width,
-                                                 overlay->height);
+                                                 tex_w,
+                                                 tex_h);
             if (overlay->texture) {
                 SDL_SetTextureBlendMode(overlay->texture, SDL_BLENDMODE_BLEND);
             }
@@ -483,7 +744,7 @@ void bench_overlay_present(BenchOverlay *overlay,
         }
 
         if (overlay->texture) {
-            const int used_pitch = (pitch > 0) ? pitch : overlay->width * 4;
+            const int used_pitch = (pitch > 0) ? pitch : tex_w * 4;
             SDL_UpdateTexture(overlay->texture,
                               NULL,
                               pixels,
@@ -492,13 +753,8 @@ void bench_overlay_present(BenchOverlay *overlay,
     }
 
     if (overlay->texture) {
-        SDL_Rect dst = {x, y, overlay->width, overlay->height};
+        SDL_Rect dst = {x, y, tex_w, tex_h};
         SDL_RenderCopy(renderer, overlay->texture, NULL, &dst);
-        if (metrics) {
-            metrics->draw_calls++;
-            metrics->vertices_rendered += 4;
-            metrics->triangles_rendered += 2;
-        }
     }
 }
 

@@ -3,32 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "common/backend_probe.h"
 #include "common/driver_support.h"
 #include "common/gl_effect.h"
-
-#define TITLE_MMA_HEAP_PROC "/proc/mi_modules/mi_sys_mma/mma_heap_name0"
-
-/* System-wide MMA heap accounting; data row: "<name> <base_hex> <length_hex> <avail_hex>". */
-static void title_backend_probe_mma_pool(TitleBackendStatus *out)
-{
-    FILE *f = fopen(TITLE_MMA_HEAP_PROC, "r");
-    if (!f) {
-        return;
-    }
-
-    char line[256];
-    while (fgets(line, sizeof(line), f)) {
-        char name[32];
-        unsigned int base = 0, length = 0, avail = 0;
-        if (sscanf(line, "%31s %x %x %x", name, &base, &length, &avail) == 4 &&
-            strncmp(name, "mma_heap_name", 13) == 0) {
-            out->mma_pool_max_bytes = length;
-            out->mma_pool_used_bytes = (length >= avail) ? (length - avail) : 0;
-            break;
-        }
-    }
-    fclose(f);
-}
 
 static void title_backend_probe_audio(TitleBackendStatus *out)
 {
@@ -93,7 +70,7 @@ void title_backend_status_probe(TitleBackendStatus *out, SDL_Window *window, SDL
     out->cpu_count = SDL_GetCPUCount();
     out->ram_mb = SDL_GetSystemRAM();
 
-    title_backend_probe_mma_pool(out);
+    bench_backend_probe_mma_pool(&out->mma_pool_used_bytes, &out->mma_pool_max_bytes);
 
     SDL_version v;
     SDL_GetVersion(&v);

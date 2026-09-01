@@ -23,17 +23,8 @@ void gb_state_init(GfxBenchState *state)
     state->active_scene = GB_SCENE_AA_SHAPES;
     state->auto_cycle = SDL_TRUE;
     state->stress_level = 1;
-    state->top_margin = 0.0f;
     state->phase = 0.0f;
     gb_state_initialise_tables(state);
-}
-
-void gb_state_update_layout(GfxBenchState *state, BenchOverlay *overlay)
-{
-    if (!state) {
-        return;
-    }
-    state->top_margin = overlay ? (float)bench_overlay_height(overlay) : 0.0f;
 }
 
 float gb_state_stress_factor(const GfxBenchState *state)
