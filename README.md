@@ -16,11 +16,11 @@ The generated package is written to `app-dist/sdl_bench/`.
 <table>
   <tr>
     <td align="center"><img src="assets/sdl_bench_008.png" width="300"></td>
-    <td align="center"><img src="assets/sdl_bench_009.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_015.png" width="300"></td>
   </tr>
   <tr>
-    <td align="center"><img src="assets/sdl_bench_010.png" width="300"></td>
-    <td align="center"><img src="assets/sdl_bench_011.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_016.png" width="300"></td>
+    <td align="center"><img src="assets/sdl_bench_017.png" width="300"></td>
   </tr>
   <tr>
     <td align="center"><img src="assets/sdl_bench_012.png" width="300"></td>
@@ -28,7 +28,6 @@ The generated package is written to `app-dist/sdl_bench/`.
   </tr>
   <tr>
     <td align="center"><img src="assets/sdl_bench_014.png" width="300"></td>
-    <td align="center"><img src="assets/sdl_bench_006.png" width="300"></td>
   </tr>
 </table>
 
