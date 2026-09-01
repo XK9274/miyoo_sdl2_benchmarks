@@ -243,7 +243,6 @@ int overlay_rows_render_keybinds(const BenchOverlay *snap, SDL_Surface *surface,
     SDL_Rect divider = {OVERLAY_EDGE_PAD, y, panel_w - 2 * OVERLAY_EDGE_PAD, 1};
     SDL_FillRect(surface, &divider, SDL_MapRGBA(surface->format, divider_color.r, divider_color.g,
                                                 divider_color.b, divider_color.a));
-    y += row_height / 4;
 
     const SDL_Color key_color = {240, 194, 94, 255};
     const SDL_Color action_color = {201, 198, 188, 255};

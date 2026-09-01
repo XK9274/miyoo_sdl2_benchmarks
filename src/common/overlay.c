@@ -36,7 +36,7 @@ static const char *g_font_paths[] = {
 #define OVERLAY_MIN_EFFECTIVE_ROWS 24
 #define OVERLAY_CHART_ROW_SPAN 4   /* two 2-row-tall charts */
 #define OVERLAY_HEADER_ROW_SPAN 1
-#define OVERLAY_BACKENDS_ROW_SPAN 8 /* Render, Audio, Input, Power, Threads, Display, Build, CPU Freq */
+#define OVERLAY_BACKENDS_ROW_SPAN 4 /* 2 columns: Render/Audio, Input/Power, Threads/Display, Build/CPU Freq */
 #define OVERLAY_FONT_SIZE_MARGIN 4
 #define OVERLAY_CLOCK_FONT_DELTA 2
 #define OVERLAY_BATTERY_FONT_DELTA 3
@@ -177,38 +177,39 @@ static void overlay_render_header(SDL_Surface *surface, TTF_Font *battery_font, 
     overlay_draw_text_line(surface, clock_font, clock_bounds, 2, text_color, clock_text);
 }
 
+static void overlay_draw_two_col(SDL_Surface *surface, TTF_Font *font, int panel_w, int y, int row_height,
+                                 SDL_Color color, const char *left, const char *right)
+{
+    const int half_w = (panel_w - 2 * OVERLAY_EDGE_PAD) / 2;
+    const SDL_Rect left_bounds = {OVERLAY_EDGE_PAD, y, half_w - 4, row_height};
+    const SDL_Rect right_bounds = {OVERLAY_EDGE_PAD + half_w + 4, y, half_w - 4, row_height};
+    overlay_draw_text_line(surface, font, left_bounds, 0, color, left);
+    overlay_draw_text_line(surface, font, right_bounds, 0, color, right);
+}
+
 static int overlay_render_backends_block(SDL_Renderer *renderer, SDL_Surface *surface,
                                          TTF_Font *font, int panel_w, int y, int row_height)
 {
     overlay_draw_divider(surface, OVERLAY_EDGE_PAD, y, panel_w - 2 * OVERLAY_EDGE_PAD);
-    y += row_height / 4;
 
-    const int text_w = panel_w - 2 * OVERLAY_EDGE_PAD;
-    const SDL_Color label_color = {201, 198, 188, 255};
     const SDL_Color value_color = {243, 241, 234, 255};
-    char line[96];
+    char left[80], right[80];
 
     SDL_RendererInfo info;
     const char *render_name = (renderer && SDL_GetRendererInfo(renderer, &info) == 0) ? info.name : "unknown";
-    snprintf(line, sizeof(line), "Render  %s", render_name);
-    overlay_draw_text_line(surface, font, (SDL_Rect){OVERLAY_EDGE_PAD, y, text_w, row_height}, 0, value_color, line);
-    y += row_height;
-
     const char *audio_driver = SDL_GetCurrentAudioDriver();
-    snprintf(line, sizeof(line), "Audio   %s", audio_driver ? audio_driver : "off");
-    overlay_draw_text_line(surface, font, (SDL_Rect){OVERLAY_EDGE_PAD, y, text_w, row_height}, 0, value_color, line);
+    snprintf(left, sizeof(left), "Render %s", render_name);
+    snprintf(right, sizeof(right), "Audio %s", audio_driver ? audio_driver : "off");
+    overlay_draw_two_col(surface, font, panel_w, y, row_height, value_color, left, right);
     y += row_height;
 
     BenchDriverStatus status;
     bench_driver_get_status(&status);
     if (status.joystick_attached) {
-        snprintf(line, sizeof(line), "Input   Joystick (%s)", status.joystick_name);
+        snprintf(left, sizeof(left), "Input Joy (%s)", status.joystick_name);
     } else {
-        snprintf(line, sizeof(line), "Input   Keyboard");
+        snprintf(left, sizeof(left), "Input Keyboard");
     }
-    overlay_draw_text_line(surface, font, (SDL_Rect){OVERLAY_EDGE_PAD, y, text_w, row_height}, 0, value_color, line);
-    y += row_height;
-
     const char *power_label = "Unknown";
     if (status.power_info_valid) {
         switch (status.power_state) {
@@ -219,17 +220,14 @@ static int overlay_render_backends_block(SDL_Renderer *renderer, SDL_Surface *su
             default: break;
         }
     }
-    snprintf(line, sizeof(line), "Power   %s", power_label);
-    overlay_draw_text_line(surface, font, (SDL_Rect){OVERLAY_EDGE_PAD, y, text_w, row_height}, 0, value_color, line);
+    snprintf(right, sizeof(right), "Power %s", power_label);
+    overlay_draw_two_col(surface, font, panel_w, y, row_height, value_color, left, right);
     y += row_height;
 
-    snprintf(line, sizeof(line), "Threads %u", (unsigned)bench_backend_probe_thread_count());
-    overlay_draw_text_line(surface, font, (SDL_Rect){OVERLAY_EDGE_PAD, y, text_w, row_height}, 0, value_color, line);
-    y += row_height;
-
-    snprintf(line, sizeof(line), "Display %dx%d %s", status.display_w, status.display_h,
+    snprintf(left, sizeof(left), "Threads %u", (unsigned)bench_backend_probe_thread_count());
+    snprintf(right, sizeof(right), "Display %dx%d %s", status.display_w, status.display_h,
              status.vsync_verified_active ? "vsync" : "no-vsync");
-    overlay_draw_text_line(surface, font, (SDL_Rect){OVERLAY_EDGE_PAD, y, text_w, row_height}, 0, value_color, line);
+    overlay_draw_two_col(surface, font, panel_w, y, row_height, value_color, left, right);
     y += row_height;
 
     SDL_version v;
@@ -239,15 +237,14 @@ static int overlay_render_backends_block(SDL_Renderer *renderer, SDL_Surface *su
 #else
     const char *build_tag = "RELEASE";
 #endif
-    snprintf(line, sizeof(line), "Build   SDL %d.%d.%d %s", v.major, v.minor, v.patch, build_tag);
-    overlay_draw_text_line(surface, font, (SDL_Rect){OVERLAY_EDGE_PAD, y, text_w, row_height}, 0, value_color, line);
-    y += row_height;
-
+    snprintf(left, sizeof(left), "SDL %d.%d.%d %s", v.major, v.minor, v.patch, build_tag);
     const Uint32 cpu_freq = bench_backend_probe_cpu_freq_mhz();
     if (cpu_freq > 0) {
-        snprintf(line, sizeof(line), "CPU Freq %u MHz", (unsigned)cpu_freq);
-        overlay_draw_text_line(surface, font, (SDL_Rect){OVERLAY_EDGE_PAD, y, text_w, row_height}, 0, label_color, line);
+        snprintf(right, sizeof(right), "%u MHz", (unsigned)cpu_freq);
+    } else {
+        right[0] = '\0';
     }
+    overlay_draw_two_col(surface, font, panel_w, y, row_height, value_color, left, right);
     y += row_height;
 
     return y;
