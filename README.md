@@ -195,6 +195,8 @@ libraries staged by the buildbot SDL providers.
 - Memory management in `render_suite` is broken/regressed.
 - The overlay has a blending issue in most suites, visible in the obj model
   loader.
+- The overlay's own render/update frequency measurably costs framerate;
+  needs throttling instead of running every frame.
 
 ## Directory Layout
 
