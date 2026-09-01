@@ -31,6 +31,7 @@ static const char *g_rs_geometry_mode_labels[RS_GEOMETRY_RENDER_MODE_MAX] = {
 
 static const OverlayRowSpec g_rs_rows[] = {
     {OVERLAY_ROW_CUSTOM, {240, 194, 94, 255}, 0, "%s"},
+    {OVERLAY_ROW_CUSTOM, {240, 194, 94, 255}, 0, "%s"},
     {OVERLAY_ROW_FPS, {255, 255, 255, 255}, 0, NULL},
     {OVERLAY_ROW_FRAME_TIME, {0, 200, 255, 255}, 0, NULL},
     {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
@@ -259,9 +260,11 @@ int main(int argc, char *argv[])
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         bench_frame_limit_wait(frame_start_counter);
 
-        char scene_label[80];
-        snprintf(scene_label, sizeof(scene_label), "Scene: %s | Auto %s | Stress L%d x%.1f",
-                 g_rs_scene_names[state.active_scene], state.auto_cycle ? "ON" : "OFF",
+        char scene_label[64];
+        snprintf(scene_label, sizeof(scene_label), "Scene: %s | Auto %s",
+                 g_rs_scene_names[state.active_scene], state.auto_cycle ? "ON" : "OFF");
+        char stress_label[48];
+        snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f",
                  state.stress_level, rs_state_stress_factor(&state));
         char mode_label[48] = "";
         if (state.active_scene == SCENE_GEOMETRY) {
@@ -269,7 +272,7 @@ int main(int argc, char *argv[])
                 (state.geometry_render_mode % RS_GEOMETRY_RENDER_MODE_MAX) : 0;
             snprintf(mode_label, sizeof(mode_label), "Geometry Mode: %s", g_rs_geometry_mode_labels[mode_index]);
         }
-        const char *custom_values[] = {scene_label, mode_label};
+        const char *custom_values[] = {scene_label, stress_label, mode_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
         if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {

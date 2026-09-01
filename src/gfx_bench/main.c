@@ -24,6 +24,7 @@ static const char *g_gb_scene_names[GB_SCENE_MAX] = {
 
 static const OverlayRowSpec g_gb_rows[] = {
     {OVERLAY_ROW_CUSTOM, {240, 194, 94, 255}, 0, "%s"},
+    {OVERLAY_ROW_CUSTOM, {240, 194, 94, 255}, 0, "%s"},
     {OVERLAY_ROW_FPS, {255, 255, 255, 255}, 0, NULL},
     {OVERLAY_ROW_FRAME_TIME, {255, 255, 255, 255}, 0, NULL},
     {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
@@ -184,10 +185,12 @@ int main(int argc, char *argv[])
         bench_frame_limit_wait(frame_start_counter);
 
         char scene_label[64];
-        snprintf(scene_label, sizeof(scene_label), "%s | Auto %s | Stress L%d x%.1f",
-                 g_gb_scene_names[state.active_scene], state.auto_cycle ? "ON" : "OFF",
+        snprintf(scene_label, sizeof(scene_label), "%s | Auto %s",
+                 g_gb_scene_names[state.active_scene], state.auto_cycle ? "ON" : "OFF");
+        char stress_label[48];
+        snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f",
                  state.stress_level, gb_state_stress_factor(&state));
-        const char *custom_values[] = {scene_label};
+        const char *custom_values[] = {scene_label, stress_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
     }
 
