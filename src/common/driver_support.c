@@ -10,13 +10,14 @@
 
 #define MMIYOO_JOY_BUTTON_X      6
 #define MMIYOO_JOY_BUTTON_SELECT 12
+#define MMIYOO_JOY_BUTTON_MENU   14
 
 /* Indexed by the MMIYOO_Button bit positions reported by the joystick backend. */
 static const SDL_Keycode g_joy_button_map[MMIYOO_JOY_BUTTON_SLOTS] = {
     BTN_UP, BTN_DOWN, BTN_LEFT, BTN_RIGHT,
     BTN_A, BTN_B, BTN_X, BTN_Y,
     BTN_L1, BTN_R1, BTN_L2, BTN_R2,
-    BTN_SELECT, BTN_START, SDLK_ESCAPE,
+    BTN_SELECT, BTN_START, BTN_MENU,
     BTN_QUICK_SAVE, BTN_QUICK_LOAD, BTN_FAST_FORWARD, BTN_EXIT,
     0, 0, 0
 };
@@ -182,25 +183,24 @@ SDL_bool bench_driver_translate_button_event(const SDL_Event *event,
     }
 
     if (event->type == SDL_JOYBUTTONDOWN || event->type == SDL_JOYBUTTONUP) {
-        /* SELECT held as a modifier: X = vsync off/adaptive toggle.
-           SELECT's own tap action (reset metrics, see BTN_SELECT in each
-           suite's input.c) still fires on release, but only if no combo was
-           used during that hold. */
-        static SDL_bool select_held = SDL_FALSE;
-        static SDL_bool select_combo_used = SDL_FALSE;
+        /* MENU held as a modifier: X = vsync off/adaptive toggle. MENU's own
+           tap action still fires on release, but only if no combo was used
+           during that hold. */
+        static SDL_bool menu_held = SDL_FALSE;
+        static SDL_bool menu_combo_used = SDL_FALSE;
         const Uint8 button = event->jbutton.button;
         const SDL_bool pressed = (event->type == SDL_JOYBUTTONDOWN);
 
-        if (button == MMIYOO_JOY_BUTTON_SELECT) {
+        if (button == MMIYOO_JOY_BUTTON_MENU) {
             if (pressed) {
-                select_held = SDL_TRUE;
-                select_combo_used = SDL_FALSE;
+                menu_held = SDL_TRUE;
+                menu_combo_used = SDL_FALSE;
                 return SDL_FALSE;
             }
 
-            select_held = SDL_FALSE;
-            if (select_combo_used) {
-                select_combo_used = SDL_FALSE;
+            menu_held = SDL_FALSE;
+            if (menu_combo_used) {
+                menu_combo_used = SDL_FALSE;
                 return SDL_FALSE;
             }
 
@@ -208,14 +208,14 @@ SDL_bool bench_driver_translate_button_event(const SDL_Event *event,
             g_status.input_source = BENCH_INPUT_SOURCE_JOYSTICK;
             g_status.joystick_event_count++;
             SDL_UnlockMutex(g_status_mutex);
-            *out_sym = BTN_SELECT;
+            *out_sym = BTN_MENU;
             *out_pressed = SDL_TRUE;
             return SDL_TRUE;
         }
 
-        if (select_held && button == MMIYOO_JOY_BUTTON_X) {
+        if (menu_held && button == MMIYOO_JOY_BUTTON_X) {
             if (pressed) {
-                select_combo_used = SDL_TRUE;
+                menu_combo_used = SDL_TRUE;
                 SDL_LockMutex(g_status_mutex);
                 g_status.input_source = BENCH_INPUT_SOURCE_JOYSTICK;
                 g_status.joystick_event_count++;
@@ -344,7 +344,7 @@ void bench_driver_format_status_grid(char fields[BENCH_STATUS_GRID_CELLS][BENCH_
     } else if (status.vsync_status == BENCH_VSYNC_STATUS_STRICT) {
         mode_label = "Strict";
     }
-    snprintf(fields[6], BENCH_STATUS_FIELD_LEN, "VSYNC: %s (SEL+X)", mode_label);
+    snprintf(fields[6], BENCH_STATUS_FIELD_LEN, "VSYNC: %s (MENU+X)", mode_label);
 
     snprintf(fields[7], BENCH_STATUS_FIELD_LEN, "%dx%d", status.display_w, status.display_h);
 }

@@ -14,6 +14,7 @@
 #include <SDL2/SDL_image.h>
 
 #include "controller_input.h"
+#include "common/asset_path.h"
 #include "common/display_config.h"
 #include "common/frame_limit.h"
 #include "title/background.h"
@@ -21,12 +22,10 @@
 
 static TTF_Font *title_load_menu_font(int size)
 {
-    char bin_dir[PATH_MAX];
-    if (!title_get_bin_dir(bin_dir, sizeof(bin_dir))) {
+    char path[PATH_MAX];
+    if (!bench_resolve_asset_path("ThaleahFat.ttf", path, sizeof(path))) {
         return NULL;
     }
-    char path[PATH_MAX];
-    snprintf(path, sizeof(path), "%s/../assets/ThaleahFat.ttf", bin_dir);
     TTF_Font *font = TTF_OpenFont(path, size);
     if (font) {
         /* Keep glyph edges smooth at the native 640x480 title resolution. */

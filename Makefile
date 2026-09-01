@@ -19,6 +19,8 @@ PROGRAMS      := sdl2_title \
 TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
 
 COMMON_SOURCES := \
+    $(SRC_DIR)/common/asset_path.c \
+    $(SRC_DIR)/common/backend_probe.c \
     $(SRC_DIR)/common/format.c \
     $(SRC_DIR)/common/geometry/core.c \
     $(SRC_DIR)/common/geometry/shapes.c \
@@ -32,6 +34,8 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/metrics.c \
     $(SRC_DIR)/common/overlay.c \
     $(SRC_DIR)/common/overlay_grid.c \
+    $(SRC_DIR)/common/overlay_rows.c \
+    $(SRC_DIR)/common/rolling_chart.c \
     $(SRC_DIR)/common/driver_support.c \
     $(SRC_DIR)/common/display_config.c \
     $(SRC_DIR)/common/frame_limit.c \
@@ -45,6 +49,9 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/render3d/model_instance.c \
     $(SRC_DIR)/common/render3d/camera.c \
     $(SRC_DIR)/common/render3d/pipeline.c
+ifeq ($(DEBUG),1)
+COMMON_SOURCES += $(SRC_DIR)/common/overlay_debug_stats.c
+endif
 COMMON_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(COMMON_SOURCES))
 
 TITLE_SOURCES := \
@@ -148,7 +155,6 @@ SPRITE_BENCH_TARGET  := $(BIN_DIR)/sdl2_sprite_bench
 GFX_BENCH_SOURCES := \
     $(SRC_DIR)/gfx_bench/input.c \
     $(SRC_DIR)/gfx_bench/main.c \
-    $(SRC_DIR)/gfx_bench/overlay.c \
     $(SRC_DIR)/gfx_bench/state.c \
     $(SRC_DIR)/gfx_bench/scenes/aa_shapes.c \
     $(SRC_DIR)/gfx_bench/scenes/rounded_rects.c \
@@ -207,7 +213,7 @@ CFLAGS       := $(filter-out $(ARM_NEON_DEFINE),$(CFLAGS))
 CFLAGS       += -std=c11 -Wall -Wextra -D_REENTRANT -DMMIYOO $(ARM_CPU_FLAGS)
 ifeq ($(DEBUG),1)
 # Must come after ARM_CPU_FLAGS to override its -fomit-frame-pointer.
-CFLAGS       := $(filter-out -O2,$(CFLAGS)) -Og -g -fno-omit-frame-pointer
+CFLAGS       := $(filter-out -O2,$(CFLAGS)) -Og -g -fno-omit-frame-pointer -DDEBUG_BUILD
 endif
 CPPFLAGS     := $(filter-out $(ARM_NEON_DEFINE),$(CPPFLAGS))
 CPPFLAGS     += $(SYSROOT_FLAG) -I$(SDL_INCLUDE) -I$(SDL_INCLUDE)/SDL2 -I$(SDL_ADDONS_INCLUDE) -I$(SYSROOT)/usr/include -I$(INC_DIR) -I$(SRC_DIR) $(ARM_NEON_DEFINE)

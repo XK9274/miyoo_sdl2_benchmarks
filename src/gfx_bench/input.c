@@ -4,8 +4,9 @@
 
 #include "controller_input.h"
 #include "common/driver_support.h"
+#include "common/hotkeys.h"
 
-SDL_bool gb_handle_input(GfxBenchState *state, BenchMetrics *metrics)
+SDL_bool gb_handle_input(GfxBenchState *state, BenchMetrics *metrics, BenchOverlay *overlay)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -41,8 +42,11 @@ SDL_bool gb_handle_input(GfxBenchState *state, BenchMetrics *metrics)
                         state->stress_level = 1;
                     }
                     break;
-                case BTN_SELECT:
+                case BTN_METRICS_RESET:
                     bench_reset_metrics(metrics);
+                    break;
+                case BTN_OVERLAY_TOGGLE:
+                    bench_overlay_toggle_collapsed(overlay);
                     break;
                 default:
                     break;

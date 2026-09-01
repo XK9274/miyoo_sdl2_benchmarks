@@ -21,7 +21,6 @@ typedef struct {
     GfxBenchSceneKind active_scene;
     SDL_bool auto_cycle;
     int stress_level; /* 1-10 */
-    float top_margin;
 
     float sin_table[GB_SIN_TABLE_SIZE];
     int sin_table_size;
@@ -31,7 +30,6 @@ typedef struct {
 } GfxBenchState;
 
 void gb_state_init(GfxBenchState *state);
-void gb_state_update_layout(GfxBenchState *state, BenchOverlay *overlay);
 
 /* Maps stress_level 1-10 to a workload multiplier, same curve as render_suite's. */
 float gb_state_stress_factor(const GfxBenchState *state);
