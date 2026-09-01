@@ -153,7 +153,8 @@ static void overlay_draw_divider(SDL_Surface *surface, int x, int y, int w)
 
 static int overlay_effective_rows(const BenchOverlay *snap)
 {
-    const int total = OVERLAY_HEADER_ROW_SPAN + snap->configured_row_count +
+    const int data_rows = overlay_rows_visual_count(snap->configured_rows, snap->configured_row_count);
+    const int total = OVERLAY_HEADER_ROW_SPAN + data_rows +
                       OVERLAY_CHART_ROW_SPAN + OVERLAY_BACKENDS_ROW_SPAN +
                       snap->configured_keybind_count;
     return SDL_max(total, OVERLAY_MIN_EFFECTIVE_ROWS);

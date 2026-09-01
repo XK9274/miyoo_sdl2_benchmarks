@@ -73,6 +73,10 @@ void overlay_draw_text_line(SDL_Surface *surface, TTF_Font *font, SDL_Rect bound
  * Both return the y offset immediately after the section they drew. */
 int overlay_rows_render_data(const BenchOverlay *snap, SDL_Surface *surface, TTF_Font *font,
                              int panel_w, int y, int row_height);
+
+/* Row count after pairing adjacent short/compact kinds two-per-row, for
+ * row-height sizing that must match what actually gets drawn. */
+int overlay_rows_visual_count(const OverlayRowSpec *rows, int row_count);
 int overlay_rows_render_keybinds(const BenchOverlay *snap, SDL_Surface *surface, TTF_Font *font,
                                  int panel_w, int y, int row_height);
 

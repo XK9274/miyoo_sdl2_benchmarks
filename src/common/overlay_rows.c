@@ -91,6 +91,46 @@ void bench_overlay_update(BenchOverlay *overlay, const BenchMetrics *metrics,
     SDL_UnlockMutex(overlay->mutex);
 }
 
+/* Short single-value rows that pack two-per-row instead of one-per-row. */
+static SDL_bool overlay_row_kind_is_compact(OverlayRowKind kind)
+{
+    switch (kind) {
+        case OVERLAY_ROW_DRAW_CALLS:
+        case OVERLAY_ROW_VERTICES:
+        case OVERLAY_ROW_TRIANGLES:
+        case OVERLAY_ROW_TEXTURE_SWITCHES:
+        case OVERLAY_ROW_CPU_PERCENT:
+        case OVERLAY_ROW_RAM_USAGE:
+            return SDL_TRUE;
+        default:
+            return SDL_FALSE;
+    }
+}
+
+static SDL_Color overlay_darken(SDL_Color c)
+{
+    c.r = (Uint8)(c.r * 0.6f);
+    c.g = (Uint8)(c.g * 0.6f);
+    c.b = (Uint8)(c.b * 0.6f);
+    return c;
+}
+
+int overlay_rows_visual_count(const OverlayRowSpec *rows, int row_count)
+{
+    int visual = 0;
+    int i = 0;
+    while (i < row_count) {
+        if (rows[i].kind != OVERLAY_ROW_CUSTOM && overlay_row_kind_is_compact(rows[i].kind) &&
+            (i + 1) < row_count && overlay_row_kind_is_compact(rows[i + 1].kind)) {
+            i += 2;
+        } else {
+            i += 1;
+        }
+        visual++;
+    }
+    return visual;
+}
+
 static SDL_bool overlay_rows_format_standard(OverlayRowKind kind, const BenchMetrics *metrics,
                                              const OverlayDebugStats *dbg, char *buf, size_t buf_len)
 {
@@ -204,14 +244,17 @@ int overlay_rows_render_data(const BenchOverlay *snap, SDL_Surface *surface, TTF
                              int panel_w, int y, int row_height)
 {
     const int text_w = panel_w - 2 * OVERLAY_EDGE_PAD;
+    const int half_w = (panel_w - 2 * OVERLAY_EDGE_PAD) / 2;
     int custom_index = 0;
     char buf[128];
+    char buf2[128];
 
-    for (int i = 0; i < snap->configured_row_count; ++i) {
+    int i = 0;
+    while (i < snap->configured_row_count) {
         const OverlayRowSpec *spec = &snap->configured_rows[i];
-        const SDL_Rect bounds = {OVERLAY_EDGE_PAD, y, text_w, row_height};
 
         if (spec->kind == OVERLAY_ROW_CUSTOM) {
+            const SDL_Rect bounds = {OVERLAY_EDGE_PAD, y, text_w, row_height};
             const char *value = (custom_index < snap->custom_value_count) ?
                                  snap->custom_values[custom_index] : "";
             custom_index++;
@@ -220,13 +263,35 @@ int overlay_rows_render_data(const BenchOverlay *snap, SDL_Surface *surface, TTF
                 overlay_draw_text_line(surface, font, bounds, spec->alignment, spec->color, buf);
             }
             y += row_height;
+            i++;
             continue;
         }
 
+        const SDL_bool has_next = (i + 1) < snap->configured_row_count;
+        const OverlayRowSpec *next_spec = has_next ? &snap->configured_rows[i + 1] : NULL;
+        const SDL_bool paired = overlay_row_kind_is_compact(spec->kind) && next_spec &&
+                                overlay_row_kind_is_compact(next_spec->kind);
+
+        if (paired) {
+            const SDL_Rect left_bounds = {OVERLAY_EDGE_PAD, y, half_w - 4, row_height};
+            const SDL_Rect right_bounds = {OVERLAY_EDGE_PAD + half_w + 4, y, half_w - 4, row_height};
+            if (overlay_rows_format_standard(spec->kind, &snap->latest_metrics, &snap->debug_stats, buf, sizeof(buf))) {
+                overlay_draw_text_line(surface, font, left_bounds, 0, spec->color, buf);
+            }
+            if (overlay_rows_format_standard(next_spec->kind, &snap->latest_metrics, &snap->debug_stats, buf2, sizeof(buf2))) {
+                overlay_draw_text_line(surface, font, right_bounds, 0, overlay_darken(next_spec->color), buf2);
+            }
+            y += row_height;
+            i += 2;
+            continue;
+        }
+
+        const SDL_Rect bounds = {OVERLAY_EDGE_PAD, y, text_w, row_height};
         if (overlay_rows_format_standard(spec->kind, &snap->latest_metrics, &snap->debug_stats, buf, sizeof(buf))) {
             overlay_draw_text_line(surface, font, bounds, spec->alignment, spec->color, buf);
         }
         y += row_height;
+        i++;
     }
 
     return y;
