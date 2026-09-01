@@ -6,8 +6,26 @@
 #include <time.h>
 
 #include "bench_common.h"
+#include "common/hotkeys.h"
+#include "common/overlay_rows.h"
 #include "sprite_bench/input.h"
 #include "sprite_bench/state.h"
+
+static const OverlayRowSpec g_sprite_rows[] = {
+    {OVERLAY_ROW_CUSTOM, {255, 200, 0, 255}, 0, "%s"},
+    {OVERLAY_ROW_FPS, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_FRAME_TIME, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
+};
+
+static const OverlayKeybind g_sprite_keybinds[] = {
+    {"SELECT", "Toggle overlay"},
+    {"MENU", "Reset metrics"},
+    {"UP/DOWN", "Step size"},
+    {"LEFT/RIGHT", "Interval"},
+    {"A/B", "Grow/shrink"},
+    {"X", "Static/dynamic"},
+};
 
 int main(int argc, char *argv[])
 {
@@ -70,13 +88,26 @@ int main(int argc, char *argv[])
     BenchMetrics metrics;
     bench_reset_metrics(&metrics);
 
-    printf("SDL2 Sprite Bench initialised (no overlay, no vsync)\n");
+    BenchOverlay *overlay = bench_overlay_create(renderer, bench_logical_w(), 16, 12);
+    if (!overlay) {
+        printf("Overlay creation failed\n");
+        sprite_state_destroy(&state);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        TTF_Quit();
+        SDL_Quit();
+        return 1;
+    }
+    bench_overlay_configure(overlay, g_sprite_rows, (int)SDL_arraysize(g_sprite_rows),
+                            g_sprite_keybinds, (int)SDL_arraysize(g_sprite_keybinds));
+
+    printf("SDL2 Sprite Bench initialised (no vsync)\n");
 
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
 
-        if (!sprite_handle_input(&state, &metrics)) {
+        if (!sprite_handle_input(&state, &metrics, overlay)) {
             break;
         }
 
@@ -96,16 +127,23 @@ int main(int argc, char *argv[])
         metrics.draw_calls++;
 
         sprite_state_render(&state, renderer, &metrics);
-        sprite_state_render_status_bg(&state, renderer, &metrics);
+        bench_overlay_present(overlay, renderer, &metrics, 0, 0);
+        SDL_RenderPresent(renderer);
 
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
-        sprite_state_render_text(&state, renderer, &metrics, delta_seconds);
-
-        SDL_RenderPresent(renderer);
         bench_frame_limit_wait(frame_start_counter);
+
+        char hint_line[160];
+        snprintf(hint_line, sizeof(hint_line),
+                 "Sprites: %d | Step: %d | Interval: %.2fs | Dir: %s | Mode: %s",
+                 state.sprite_count, state.step_size, state.interval_seconds,
+                 state.direction > 0 ? "+" : "-", state.static_mode ? "Static" : "Dynamic");
+        const char *custom_values[] = {hint_line};
+        bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
     }
 
     bench_driver_shutdown();
+    bench_overlay_destroy(overlay);
     sprite_state_destroy(&state);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

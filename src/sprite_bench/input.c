@@ -4,11 +4,10 @@
 
 #include "controller_input.h"
 #include "common/driver_support.h"
+#include "common/hotkeys.h"
 
-SDL_bool sprite_handle_input(SpriteBenchState *state, BenchMetrics *metrics)
+SDL_bool sprite_handle_input(SpriteBenchState *state, BenchMetrics *metrics, BenchOverlay *overlay)
 {
-    (void)metrics;
-
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
@@ -56,8 +55,14 @@ SDL_bool sprite_handle_input(SpriteBenchState *state, BenchMetrics *metrics)
                 case BTN_X:
                     state->static_mode = !state->static_mode;
                     break;
-                case BTN_SELECT:
-                    return SDL_FALSE;
+                case BTN_METRICS_RESET:
+                    if (metrics) {
+                        bench_reset_metrics(metrics);
+                    }
+                    break;
+                case BTN_OVERLAY_TOGGLE:
+                    bench_overlay_toggle_collapsed(overlay);
+                    break;
                 default:
                     break;
             }

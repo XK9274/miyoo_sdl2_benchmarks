@@ -45,21 +45,6 @@ typedef struct {
     int direction;
     double ramp_timer_seconds;
     SDL_bool static_mode;
-
-    TTF_Font *font;
-    SDL_Texture *fps_texture;
-    int fps_texture_w;
-    int fps_texture_h;
-    SDL_Texture *hint_texture;
-    int hint_texture_w;
-    int hint_texture_h;
-    double text_refresh_timer;
-
-    SDL_Texture *controls_texture;
-    int controls_texture_w;
-    int controls_texture_h;
-
-    int line_height;
 } SpriteBenchState;
 
 SDL_bool sprite_state_init(SpriteBenchState *state, SDL_Renderer *renderer);
@@ -69,10 +54,5 @@ void sprite_state_update_pool(SpriteBenchState *state, float delta_seconds);
 void sprite_state_update_ramp(SpriteBenchState *state, double delta_seconds);
 void sprite_state_update_instances(SpriteBenchState *state, float delta_seconds);
 void sprite_state_render(SpriteBenchState *state, SDL_Renderer *renderer, BenchMetrics *metrics);
-void sprite_state_render_status_bg(SpriteBenchState *state, SDL_Renderer *renderer, BenchMetrics *metrics);
-void sprite_state_render_text(SpriteBenchState *state,
-                              SDL_Renderer *renderer,
-                              BenchMetrics *metrics,
-                              double delta_seconds);
 
 #endif /* SPRITE_BENCH_STATE_H */
