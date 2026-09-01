@@ -23,7 +23,7 @@
 static TTF_Font *title_load_menu_font(int size)
 {
     char path[PATH_MAX];
-    if (!bench_resolve_asset_path("ThaleahFat.ttf", path, sizeof(path))) {
+    if (!bench_resolve_asset_path(BENCH_APP_FONT_FILE, path, sizeof(path))) {
         return NULL;
     }
     TTF_Font *font = TTF_OpenFont(path, size);

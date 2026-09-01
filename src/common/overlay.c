@@ -49,7 +49,7 @@ typedef struct {
 TTF_Font *bench_load_font(int size)
 {
     char bundled_path[512];
-    if (bench_resolve_asset_path("ThaleahFat.ttf", bundled_path, sizeof(bundled_path))) {
+    if (bench_resolve_asset_path(BENCH_APP_FONT_FILE, bundled_path, sizeof(bundled_path))) {
         TTF_Font *bundled = TTF_OpenFont(bundled_path, size);
         if (bundled) {
             SDL_Log("Loaded font: %s", bundled_path);
@@ -68,6 +68,22 @@ TTF_Font *bench_load_font(int size)
     }
     SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "bench_load_font: no fonts available");
     return NULL;
+}
+
+/* Overlay text uses Metrophobic instead of the app's bitmap-style default --
+ * the latter is hard to read at the small sizes the panel renders at. Falls
+ * back to bench_load_font if the bundled asset isn't there. */
+static TTF_Font *overlay_load_font(int size)
+{
+    char bundled_path[512];
+    if (bench_resolve_asset_path(BENCH_OVERLAY_FONT_FILE, bundled_path, sizeof(bundled_path))) {
+        TTF_Font *bundled = TTF_OpenFont(bundled_path, size);
+        if (bundled) {
+            SDL_Log("Loaded font: %s", bundled_path);
+            return bundled;
+        }
+    }
+    return bench_load_font(size);
 }
 
 static void bench_overlay_free_texture_locked(BenchOverlay *overlay)
@@ -431,7 +447,7 @@ static int bench_overlay_thread(void *userdata)
             if (font) {
                 TTF_CloseFont(font);
             }
-            font = bench_load_font(desired_font_size);
+            font = overlay_load_font(desired_font_size);
             font_size = desired_font_size;
         }
         if (snap.row_registry_configured) {
@@ -441,14 +457,14 @@ static int bench_overlay_thread(void *userdata)
                 if (battery_font) {
                     TTF_CloseFont(battery_font);
                 }
-                battery_font = bench_load_font(desired_battery_size);
+                battery_font = overlay_load_font(desired_battery_size);
                 battery_font_size = desired_battery_size;
             }
             if (desired_clock_size != clock_font_size || !clock_font) {
                 if (clock_font) {
                     TTF_CloseFont(clock_font);
                 }
-                clock_font = bench_load_font(desired_clock_size);
+                clock_font = overlay_load_font(desired_clock_size);
                 clock_font_size = desired_clock_size;
             }
         }
