@@ -12,6 +12,10 @@
 
 #define OVERLAY_EDGE_PAD 8
 
+/* Wall-clock gate on the render thread's actual rasterize+blit pass; chart
+ * sampling stays every-frame regardless of this throttle. */
+#define OVERLAY_REDRAW_INTERVAL_MS 67
+
 /* Full BenchOverlay layout, shared across the render thread and the row
  * registry's configure/update entry points -- not a public header. */
 struct BenchOverlay {
@@ -31,8 +35,7 @@ struct BenchOverlay {
     SDL_bool dirty;
     SDL_bool has_pixels;
 
-    int refresh_divisor;
-    int refresh_counter;
+    Uint32 last_redraw_ms;
 
     BenchOverlayLine pending_lines[BENCH_OVERLAY_MAX_LINES];
     int line_count;
