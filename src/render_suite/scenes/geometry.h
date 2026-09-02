@@ -11,4 +11,7 @@ void rs_scene_geometry(RenderSuiteState *state,
                        BenchMetrics *metrics,
                        double delta_seconds);
 
+void rs_scene_geometry_init(RenderSuiteState *state, SDL_Renderer *renderer);
+void rs_scene_geometry_cleanup(RenderSuiteState *state);
+
 #endif /* RENDER_SUITE_SCENES_GEOMETRY_H */
