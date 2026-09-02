@@ -14,7 +14,7 @@
 
 /* Wall-clock gate on the render thread's actual rasterize+blit pass; chart
  * sampling stays every-frame regardless of this throttle. */
-#define OVERLAY_REDRAW_INTERVAL_MS 67
+#define OVERLAY_REDRAW_INTERVAL_MS 33
 
 /* Full BenchOverlay layout, shared across the render thread and the row
  * registry's configure/update entry points -- not a public header. */
