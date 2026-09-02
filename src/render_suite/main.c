@@ -166,6 +166,7 @@ int main(int argc, char *argv[])
     }
 
     // Initialize new benchmark scenes
+    rs_scene_geometry_init(&state, renderer);
     rs_scene_scaling_init(&state, renderer);
     rs_scene_memory_init(&state, renderer);
     rs_scene_pixels_init(&state, renderer);
@@ -295,6 +296,7 @@ int main(int argc, char *argv[])
     bench_driver_shutdown();
 
     // Cleanup new benchmark scenes
+    rs_scene_geometry_cleanup(&state);
     rs_scene_scaling_cleanup(&state);
     rs_scene_memory_cleanup(&state);
     rs_scene_pixels_cleanup(&state);
