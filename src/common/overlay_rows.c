@@ -86,8 +86,12 @@ void bench_overlay_update(BenchOverlay *overlay, const BenchMetrics *metrics,
     }
 #endif
 
-    overlay->dirty = SDL_TRUE;
-    SDL_CondSignal(overlay->cond);
+    const Uint32 now = SDL_GetTicks();
+    if (now - overlay->last_redraw_ms >= OVERLAY_REDRAW_INTERVAL_MS) {
+        overlay->last_redraw_ms = now;
+        overlay->dirty = SDL_TRUE;
+        SDL_CondSignal(overlay->cond);
+    }
     SDL_UnlockMutex(overlay->mutex);
 }
 
