@@ -46,6 +46,24 @@ static const OverlayKeybind g_gb_keybinds[] = {
     {"B", "Adjust stress level"},
 };
 
+/* GB_FORCE_SCENE=<name> pins active_scene and disables auto-cycle; used for
+ * isolated A/B perf comparisons. */
+static SDL_bool gb_scene_from_name(const char *name, GfxBenchSceneKind *out)
+{
+    static const struct { const char *name; GfxBenchSceneKind scene; } table[] = {
+        {"aa_shapes", GB_SCENE_AA_SHAPES}, {"rounded_rects", GB_SCENE_ROUNDED_RECTS},
+        {"polygons", GB_SCENE_POLYGONS}, {"bezier", GB_SCENE_BEZIER},
+        {"thick_lines", GB_SCENE_THICK_LINES},
+    };
+    for (size_t i = 0; i < SDL_arraysize(table); i++) {
+        if (SDL_strcasecmp(name, table[i].name) == 0) {
+            *out = table[i].scene;
+            return SDL_TRUE;
+        }
+    }
+    return SDL_FALSE;
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -104,6 +122,13 @@ int main(int argc, char *argv[])
 
     GfxBenchState state;
     gb_state_init(&state);
+
+    const char *force_scene_name = SDL_getenv("GB_FORCE_SCENE");
+    GfxBenchSceneKind forced_scene;
+    if (force_scene_name && gb_scene_from_name(force_scene_name, &forced_scene)) {
+        state.active_scene = forced_scene;
+        state.auto_cycle = SDL_FALSE;
+    }
 
     BenchMetrics metrics;
     bench_reset_metrics(&metrics);

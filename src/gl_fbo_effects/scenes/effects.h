@@ -16,5 +16,6 @@ SDL_bool rsgl_effects_apply_fbo_size(RsglState *state, SDL_Renderer *renderer);
 void rsgl_effects_cleanup(RsglState *state);
 int rsgl_effect_count(void);
 const char *rsgl_effect_name(int index);
+SDL_bool rsgl_effect_index_from_name(const char *name, int *out_index);
 
 #endif /* GL_FBO_EFFECTS_SCENES_EFFECTS_H */

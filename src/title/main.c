@@ -45,10 +45,10 @@ int main(int argc, char *argv[])
         }
 
         if (action == TITLE_ACTION_LAUNCH) {
-            const TitleSuiteEntry *suite = title_state_selected_suite(&state);
-            if (suite) {
+            const TitleSuiteEntry *entry = title_state_selected_entry(&state);
+            if (entry) {
                 TitleLaunchResult result;
-                if (!title_launch_suite(&state, suite->bin_name, &ctx, &result)) {
+                if (!title_launch_suite(&state, entry, &ctx, &result)) {
                     fprintf(stderr, "sdl2_title: failed to relaunch title context after suite exit\n");
                     running = SDL_FALSE;
                     break;
@@ -56,11 +56,11 @@ int main(int argc, char *argv[])
                 last_ticks = SDL_GetTicks(); /* avoid a huge dt spike after the suite ran */
 
                 if (result.exec_failed) {
-                    title_state_set_child_error(&state, suite->bin_name, SDL_FALSE, 127);
+                    title_state_set_child_error(&state, entry->bin_name, SDL_FALSE, 127);
                 } else if (result.crashed) {
-                    title_state_set_child_error(&state, suite->bin_name, SDL_TRUE, result.signal_number);
+                    title_state_set_child_error(&state, entry->bin_name, SDL_TRUE, result.signal_number);
                 } else if (result.exit_code != 0) {
-                    title_state_set_child_error(&state, suite->bin_name, SDL_FALSE, result.exit_code);
+                    title_state_set_child_error(&state, entry->bin_name, SDL_FALSE, result.exit_code);
                 }
             }
         }

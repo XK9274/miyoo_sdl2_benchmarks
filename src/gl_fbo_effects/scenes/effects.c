@@ -496,3 +496,14 @@ const char *rsgl_effect_name(int index)
     }
     return rsgl_effect_names[index];
 }
+
+SDL_bool rsgl_effect_index_from_name(const char *name, int *out_index)
+{
+    for (int i = 0; i < rsgl_effect_total; i++) {
+        if (SDL_strcasecmp(name, rsgl_effect_names[i]) == 0) {
+            *out_index = i;
+            return SDL_TRUE;
+        }
+    }
+    return SDL_FALSE;
+}

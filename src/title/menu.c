@@ -7,7 +7,7 @@
 #include "title/version.h"
 
 #define TITLE_LIST_X 40
-#define TITLE_LIST_ROWS (TITLE_SUITE_COUNT + 1) /* +1 for the trailing Quit row */
+#define TITLE_LIST_VISIBLE_ROWS 9
 #define TITLE_ROW_HEIGHT 20
 
 #define TITLE_CONFIG_X 340
@@ -85,7 +85,7 @@ void title_menu_render(TitleContext *ctx, const TitleState *state)
     const int box_pad_top = 16;
     const int box_pad_bottom = 8;
 
-    const int list_content_h = TITLE_LIST_ROWS * TITLE_ROW_HEIGHT;
+    const int list_content_h = TITLE_LIST_VISIBLE_ROWS * TITLE_ROW_HEIGHT;
     const int config_content_h = TITLE_CONFIG_COUNT * TITLE_CONFIG_ROW_HEIGHT;
     const int shared_content_h = SDL_max(list_content_h, config_content_h);
     const int box_h = shared_content_h + box_pad_top + box_pad_bottom;
@@ -95,17 +95,40 @@ void title_menu_render(TitleContext *ctx, const TitleState *state)
     const int config_top = box_y + box_pad_top + (shared_content_h - config_content_h) / 2;
     const int footer_top = BENCH_NATIVE_H - TITLE_STATUSBAR_FOOTER_HEIGHT;
 
+    const TitleCategory *category = &state->categories[state->selected_category];
+    const SDL_bool is_quit_category = title_state_quit_selected(state);
+
+    char list_title[64];
+    if (category->entry_count > TITLE_LIST_VISIBLE_ROWS) {
+        SDL_snprintf(list_title, sizeof(list_title), "< %s (%d/%d) >",
+                     category->label, state->selected_entry + 1, category->entry_count);
+    } else {
+        SDL_snprintf(list_title, sizeof(list_title), "< %s >", category->label);
+    }
+
     const SDL_Rect list_box = {TITLE_LIST_X - 16, box_y, 276, box_h};
     const SDL_Rect config_box = {TITLE_CONFIG_X - 16, box_y, 256, box_h};
-    title_draw_panel_frame(renderer, ui_font, "Suites", list_box, state->focus == TITLE_FOCUS_LIST);
+    title_draw_panel_frame(renderer, ui_font, list_title, list_box, state->focus == TITLE_FOCUS_LIST);
     title_draw_panel_frame(renderer, ui_font, "Config", config_box, state->focus == TITLE_FOCUS_CONFIG);
 
-    /* Suite list, plus a trailing Quit row. */
-    for (int i = 0; i < TITLE_LIST_ROWS; i++) {
-        const int row_y = list_top + i * TITLE_ROW_HEIGHT;
-        const SDL_bool selected = (state->focus == TITLE_FOCUS_LIST) && (state->selected_suite == i);
-        const SDL_bool is_quit_row = (i == TITLE_SUITE_COUNT);
-        const char *label = is_quit_row ? "Quit" : state->suites[i].label;
+    /* Keep the selected entry visible with the smallest possible scroll. */
+    int scroll = state->selected_entry - TITLE_LIST_VISIBLE_ROWS + 1;
+    if (scroll < 0) {
+        scroll = 0;
+    }
+    const int max_scroll = category->entry_count - TITLE_LIST_VISIBLE_ROWS;
+    if (max_scroll > 0 && scroll > max_scroll) {
+        scroll = max_scroll;
+    } else if (max_scroll <= 0) {
+        scroll = 0;
+    }
+
+    const int visible_count = SDL_min(TITLE_LIST_VISIBLE_ROWS, category->entry_count - scroll);
+    for (int row = 0; row < visible_count; row++) {
+        const int i = scroll + row;
+        const int row_y = list_top + row * TITLE_ROW_HEIGHT;
+        const SDL_bool selected = (state->focus == TITLE_FOCUS_LIST) && (state->selected_entry == i);
+        const char *label = category->entries[i].label;
 
         if (selected) {
             title_draw_row_highlight_for_text(renderer, ui_font, label, TITLE_LIST_X - 8, row_y, 260, 4, highlight_focus);
@@ -114,7 +137,7 @@ void title_menu_render(TitleContext *ctx, const TitleState *state)
         SDL_Color color = white;
         if (selected) {
             color = highlight_text;
-        } else if (is_quit_row) {
+        } else if (is_quit_category) {
             color = quit_color;
         }
         title_draw_text(renderer, ui_font, label, TITLE_LIST_X, row_y, color, SDL_FALSE);
@@ -158,8 +181,8 @@ void title_menu_render(TitleContext *ctx, const TitleState *state)
     title_statusbar_render_footer(renderer, ui_font, ctx->small_font, &ctx->backend, state);
 
     if (state->mode == TITLE_MODE_INFO_MODAL) {
-        const TitleSuiteEntry *suite = &state->suites[state->info_modal_suite];
-        title_draw_modal(renderer, accent_font, ui_font, suite->label, suite->info);
+        const TitleSuiteEntry *entry = &state->categories[state->info_modal_category].entries[state->info_modal_entry];
+        title_draw_modal(renderer, accent_font, ui_font, entry->label, entry->info);
     }
 
     SDL_RenderPresent(renderer);

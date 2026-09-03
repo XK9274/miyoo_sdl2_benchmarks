@@ -13,35 +13,136 @@ void title_state_init(TitleState *state)
 
     memset(state, 0, sizeof(*state));
 
-    const TitleSuiteEntry suites[TITLE_SUITE_COUNT] = {
-        {"Render Suite", "sdl2_render_suite",
-         "Cycles 7 2D rendering scenes -- fills, lines, textures, geometry, scaling, memory, "
-         "pixel ops -- exercising the MMIYOO hardware-accelerated SDL2 renderer."},
-        {"GL FBO Effects", "sdl2_gl_fbo_effects",
-         "Shader-based effects rendered offscreen via GLES2 into an FBO, composited through "
-         "the 2D renderer -- exercises the shared GLES2/SwiftShader pipeline."},
-        {"Hardware Double Buffer", "sdl2_bench_double_buf",
-         "Rotating cube and particle field exercising MI_GFX/MI_SYS hardware double buffering."},
-        {"Space Bench", "sdl2_space_bench",
-         "Interactive space-shooter stress test -- sprites, particles, and GL effects "
-         "together under real gameplay load."},
-        {"Sprite Bench", "sdl2_sprite_bench",
-         "Auto-ramping bouncing-sprite count stress test isolating the raw texture blit/present path."},
-        {"Audio Bench", "sdl2_audio_bench",
-         "Waveform visualizations driven by the MMIYOO audio backend, exercising audio "
-         "playback alongside rendering."},
-        {"SDL2_gfx Bench", "sdl2_gfx_bench",
-         "Cycles antialiased shapes, rounded rects, polygons, bezier curves, and thick lines "
-         "via SDL2_gfx's software primitive renderer -- exercises CPU-side rasterization "
-         "independent of the hardware-accelerated SDL_Renderer path."},
-        {"Obj Model Loader", "sdl2_obj_model_loader",
-         "Loads a Wavefront OBJ/MTL model and renders it as an auto-rotating turntable "
-         "via SDL_RenderGeometry -- exercises OBJ/MTL parsing, texture loading, and a "
-         "hand-written CPU-side model/view/projection, clipping, culling, and lighting pipeline."},
+    const TitleCategory categories[TITLE_CATEGORY_COUNT] = {
+        {"Geometry & 3D", {
+            {"Hardware Double Buffer", "sdl2_bench_double_buf",
+             "Rotating shape and particle field exercising MI_GFX/MI_SYS hardware double buffering. "
+             "Shape and render mode are togglable in-app via UP/DOWN and X.",
+             NULL, NULL},
+            {"Turntable Model: Sheep", "sdl2_obj_model_loader",
+             "Loads the bundled sheep OBJ/MTL model and renders it as an auto-rotating turntable "
+             "via SDL_RenderGeometry -- exercises a hand-written CPU-side model/view/projection, "
+             "clipping, culling, and lighting pipeline.",
+             "OBJ_MODEL_NAME", "sheep"},
+            {"Turntable Model: Miyoo", "sdl2_obj_model_loader",
+             "Loads the bundled Miyoo shell OBJ/MTL model and renders it as an auto-rotating "
+             "turntable via SDL_RenderGeometry, exercising the same CPU-side rasterizer pipeline "
+             "as the sheep model.",
+             "OBJ_MODEL_NAME", "miyoo"},
+            {"Rotating Mesh (NEON)", "sdl2_render_suite",
+             "Rotating icosahedron-subdivided mesh with particle trails, projected via a "
+             "NEON-optimized SoA vertex pipeline -- render_suite's most architecturally distinct scene.",
+             "RS_FORCE_SCENE", "geometry"},
+        }, 4},
+        {"2D Rendering", {
+            {"Solid Fill Rate", "sdl2_render_suite",
+             "Stress-scaled full/partial screen colored-rect fills measuring raw pixel fill throughput.",
+             "RS_FORCE_SCENE", "fill"},
+            {"Texture Blit Throughput", "sdl2_render_suite",
+             "Rotating/pulsing scaled texture blits measuring texture sampling and blit cost.",
+             "RS_FORCE_SCENE", "texture"},
+            {"Line & Shape Drawing", "sdl2_render_suite",
+             "Grid of line/quad-built cube columns stressing line and geometry throughput.",
+             "RS_FORCE_SCENE", "lines"},
+            {"Resolution Scaling", "sdl2_render_suite",
+             "Cycles render target resolutions and scaling modes -- logical, viewport, and "
+             "texture-target scaling.",
+             "RS_FORCE_SCENE", "scaling"},
+            {"Memory Management", "sdl2_render_suite",
+             "Allocates and frees a pool of textures with lifetime tracking, exercising texture "
+             "alloc/free churn. Currently regressed -- see README known bugs.",
+             "RS_FORCE_SCENE", "memory"},
+            {"Pixel Operations", "sdl2_render_suite",
+             "CPU-software pixel-buffer effects (plasma, fire, mandelbrot, cellular automaton) "
+             "uploaded as a texture each frame.",
+             "RS_FORCE_SCENE", "pixels"},
+            {"Sprite Blit Stress Test", "sdl2_sprite_bench",
+             "Auto-ramping bouncing-sprite count stress test isolating the raw texture blit/present path.",
+             NULL, NULL},
+            {"AA Shapes (SDL2_gfx)", "sdl2_gfx_bench",
+             "Antialiased circle/ellipse/shape primitives via SDL2_gfx's software rasterizer, "
+             "independent of the hardware-accelerated SDL_Renderer path.",
+             "GB_FORCE_SCENE", "aa_shapes"},
+            {"Rounded Rects (SDL2_gfx)", "sdl2_gfx_bench",
+             "Rounded-rectangle primitives (filled/outline) via SDL2_gfx's software rasterizer.",
+             "GB_FORCE_SCENE", "rounded_rects"},
+            {"Polygons (SDL2_gfx)", "sdl2_gfx_bench",
+             "Filled/antialiased N-gon polygons via SDL2_gfx's software rasterizer.",
+             "GB_FORCE_SCENE", "polygons"},
+            {"Bezier Curves (SDL2_gfx)", "sdl2_gfx_bench",
+             "Cubic bezier curves via SDL2_gfx's software rasterizer.",
+             "GB_FORCE_SCENE", "bezier"},
+            {"Thick Lines (SDL2_gfx)", "sdl2_gfx_bench",
+             "Thick/wide line primitives via SDL2_gfx's software rasterizer.",
+             "GB_FORCE_SCENE", "thick_lines"},
+        }, 12},
+        {"Shader Effects", {
+            {"Sunrise Gradient", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Sunrise Gradient"},
+            {"Soft Waves", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Soft Waves"},
+            {"Scanline Glow", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Scanline Glow"},
+            {"Floating Orbs", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Floating Orbs"},
+            {"Aurora Borealis", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Aurora Borealis"},
+            {"Nebula Clouds", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Nebula Clouds"},
+            {"Fire Effect", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Fire Effect"},
+            {"Lightning Storm", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Lightning Storm"},
+            {"Crystal Cavern", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Crystal Cavern"},
+            {"Plasma Flow", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Plasma Flow"},
+            {"Electric Grid", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Electric Grid"},
+            {"Ocean Depths", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Ocean Depths"},
+            {"Retro Sun", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Retro Sun"},
+            {"Digital Rain", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Digital Rain"},
+            {"Chromatic Shift", "sdl2_gl_fbo_effects",
+             "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
+             "RSGL_FORCE_EFFECT", "Chromatic Shift"},
+        }, 15},
+        {"Audio", {
+            {"Audio Playback Visualizer", "sdl2_audio_bench",
+             "Waveform visualizations driven by the MMIYOO audio backend, exercising audio "
+             "playback alongside rendering. Visualization mode is cycled in-app.",
+             NULL, NULL},
+        }, 1},
+        {"Interactive", {
+            {"Space Shooter Stress Test", "sdl2_space_bench",
+             "Interactive space-shooter stress test -- sprites, particles, and GL effects "
+             "together under real gameplay load.",
+             NULL, NULL},
+        }, 1},
+        {"Quit", {
+            {"Quit", NULL, NULL, NULL, NULL},
+        }, 1},
     };
-    memcpy(state->suites, suites, sizeof(suites));
+    memcpy(state->categories, categories, sizeof(categories));
 
-    state->selected_suite = 0;
+    state->selected_category = 0;
+    state->selected_entry = 0;
     state->logical_res = TITLE_RES_NATIVE;
     state->vsync_mode = BENCH_VSYNC_STATUS_OFF;
     state->input_mode = BENCH_INPUT_SOURCE_KEYBOARD;
@@ -58,14 +159,14 @@ void title_state_move_selection(TitleState *state, int delta)
     }
 
     if (state->focus == TITLE_FOCUS_LIST) {
-        /* +1 for the trailing Quit row at index TITLE_SUITE_COUNT. */
-        int next = state->selected_suite + delta;
+        const int entry_count = state->categories[state->selected_category].entry_count;
+        int next = state->selected_entry + delta;
         if (next < 0) {
-            next = TITLE_SUITE_COUNT;
-        } else if (next > TITLE_SUITE_COUNT) {
+            next = entry_count - 1;
+        } else if (next >= entry_count) {
             next = 0;
         }
-        state->selected_suite = next;
+        state->selected_entry = next;
     } else {
         int next = state->config_row + delta;
         if (next < 0) {
@@ -76,6 +177,21 @@ void title_state_move_selection(TitleState *state, int delta)
         state->config_row = next;
         state->editing = SDL_FALSE; /* editing is row-specific -- changing row exits it */
     }
+}
+
+void title_state_move_category(TitleState *state, int delta)
+{
+    if (!state || delta == 0) {
+        return;
+    }
+    int next = state->selected_category + delta;
+    if (next < 0) {
+        next = TITLE_CATEGORY_COUNT - 1;
+    } else if (next >= TITLE_CATEGORY_COUNT) {
+        next = 0;
+    }
+    state->selected_category = next;
+    state->selected_entry = 0;
 }
 
 void title_state_move_focus_horizontal(TitleState *state, int delta)
@@ -158,17 +274,21 @@ void title_state_cycle_config(TitleState *state, int delta)
     }
 }
 
-const TitleSuiteEntry *title_state_selected_suite(const TitleState *state)
+const TitleSuiteEntry *title_state_selected_entry(const TitleState *state)
 {
-    if (!state || state->selected_suite < 0 || state->selected_suite >= TITLE_SUITE_COUNT) {
+    if (!state || state->selected_category < 0 || state->selected_category >= TITLE_CATEGORY_COUNT) {
         return NULL;
     }
-    return &state->suites[state->selected_suite];
+    const TitleCategory *category = &state->categories[state->selected_category];
+    if (state->selected_entry < 0 || state->selected_entry >= category->entry_count) {
+        return NULL;
+    }
+    return &category->entries[state->selected_entry];
 }
 
 SDL_bool title_state_quit_selected(const TitleState *state)
 {
-    return state && state->selected_suite == TITLE_SUITE_COUNT;
+    return state && state->selected_category == TITLE_CATEGORY_COUNT - 1;
 }
 
 void title_state_set_child_error(TitleState *state, const char *bin_name, SDL_bool crashed, int code_or_signal)
@@ -200,7 +320,8 @@ void title_state_open_info_modal(TitleState *state)
     if (!state || state->focus != TITLE_FOCUS_LIST || title_state_quit_selected(state)) {
         return;
     }
-    state->info_modal_suite = state->selected_suite;
+    state->info_modal_category = state->selected_category;
+    state->info_modal_entry = state->selected_entry;
     state->mode = TITLE_MODE_INFO_MODAL;
 }
 

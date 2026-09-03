@@ -38,9 +38,9 @@ typedef struct {
     SDL_bool exec_failed;
 } TitleLaunchResult;
 
-/* Bridges shared SDL context config to the launched suite; suite-specific controls are untouched. */
+/* Bridges shared SDL context config and the entry's test selector to the launched suite. */
 SDL_bool title_launch_suite(const TitleState *state,
-                            const char *bin_name,
+                            const TitleSuiteEntry *entry,
                             TitleContext *ctx,
                             TitleLaunchResult *out_result);
 

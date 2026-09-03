@@ -89,22 +89,22 @@ TitleAction title_handle_input(TitleState *state)
             case BTN_LEFT:
                 if (state->focus == TITLE_FOCUS_CONFIG && state->editing) {
                     title_state_cycle_config(state, -1);
-                } else {
-                    title_state_move_focus_horizontal(state, -1);
+                } else if (state->focus == TITLE_FOCUS_LIST) {
+                    title_state_move_category(state, -1);
                 }
                 break;
             case BTN_RIGHT:
                 if (state->focus == TITLE_FOCUS_CONFIG && state->editing) {
                     title_state_cycle_config(state, 1);
-                } else {
-                    title_state_move_focus_horizontal(state, 1);
+                } else if (state->focus == TITLE_FOCUS_LIST) {
+                    title_state_move_category(state, 1);
                 }
                 break;
             case BTN_L1:
-                title_state_cycle_config(state, -1);
+                title_state_move_focus_horizontal(state, -1);
                 break;
             case BTN_R1:
-                title_state_cycle_config(state, 1);
+                title_state_move_focus_horizontal(state, 1);
                 break;
             case BTN_SELECT:
                 title_state_open_info_modal(state);
