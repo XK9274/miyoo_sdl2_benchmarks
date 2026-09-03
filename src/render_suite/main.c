@@ -50,7 +50,9 @@ static const OverlayKeybind g_rs_keybinds[] = {
     {"L2/R2", "Switch scene"},
     {"A", "Toggle auto cycle"},
     {"B", "Adjust stress level"},
-    {"X", "Cycle geometry mode"},
+    {"X", "Cycle geometry mode / toggle anomalies"},
+    {"Y", "Toggle Lines/Geometry wireframe"},
+    {"L1", "Toggle Lines/Geometry backface cull"},
 };
 
 /* RS_FORCE_SCENE=<name> pins active_scene and disables auto-cycle; used for
@@ -166,6 +168,7 @@ int main(int argc, char *argv[])
     }
 
     // Initialize new benchmark scenes
+    rs_scene_lines_init(&state, renderer);
     rs_scene_geometry_init(&state, renderer);
     rs_scene_scaling_init(&state, renderer);
     rs_scene_memory_init(&state, renderer);
@@ -227,8 +230,6 @@ int main(int argc, char *argv[])
         SDL_RenderClear(renderer);
         metrics.draw_calls++;
 
-        const double time_seconds = metrics.accumulated_frame_time_ms / 1000.0;
-
         switch (state.active_scene) {
             case SCENE_FILL:
                 rs_scene_fill(&state, renderer, &metrics, delta_seconds);
@@ -237,7 +238,7 @@ int main(int argc, char *argv[])
                 rs_scene_texture(&state, renderer, &metrics, delta_seconds);
                 break;
             case SCENE_LINES:
-                rs_scene_lines(&state, renderer, &metrics, time_seconds);
+                rs_scene_lines(&state, renderer, &metrics, delta_seconds);
                 break;
             case SCENE_GEOMETRY:
                 rs_scene_geometry(&state, renderer, &metrics, delta_seconds);
@@ -267,11 +268,19 @@ int main(int argc, char *argv[])
         char stress_label[48];
         snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f",
                  state.stress_level, rs_state_stress_factor(&state));
-        char mode_label[48] = "";
+        char mode_label[128] = "";
         if (state.active_scene == SCENE_GEOMETRY) {
             const int mode_index = (state.geometry_render_mode >= 0) ?
                 (state.geometry_render_mode % RS_GEOMETRY_RENDER_MODE_MAX) : 0;
             snprintf(mode_label, sizeof(mode_label), "Geometry Mode: %s", g_rs_geometry_mode_labels[mode_index]);
+        } else if (state.active_scene == SCENE_LINES) {
+            snprintf(mode_label, sizeof(mode_label),
+                     "Cubes: %d | Anomalies: %d | Grid %dx%d | %s | xform %.2fms sort %.2fms draw %.2fms",
+                     rs_scene_lines_cube_count(),
+                     state.lines_anomalies_visible ? rs_scene_lines_anomaly_count() : 0,
+                     state.lines_grid_n, state.lines_grid_n,
+                     state.lines_wireframe ? "Wireframe" : "Filled",
+                     metrics.stage_transform_ms, metrics.stage_sort_ms, metrics.stage_draw_ms);
         }
         const char *custom_values[] = {scene_label, stress_label, mode_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
@@ -296,6 +305,7 @@ int main(int argc, char *argv[])
     bench_driver_shutdown();
 
     // Cleanup new benchmark scenes
+    rs_scene_lines_cleanup(&state);
     rs_scene_geometry_cleanup(&state);
     rs_scene_scaling_cleanup(&state);
     rs_scene_memory_cleanup(&state);

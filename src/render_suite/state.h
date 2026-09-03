@@ -42,8 +42,12 @@ typedef struct {
 
     float fill_phase_units;
     float texture_phase_units;
-    float lines_cursor_progress;
-    int lines_cursor_index;
+    float lines_rotation;
+    float lines_phase;
+    int lines_grid_n;
+    SDL_bool lines_anomalies_visible;
+    SDL_bool lines_wireframe;
+    SDL_bool lines_backface_cull;
 
     float geometry_rotation;
     int geometry_triangle_count;

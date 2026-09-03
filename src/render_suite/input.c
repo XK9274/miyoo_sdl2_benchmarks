@@ -46,6 +46,18 @@ SDL_bool rs_handle_input(RenderSuiteState *state, BenchMetrics *metrics, BenchOv
                     if (state->active_scene == SCENE_GEOMETRY) {
                         state->geometry_render_mode =
                             (state->geometry_render_mode + 1) % RS_GEOMETRY_RENDER_MODE_MAX;
+                    } else if (state->active_scene == SCENE_LINES) {
+                        state->lines_anomalies_visible = !state->lines_anomalies_visible;
+                    }
+                    break;
+                case BTN_Y:
+                    if (state->active_scene == SCENE_LINES) {
+                        state->lines_wireframe = !state->lines_wireframe;
+                    }
+                    break;
+                case BTN_L1:
+                    if (state->active_scene == SCENE_LINES) {
+                        state->lines_backface_cull = !state->lines_backface_cull;
                     }
                     break;
                 case BTN_METRICS_RESET:
