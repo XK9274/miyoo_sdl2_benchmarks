@@ -29,8 +29,12 @@ void rs_state_init(RenderSuiteState *state)
     rs_state_initialise_tables(state);
     state->fill_phase_units = 0.0f;
     state->texture_phase_units = 0.0f;
-    state->lines_cursor_progress = 0.0f;
-    state->lines_cursor_index = 0;
+    state->lines_rotation = 0.0f;
+    state->lines_phase = 0.0f;
+    state->lines_grid_n = -1;
+    state->lines_anomalies_visible = SDL_TRUE;
+    state->lines_wireframe = SDL_FALSE;
+    state->lines_backface_cull = SDL_TRUE;
     state->pixel_texture = NULL;
     state->has_neon = RS_HAS_NEON ? SDL_TRUE : SDL_FALSE;
 
