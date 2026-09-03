@@ -183,9 +183,9 @@ static const char *title_input_mode_string(BenchInputSource mode)
     return (mode == BENCH_INPUT_SOURCE_JOYSTICK) ? BENCH_INPUT_MODE_JOYSTICK : BENCH_INPUT_MODE_KEYBOARD;
 }
 
-SDL_bool title_launch_suite(const TitleState *state, const char *bin_name, TitleContext *ctx, TitleLaunchResult *out_result)
+SDL_bool title_launch_suite(const TitleState *state, const TitleSuiteEntry *entry, TitleContext *ctx, TitleLaunchResult *out_result)
 {
-    if (!state || !bin_name || !ctx || !out_result) {
+    if (!state || !entry || !ctx || !out_result) {
         return SDL_FALSE;
     }
     memset(out_result, 0, sizeof(*out_result));
@@ -197,7 +197,7 @@ SDL_bool title_launch_suite(const TitleState *state, const char *bin_name, Title
     }
 
     char full_path[PATH_MAX];
-    snprintf(full_path, sizeof(full_path), "%s/%s", bin_dir, bin_name);
+    snprintf(full_path, sizeof(full_path), "%s/%s", bin_dir, entry->bin_name);
 
     int logical_w, logical_h;
     title_resolution_dims(state->logical_res, &logical_w, &logical_h);
@@ -223,6 +223,9 @@ SDL_bool title_launch_suite(const TitleState *state, const char *bin_name, Title
         setenv(BENCH_ENV_FRAME_LIMIT_FPS, frame_limit_str, 1);
         setenv(BENCH_HINT_MMIYOO_VSYNC_MODE, title_vsync_mode_string(state->vsync_mode), 1);
         setenv(BENCH_HINT_MMIYOO_INPUT_MODE, title_input_mode_string(state->input_mode), 1);
+        if (entry->test_env_var && entry->test_env_value) {
+            setenv(entry->test_env_var, entry->test_env_value, 1);
+        }
 
         char *argv[] = {full_path, NULL};
         execv(full_path, argv);

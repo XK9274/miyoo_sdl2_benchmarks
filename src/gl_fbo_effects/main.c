@@ -152,6 +152,13 @@ int main(int argc, char *argv[])
         state.effect_index = 0;
     }
 
+    const char *force_effect_name = SDL_getenv("RSGL_FORCE_EFFECT");
+    int forced_effect_index;
+    if (force_effect_name && rsgl_effect_index_from_name(force_effect_name, &forced_effect_index)) {
+        state.effect_index = forced_effect_index;
+        state.auto_cycle = SDL_FALSE;
+    }
+
     rsgl_effects_warmup(&state);
     if (loading_active) {
         bench_loading_step(&loading, 0.9f, "Warming up shaders");
