@@ -216,7 +216,7 @@ void title_statusbar_render_status_header(SDL_Renderer *renderer, TTF_Font *smal
     }
 }
 
-#define TITLE_KEYBIND_COUNT 5
+#define TITLE_KEYBIND_COUNT 6
 
 /* Keybind legend, contextual to focus/edit state. */
 void title_statusbar_render_footer(SDL_Renderer *renderer, TTF_Font *ui_font, TTF_Font *small_font,
@@ -237,11 +237,11 @@ void title_statusbar_render_footer(SDL_Renderer *renderer, TTF_Font *ui_font, TT
 
     const SDL_bool config_focused = (state->focus == TITLE_FOCUS_CONFIG);
     const char *left_right_text = (config_focused && state->editing)
-        ? "Left/Right: Change Value" : "Left/Right: Switch Panel";
+        ? "Left/Right: Change Value" : "Left/Right: Switch Category";
     const char *a_text = !config_focused ? "A: Launch" : (state->editing ? "A: Done" : "A: Edit");
 
     const char *const keybind_texts[TITLE_KEYBIND_COUNT] = {
-        "Up/Down: Navigate", left_right_text, a_text, "Select: Info", "Exit: Quit",
+        "Up/Down: Navigate", left_right_text, "L1/R1: Switch Panel", a_text, "Select: Info", "Exit: Quit",
     };
     TitleStatusSegment keybind_segments[TITLE_KEYBIND_COUNT];
     for (int i = 0; i < TITLE_KEYBIND_COUNT; i++) {

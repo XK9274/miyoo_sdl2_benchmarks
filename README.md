@@ -175,6 +175,26 @@ per-stage timing output the same way.
     pipeline, drawn through `SDL_RenderGeometry` -- no OpenGL is used for
     this suite's 3D rendering.
 
+### Title Menu Categories
+
+`sdl2_title` groups individual scenes/effects into launchable entries under
+five categories (L1/R1 switches category, UP/DOWN moves within it):
+
+| Category | Entries |
+|---|---|
+| Geometry & 3D | Hardware Double Buffer, Turntable Model: Sheep, Turntable Model: Miyoo, Rotating Mesh (NEON) |
+| 2D Rendering | Solid Fill Rate, Texture Blit Throughput, Line & Shape Drawing, Resolution Scaling, Memory Management, Pixel Operations, Sprite Blit Stress Test, AA Shapes (SDL2_gfx), Rounded Rects (SDL2_gfx), Polygons (SDL2_gfx), Bezier Curves (SDL2_gfx), Thick Lines (SDL2_gfx) |
+| Shader Effects | All 15 `sdl2_gl_fbo_effects` effects, one entry each |
+| Audio | Audio Playback Visualizer |
+| Interactive | Space Shooter Stress Test |
+
+Most entries launch a suite binary pinned to one internal scene/effect via an
+env var (e.g. `RS_FORCE_SCENE`, `GB_FORCE_SCENE`, `RSGL_FORCE_EFFECT`,
+`OBJ_MODEL_NAME`) with that suite's auto-cycle disabled; a few entries (the
+double buffer test, the audio visualizer, the space shooter) launch their
+suite as-is since their internal variations are cosmetic rather than distinct
+workloads, and stay togglable in-app.
+
 ## Build Flow
 
 ```text

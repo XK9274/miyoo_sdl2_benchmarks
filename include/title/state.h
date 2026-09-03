@@ -5,13 +5,22 @@
 
 #include "bench_common.h"
 
-#define TITLE_SUITE_COUNT 8
+#define TITLE_MAX_ENTRIES_PER_CATEGORY 16
+#define TITLE_CATEGORY_COUNT 6 /* 5 real categories + trailing Quit */
 
 typedef struct {
     const char *label;
     const char *bin_name;
     const char *info;
+    const char *test_env_var;   /* NULL if the suite takes no test selector */
+    const char *test_env_value; /* NULL when test_env_var is NULL */
 } TitleSuiteEntry;
+
+typedef struct {
+    const char *label;
+    TitleSuiteEntry entries[TITLE_MAX_ENTRIES_PER_CATEGORY];
+    int entry_count;
+} TitleCategory;
 
 typedef enum {
     TITLE_RES_NATIVE = 0,
@@ -40,8 +49,9 @@ typedef enum {
 } TitleMode;
 
 typedef struct {
-    TitleSuiteEntry suites[TITLE_SUITE_COUNT];
-    int selected_suite;
+    TitleCategory categories[TITLE_CATEGORY_COUNT];
+    int selected_category;
+    int selected_entry;
 
     TitleLogicalRes logical_res;
     BenchVSyncStatus vsync_mode;
@@ -54,7 +64,8 @@ typedef struct {
 
     TitleMode mode;
     char error_message[160];
-    int info_modal_suite;
+    int info_modal_category;
+    int info_modal_entry;
 } TitleState;
 
 void title_state_init(TitleState *state);
@@ -65,22 +76,25 @@ void title_state_move_selection(TitleState *state, int delta);
 /* Moves focus toward list (delta<0) or config (delta>0); clears edit mode. */
 void title_state_move_focus_horizontal(TitleState *state, int delta);
 
+/* Switches category when the list pane is focused (delta: -1 or +1); resets entry selection. */
+void title_state_move_category(TitleState *state, int delta);
+
 /* Enters/exits edit mode for the focused config row; no-op if list pane focused. */
 void title_state_toggle_edit(TitleState *state);
 
 /* Cycles the value of the currently focused config row (delta: -1 or +1); no-op if list pane focused. */
 void title_state_cycle_config(TitleState *state, int delta);
 
-const TitleSuiteEntry *title_state_selected_suite(const TitleState *state);
+const TitleSuiteEntry *title_state_selected_entry(const TitleState *state);
 
-/* True when the list selection is on the trailing Quit row (index TITLE_SUITE_COUNT). */
+/* True when the list selection is on the trailing Quit category's entry. */
 SDL_bool title_state_quit_selected(const TitleState *state);
 
 void title_state_set_child_error(TitleState *state, const char *bin_name, SDL_bool crashed, int code_or_signal);
 
 void title_state_clear_error(TitleState *state);
 
-/* Opens the info modal for the currently list-selected suite; no-op on the Quit row. */
+/* Opens the info modal for the currently list-selected entry; no-op on the Quit row. */
 void title_state_open_info_modal(TitleState *state);
 
 void title_state_close_info_modal(TitleState *state);
