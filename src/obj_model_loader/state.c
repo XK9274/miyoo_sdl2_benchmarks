@@ -1,6 +1,7 @@
 #include "obj_model_loader/state.h"
 
 #include <dirent.h>
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +9,14 @@
 #include <unistd.h>
 
 #include "obj_model_loader/placeholder_model.h"
+
+#define OBJ_PAN_MAX_SPEED_RAD_S 2.4f
+#define OBJ_PAN_ACCEL_RAD_S2 (OBJ_PAN_MAX_SPEED_RAD_S / 0.15f) /* reaches full speed in ~150ms */
+#define OBJ_PAN_DECEL_RAD_S2 (OBJ_PAN_MAX_SPEED_RAD_S / 0.22f) /* eases back to rest in ~220ms */
+
+#define OBJ_ZOOM_MAX_RATE_S 1.4f /* fraction of camera distance per second at full speed */
+#define OBJ_ZOOM_ACCEL_S2 (OBJ_ZOOM_MAX_RATE_S / 0.15f)
+#define OBJ_ZOOM_DECEL_S2 (OBJ_ZOOM_MAX_RATE_S / 0.22f)
 
 /* Per-model authoring quirks that can't be inferred from the OBJ file
  * itself -- the format carries no up-axis metadata. */
@@ -195,4 +204,48 @@ void obj_state_cycle_model(SDL_Renderer *renderer, ObjModelLoaderState *state, i
         next += state->available_model_count;
     }
     obj_state_load_model_by_index(renderer, state, next);
+}
+
+/* Moves `current` toward `target` at accel_rate when the magnitude is
+ * growing, decel_rate when it's shrinking (releasing a held direction eases
+ * out rather than stopping dead). Shared by orbit panning and zoom. */
+static float obj_ease_approach(float current, float target, float accel_rate, float decel_rate, float dt)
+{
+    const float rate = (fabsf(target) > fabsf(current)) ? accel_rate : decel_rate;
+    const float max_step = rate * dt;
+    const float diff = target - current;
+    if (fabsf(diff) <= max_step) {
+        return target;
+    }
+    return current + ((diff > 0.0f) ? max_step : -max_step);
+}
+
+void obj_state_update_camera_controls(ObjModelLoaderState *state, float dt)
+{
+    if (!state || dt <= 0.0f) {
+        return;
+    }
+
+    const float target_yaw = ((state->pan_held_right ? 1.0f : 0.0f) - (state->pan_held_left ? 1.0f : 0.0f)) *
+                              OBJ_PAN_MAX_SPEED_RAD_S;
+    const float target_pitch = ((state->pan_held_up ? 1.0f : 0.0f) - (state->pan_held_down ? 1.0f : 0.0f)) *
+                                OBJ_PAN_MAX_SPEED_RAD_S;
+
+    state->pan_velocity_yaw_rad_s = obj_ease_approach(state->pan_velocity_yaw_rad_s, target_yaw,
+                                                       OBJ_PAN_ACCEL_RAD_S2, OBJ_PAN_DECEL_RAD_S2, dt);
+    state->pan_velocity_pitch_rad_s = obj_ease_approach(state->pan_velocity_pitch_rad_s, target_pitch,
+                                                         OBJ_PAN_ACCEL_RAD_S2, OBJ_PAN_DECEL_RAD_S2, dt);
+
+    if (state->pan_velocity_yaw_rad_s != 0.0f || state->pan_velocity_pitch_rad_s != 0.0f) {
+        camera3d_orbit(&state->camera, state->pan_velocity_yaw_rad_s * dt, state->pan_velocity_pitch_rad_s * dt);
+    }
+
+    const float target_zoom = ((state->zoom_held_out ? 1.0f : 0.0f) - (state->zoom_held_in ? 1.0f : 0.0f)) *
+                               OBJ_ZOOM_MAX_RATE_S;
+    state->zoom_velocity_frac_s = obj_ease_approach(state->zoom_velocity_frac_s, target_zoom,
+                                                     OBJ_ZOOM_ACCEL_S2, OBJ_ZOOM_DECEL_S2, dt);
+
+    if (state->zoom_velocity_frac_s != 0.0f) {
+        camera3d_zoom(&state->camera, state->camera.distance * state->zoom_velocity_frac_s * dt);
+    }
 }
