@@ -154,6 +154,7 @@ int main(int argc, char *argv[])
         if (state.auto_rotate) {
             camera3d_auto_rotate(&state.camera, state.auto_rotate_radians_per_second, (float)delta_seconds);
         }
+        obj_state_update_camera_controls(&state, (float)delta_seconds);
         metrics.stage_camera_ms = (double)(SDL_GetPerformanceCounter() - camera_start) * 1000.0 / (double)perf_freq;
 
         const Uint64 clear_start = SDL_GetPerformanceCounter();
