@@ -1,5 +1,5 @@
 #include "render_suite/scenes/memory.h"
-#include "render_suite/render_neon.h"
+#include "common/memory_opt.h"
 
 #include <stdlib.h>
 #include <math.h>
@@ -35,6 +35,20 @@ typedef struct {
 } ResourceManager;
 
 static ResourceManager g_resource_manager = {0};
+
+static void rs_copy_texture_rows(void *dst, int dst_pitch,
+                                 const Uint32 *src, int width, int height)
+{
+    const size_t row_bytes = (size_t)width * sizeof(*src);
+    Uint8 *dst_row = (Uint8 *)dst;
+    int row;
+
+    for (row = 0; row < height; ++row) {
+        rs_memcpy(dst_row, src, row_bytes);
+        dst_row += dst_pitch;
+        src += width;
+    }
+}
 
 static inline float rs_clampf(float value, float min_val, float max_val)
 {
@@ -164,10 +178,7 @@ static SDL_bool rs_create_dynamic_texture(ResourceTexture *res,
     void *texture_pixels;
     int pitch;
     if (SDL_LockTexture(res->texture, NULL, &texture_pixels, &pitch) == 0) {
-        (void)pitch;
-        rs_neon_copy_u32((uint32_t *)texture_pixels,
-                         res->pixel_cache,
-                         res->pixel_capacity);
+        rs_copy_texture_rows(texture_pixels, pitch, res->pixel_cache, width, height);
         SDL_UnlockTexture(res->texture);
     }
 
@@ -386,15 +397,13 @@ void rs_scene_memory(RenderSuiteState *state,
             void *pixels;
             int pitch;
             if (SDL_LockTexture(res->texture, NULL, &pixels, &pitch) == 0) {
-                (void)pitch;
                 rs_generate_texture_data(res->pixel_cache,
                                          res->width,
                                          res->height,
                                          state->resources_phase + (float)i,
                                          (update_index + i) % 4);
-                rs_neon_copy_u32((uint32_t *)pixels,
-                                 res->pixel_cache,
-                                 res->pixel_capacity);
+                rs_copy_texture_rows(pixels, pitch, res->pixel_cache,
+                                     res->width, res->height);
                 SDL_UnlockTexture(res->texture);
 
                 Uint64 end_time = SDL_GetPerformanceCounter();
