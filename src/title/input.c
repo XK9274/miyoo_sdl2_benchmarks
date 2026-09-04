@@ -78,6 +78,7 @@ TitleAction title_handle_input(TitleState *state)
 
         switch (sym) {
             case BTN_EXIT:
+            case BTN_MENU:
             case SDLK_ESCAPE:
                 return TITLE_ACTION_QUIT;
             case BTN_UP:
