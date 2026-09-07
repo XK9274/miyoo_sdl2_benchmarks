@@ -14,7 +14,8 @@ PROGRAMS      := sdl2_title \
                  sdl2_audio_bench \
                  sdl2_sprite_bench \
                  sdl2_gfx_bench \
-                 sdl2_obj_model_loader
+                 sdl2_obj_model_loader \
+                 sdl2_messagebox_probe
 
 TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
 
@@ -166,6 +167,11 @@ OBJ_MODEL_LOADER_SOURCES := \
 OBJ_MODEL_LOADER_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(OBJ_MODEL_LOADER_SOURCES))
 OBJ_MODEL_LOADER_TARGET  := $(BIN_DIR)/sdl2_obj_model_loader
 
+MESSAGEBOX_PROBE_SOURCES := \
+    $(SRC_DIR)/messagebox_probe/main.c
+MESSAGEBOX_PROBE_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(MESSAGEBOX_PROBE_SOURCES))
+MESSAGEBOX_PROBE_TARGET  := $(BIN_DIR)/sdl2_messagebox_probe
+
 ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(TITLE_OBJECTS) \
                  $(SPACE_OBJECTS) \
@@ -175,7 +181,8 @@ ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(AUDIO_OBJECTS) \
                  $(SPRITE_BENCH_OBJECTS) \
                  $(GFX_BENCH_OBJECTS) \
-                 $(OBJ_MODEL_LOADER_OBJECTS)
+                 $(OBJ_MODEL_LOADER_OBJECTS) \
+                 $(MESSAGEBOX_PROBE_OBJECTS)
 DEPS          := $(ALL_OBJECTS:.o=.d)
 
 # Toolchain ------------------------------------------------------------------
@@ -264,6 +271,10 @@ $(GFX_BENCH_TARGET): $(COMMON_OBJECTS) $(GFX_BENCH_OBJECTS) | $(BIN_DIR)
 
 $(OBJ_MODEL_LOADER_TARGET): $(COMMON_OBJECTS) $(OBJ_MODEL_LOADER_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(OBJ_MODEL_LOADER_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(MESSAGEBOX_PROBE_TARGET): $(COMMON_OBJECTS) $(MESSAGEBOX_PROBE_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(MESSAGEBOX_PROBE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
