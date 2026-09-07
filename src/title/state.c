@@ -134,7 +134,12 @@ void title_state_init(TitleState *state)
              "Interactive space-shooter stress test -- sprites, particles, and GL effects "
              "together under real gameplay load.",
              NULL, NULL},
-        }, 1},
+            {"Message Box Probe", "sdl2_messagebox_probe",
+             "Runs three SDL_ShowMessageBox dialogs back to back -- a fixed explainer of how "
+             "the call reaches the driver, a randomized default-theme box, and a randomized "
+             "box with a custom colorScheme.",
+             NULL, NULL},
+        }, 2},
         {"Quit", {
             {"Quit", NULL, NULL, NULL, NULL},
         }, 1},

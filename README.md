@@ -175,6 +175,14 @@ per-stage timing output the same way.
     pipeline, drawn through `SDL_RenderGeometry` -- no OpenGL is used for
     this suite's 3D rendering.
 
+- `sdl2_messagebox_probe`
+  - Runs three `SDL_ShowMessageBox` dialogs back to back: a fixed explainer
+    of how the call reaches the driver, a randomized box using the driver's
+    default theme, and a randomized box with a custom `SDL_MessageBoxColorScheme`.
+  - Exercises the Miyoo SDL2 driver's `SDL_ShowMessageBox` implementation --
+    button focus/confirm/cancel, box growth for wrapped text, and the
+    colorScheme override path.
+
 ### Title Menu Categories
 
 `sdl2_title` groups individual scenes/effects into launchable entries under
@@ -186,7 +194,7 @@ five categories (L1/R1 switches category, UP/DOWN moves within it):
 | 2D Rendering | Solid Fill Rate, Texture Blit Throughput, Line & Shape Drawing, Resolution Scaling, Memory Management, Pixel Operations, Sprite Blit Stress Test, AA Shapes (SDL2_gfx), Rounded Rects (SDL2_gfx), Polygons (SDL2_gfx), Bezier Curves (SDL2_gfx), Thick Lines (SDL2_gfx) |
 | Shader Effects | All 15 `sdl2_gl_fbo_effects` effects, one entry each |
 | Audio | Audio Playback Visualizer |
-| Interactive | Space Shooter Stress Test |
+| Interactive | Space Shooter Stress Test, Message Box Probe |
 
 Most entries launch a suite binary pinned to one internal scene/effect via an
 env var (e.g. `RS_FORCE_SCENE`, `GB_FORCE_SCENE`, `RSGL_FORCE_EFFECT`,

@@ -129,6 +129,28 @@ if [ "$1" = "--obj-model" ]; then
     exit $obj_exit
 fi
 
+# Runs three SDL_ShowMessageBox dialogs back to back and exits -- not
+# time-based, so no duration arg.
+# Usage: ./launch.sh --messagebox-probe [tag]
+#   e.g. ./launch.sh --messagebox-probe run1
+if [ "$1" = "--messagebox-probe" ]; then
+    mb_tag="${2:-untagged}"
+    mb_log="$bench_dir/logs/messagebox_probe_${mb_tag}.log"
+
+    mkdir -p "$bench_dir/logs"
+    echo "Running messagebox_probe, tag=$mb_tag"
+    echo "===== START messagebox-probe ($mb_tag): $(date) =====" > "$mb_log"
+    ps >> "$mb_log"
+    echo "-----" >> "$mb_log"
+    "bin/sdl2_messagebox_probe" >> "$mb_log" 2>&1
+    mb_exit=$?
+    echo "-----" >> "$mb_log"
+    ps >> "$mb_log"
+    echo "===== END messagebox-probe ($mb_tag): $(date) exit=$mb_exit =====" >> "$mb_log"
+    echo "Done. Log: $mb_log"
+    exit $mb_exit
+fi
+
 echo "Starting SDL2 Demo Suites title screen..."
 echo "Directory: $bench_dir"
 
