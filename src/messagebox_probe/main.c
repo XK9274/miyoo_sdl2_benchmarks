@@ -36,15 +36,27 @@ rand_range(int min, int max)
     return min + (rand() % (max - min + 1));
 }
 
-static SDL_MessageBoxColor
-random_mb_color(void)
-{
-    SDL_MessageBoxColor c;
-    c.r = (Uint8)rand_range(20, 235);
-    c.g = (Uint8)rand_range(20, 235);
-    c.b = (Uint8)rand_range(20, 235);
-    return c;
-}
+/* Light inverse of the driver's own fixed dark default (bg #171717, light
+ * text, #E8837F selected accent) -- same accent, neutrals flipped. */
+static const SDL_MessageBoxColorScheme g_light_scheme = {
+    {
+        {0xF5, 0xF2, 0xED},
+        {0x1B, 0x17, 0x10},
+        {0xD6, 0xCF, 0xC2},
+        {0xED, 0xE7, 0xDC},
+        {0xE8, 0x83, 0x7F},
+    }
+};
+
+static const SDL_MessageBoxColorScheme g_amber_scheme = {
+    {
+        {0x1C, 0x19, 0x17},
+        {0xF2, 0xED, 0xE4},
+        {0x4A, 0x41, 0x3A},
+        {0x2A, 0x25, 0x21},
+        {0xE8, 0xA3, 0x3D},
+    }
+};
 
 static int
 build_random_buttons(SDL_MessageBoxButtonData *buttons)
@@ -98,9 +110,7 @@ int main(int argc, char *argv[])
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_MessageBoxButtonData buttons[MB_MAX_BUTTONS];
-    SDL_MessageBoxColorScheme scheme;
     SDL_MessageBoxData data;
-    int i;
 
     (void)argc;
     (void)argv;
@@ -157,13 +167,10 @@ int main(int argc, char *argv[])
     data.message = g_message_pool[rand() % MB_MESSAGE_POOL_COUNT];
     data.numbuttons = build_random_buttons(buttons);
     data.buttons = buttons;
-    data.colorScheme = NULL;
-    print_and_show("Box 2/3: randomized, default theme", &data);
+    data.colorScheme = &g_light_scheme;
+    print_and_show("Box 2/3: randomized, light theme (colorScheme)", &data);
 
     SDL_zero(data);
-    for (i = 0; i < SDL_MESSAGEBOX_COLOR_MAX; ++i) {
-        scheme.colors[i] = random_mb_color();
-    }
     data.flags = SDL_MESSAGEBOX_ERROR;
     if (rand() % 2) {
         data.flags |= SDL_MESSAGEBOX_BUTTONS_RIGHT_TO_LEFT;
@@ -173,8 +180,8 @@ int main(int argc, char *argv[])
     data.message = g_message_pool[rand() % MB_MESSAGE_POOL_COUNT];
     data.numbuttons = build_random_buttons(buttons);
     data.buttons = buttons;
-    data.colorScheme = &scheme;
-    print_and_show("Box 3/3: randomized, custom colorScheme", &data);
+    data.colorScheme = &g_amber_scheme;
+    print_and_show("Box 3/3: randomized, amber theme (colorScheme)", &data);
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
