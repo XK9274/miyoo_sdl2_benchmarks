@@ -7,7 +7,6 @@
 
 #include "bench_common.h"
 #include "render_suite/input.h"
-#include "render_suite/resources.h"
 #include "render_suite/scenes/fill.h"
 #include "render_suite/scenes/lines.h"
 #include "render_suite/scenes/texture.h"
@@ -50,9 +49,9 @@ static const OverlayKeybind g_rs_keybinds[] = {
     {"L2/R2", "Switch scene"},
     {"A", "Toggle auto cycle"},
     {"B", "Adjust stress level"},
-    {"X", "Cycle geometry mode / toggle anomalies"},
-    {"Y", "Toggle Lines/Geometry wireframe"},
-    {"L1", "Toggle Lines/Geometry backface cull"},
+    {"X", "Cycle geometry mode / toggle anomalies / toggle texture xform"},
+    {"Y", "Toggle Lines wireframe / texture blend variety"},
+    {"L1", "Toggle Lines backface cull / texture streaming"},
 };
 
 /* RS_FORCE_SCENE=<name> pins active_scene and disables auto-cycle; used for
@@ -162,12 +161,12 @@ int main(int argc, char *argv[])
     }
 
     state.font = bench_load_font(16);
-    state.checker_texture = rs_create_checker_texture(renderer, 192, 192);
     if (loading_active) {
         bench_loading_step(&loading, 0.35f, "Preparing scenes");
     }
 
     // Initialize new benchmark scenes
+    rs_scene_texture_init(&state, renderer);
     rs_scene_lines_init(&state, renderer);
     rs_scene_geometry_init(&state, renderer);
     rs_scene_scaling_init(&state, renderer);
@@ -269,7 +268,15 @@ int main(int argc, char *argv[])
         snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f",
                  state.stress_level, rs_state_stress_factor(&state));
         char mode_label[128] = "";
-        if (state.active_scene == SCENE_GEOMETRY) {
+        if (state.active_scene == SCENE_TEXTURE) {
+            snprintf(mode_label, sizeof(mode_label),
+                     "Instances: %d | Stream %s | Blend %s | Xform %s | xform %.2fms draw %.2fms",
+                     rs_scene_texture_instance_count(),
+                     state.texture_streaming ? "ON" : "OFF",
+                     state.texture_blend_variety ? "ON" : "OFF",
+                     state.texture_transform_variety ? "ON" : "OFF",
+                     metrics.stage_transform_ms, metrics.stage_draw_ms);
+        } else if (state.active_scene == SCENE_GEOMETRY) {
             const int mode_index = (state.geometry_render_mode >= 0) ?
                 (state.geometry_render_mode % RS_GEOMETRY_RENDER_MODE_MAX) : 0;
             snprintf(mode_label, sizeof(mode_label), "Geometry Mode: %s", g_rs_geometry_mode_labels[mode_index]);
@@ -305,6 +312,7 @@ int main(int argc, char *argv[])
     bench_driver_shutdown();
 
     // Cleanup new benchmark scenes
+    rs_scene_texture_cleanup(&state);
     rs_scene_lines_cleanup(&state);
     rs_scene_geometry_cleanup(&state);
     rs_scene_scaling_cleanup(&state);

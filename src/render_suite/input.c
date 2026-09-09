@@ -48,16 +48,22 @@ SDL_bool rs_handle_input(RenderSuiteState *state, BenchMetrics *metrics, BenchOv
                             (state->geometry_render_mode + 1) % RS_GEOMETRY_RENDER_MODE_MAX;
                     } else if (state->active_scene == SCENE_LINES) {
                         state->lines_anomalies_visible = !state->lines_anomalies_visible;
+                    } else if (state->active_scene == SCENE_TEXTURE) {
+                        state->texture_transform_variety = !state->texture_transform_variety;
                     }
                     break;
                 case BTN_Y:
                     if (state->active_scene == SCENE_LINES) {
                         state->lines_wireframe = !state->lines_wireframe;
+                    } else if (state->active_scene == SCENE_TEXTURE) {
+                        state->texture_blend_variety = !state->texture_blend_variety;
                     }
                     break;
                 case BTN_L1:
                     if (state->active_scene == SCENE_LINES) {
                         state->lines_backface_cull = !state->lines_backface_cull;
+                    } else if (state->active_scene == SCENE_TEXTURE) {
+                        state->texture_streaming = !state->texture_streaming;
                     }
                     break;
                 case BTN_METRICS_RESET:

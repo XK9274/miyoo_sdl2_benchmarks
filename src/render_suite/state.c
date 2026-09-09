@@ -24,11 +24,12 @@ void rs_state_init(RenderSuiteState *state)
     state->active_scene = SCENE_FILL;
     state->auto_cycle = SDL_TRUE;
     state->stress_level = 1;
-    state->texture_angle = 0.0f;
     state->top_margin = 0.0f;
     rs_state_initialise_tables(state);
     state->fill_phase_units = 0.0f;
-    state->texture_phase_units = 0.0f;
+    state->texture_streaming = SDL_TRUE;
+    state->texture_blend_variety = SDL_TRUE;
+    state->texture_transform_variety = SDL_TRUE;
     state->lines_rotation = 0.0f;
     state->lines_phase = 0.0f;
     state->lines_grid_n = -1;
@@ -55,10 +56,6 @@ void rs_state_destroy(RenderSuiteState *state, SDL_Renderer *renderer)
         return;
     }
 
-    if (state->checker_texture) {
-        SDL_DestroyTexture(state->checker_texture);
-        state->checker_texture = NULL;
-    }
     if (state->pixel_texture) {
         SDL_DestroyTexture(state->pixel_texture);
         state->pixel_texture = NULL;

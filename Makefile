@@ -112,7 +112,6 @@ DOUBLE_TARGET  := $(BIN_DIR)/sdl2_bench_double_buf
 RENDER_SOURCES := \
     $(SRC_DIR)/render_suite/input.c \
     $(SRC_DIR)/render_suite/main.c \
-    $(SRC_DIR)/render_suite/resources.c \
     $(SRC_DIR)/render_suite/state.c \
     $(SRC_DIR)/render_suite/scenes/fill.c \
     $(SRC_DIR)/render_suite/scenes/lines.c \
