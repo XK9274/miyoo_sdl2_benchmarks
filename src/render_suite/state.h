@@ -30,10 +30,8 @@ typedef struct {
     SceneKind active_scene;
     SDL_bool auto_cycle;
     int stress_level;
-    float texture_angle;
     float top_margin;
     TTF_Font *font;
-    SDL_Texture *checker_texture;
     SDL_Texture *pixel_texture;
 
     float sin_table[RS_SIN_TABLE_SIZE];
@@ -41,7 +39,9 @@ typedef struct {
     int sin_table_mask;
 
     float fill_phase_units;
-    float texture_phase_units;
+    SDL_bool texture_streaming;
+    SDL_bool texture_blend_variety;
+    SDL_bool texture_transform_variety;
     float lines_rotation;
     float lines_phase;
     int lines_grid_n;
