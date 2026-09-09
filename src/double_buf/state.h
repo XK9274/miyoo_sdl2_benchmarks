@@ -17,11 +17,13 @@ typedef struct {
     int particle_count;
     float particle_speed;
     float cube_rotation;
-    SDL_bool show_cube;
+    SDL_bool show_shape;
     SDL_bool show_particles;
     SDL_bool backdrop_grid;
     int render_mode;
     int shape_type;
+    int fill_intensity;
+    float fill_phase_units;
     float top_margin;
     float center_y;
 

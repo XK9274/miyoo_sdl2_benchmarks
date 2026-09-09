@@ -30,9 +30,10 @@ static const OverlayKeybind g_db_keybinds[] = {
     {"X", "Change render mode"},
     {"Y", "Toggle particles"},
     {"L1", "Toggle backdrop"},
-    {"R1", "Toggle cube"},
+    {"R1", "Toggle shape"},
     {"L2/R2", "Particle speed"},
     {"UP/DOWN", "Change shape"},
+    {"LEFT/RIGHT", "Fill intensity"},
 };
 
 int main(int argc, char *argv[])
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
         printf("TTF_Init failed: %s\n", TTF_GetError());
     }
 
-    SDL_Window *window = SDL_CreateWindow("SDL2 Hardware Double Buffer Bench",
+    SDL_Window *window = SDL_CreateWindow("SDL2 Geo / Particles / Fill Bench",
                                           SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                           BENCH_NATIVE_W, BENCH_NATIVE_H,
                                           SDL_WINDOW_SHOWN);
@@ -116,7 +117,7 @@ int main(int argc, char *argv[])
         loading_active = SDL_FALSE;
     }
 
-    printf("SDL2 hardware double buffer benchmark started\n");
+    printf("SDL2 geo/particles/fill combined stress benchmark started\n");
 
     SDL_bool running = SDL_TRUE;
     while (running) {
@@ -135,9 +136,15 @@ int main(int argc, char *argv[])
 
         db_particles_update(&state, delta_seconds);
         state.cube_rotation += (float)(delta_seconds * 1.8f);
+        state.fill_phase_units += (float)(delta_seconds * 2.5f);
 
+        const Uint64 clear_start_counter = SDL_GetPerformanceCounter();
         db_render_backdrop(&state, renderer, &metrics);
-        db_render_cube_and_particles(&state, renderer, &metrics);
+        const Uint64 draw_start_counter = SDL_GetPerformanceCounter();
+        db_render_scene(&state, renderer, &metrics);
+        const Uint64 draw_end_counter = SDL_GetPerformanceCounter();
+        metrics.stage_clear_ms = (double)(draw_start_counter - clear_start_counter) * 1000.0 / (double)perf_freq;
+        metrics.stage_draw_ms = (double)(draw_end_counter - draw_start_counter) * 1000.0 / (double)perf_freq;
 
         bench_overlay_present(overlay, renderer, &metrics, 0, 0);
         SDL_RenderPresent(renderer);
@@ -149,12 +156,14 @@ int main(int argc, char *argv[])
         snprintf(shape_label, sizeof(shape_label), "Shape %d/%d: %s",
                  state.shape_type + 1, SHAPE_COUNT, bench_get_shape_name(state.shape_type));
         char particle_label[96];
-        snprintf(particle_label, sizeof(particle_label), "Particles %d/%d | Cube %s | Grid %s",
+        snprintf(particle_label, sizeof(particle_label), "Particles %d/%d | Shape %s | Grid %s | Fill L%d",
                  state.particle_count, DB_MAX_PARTICLES,
-                 state.show_cube ? "ON" : "OFF", state.backdrop_grid ? "ON" : "OFF");
-        char state_label[64];
-        snprintf(state_label, sizeof(state_label), "Speed %.0f | Mode %d | Rot %.2f",
-                 state.particle_speed, state.render_mode, state.cube_rotation);
+                 state.show_shape ? "ON" : "OFF", state.backdrop_grid ? "ON" : "OFF",
+                 state.fill_intensity);
+        char state_label[96];
+        snprintf(state_label, sizeof(state_label), "Speed %.0f | Mode %d | clear %.2fms draw %.2fms",
+                 state.particle_speed, state.render_mode,
+                 metrics.stage_clear_ms, metrics.stage_draw_ms);
         const char *custom_values[] = {shape_label, particle_label, state_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
     }

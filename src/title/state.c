@@ -15,10 +15,6 @@ void title_state_init(TitleState *state)
 
     const TitleCategory categories[TITLE_CATEGORY_COUNT] = {
         {"Geometry & 3D", {
-            {"Hardware Double Buffer", "sdl2_bench_double_buf",
-             "Rotating shape and particle field exercising MI_GFX/MI_SYS hardware double buffering. "
-             "Shape and render mode are togglable in-app via UP/DOWN and X.",
-             NULL, NULL},
             {"Turntable Model: Sheep", "sdl2_obj_model_loader",
              "Loads the bundled sheep OBJ/MTL model and renders it as an auto-rotating turntable "
              "via SDL_RenderGeometry -- exercises a hand-written CPU-side model/view/projection, "
@@ -33,8 +29,14 @@ void title_state_init(TitleState *state)
              "Rotating icosahedron-subdivided mesh with particle trails, projected via a "
              "NEON-optimized SoA vertex pipeline -- render_suite's most architecturally distinct scene.",
              "RS_FORCE_SCENE", "geometry"},
-        }, 4},
+        }, 3},
         {"2D Rendering", {
+            {"Geo / Particles / Fill", "sdl2_bench_double_buf",
+             "Combined stress scene: a rotating polyhedron (7 shapes, cycled via UP/DOWN), a "
+             "live particle field, and animated full-height fill-rect bands running "
+             "simultaneously. Shape render mode, particle count/speed, and fill intensity are "
+             "all togglable in-app.",
+             NULL, NULL},
             {"Solid Fill Rate", "sdl2_render_suite",
              "Stress-scaled full/partial screen colored-rect fills measuring raw pixel fill throughput.",
              "RS_FORCE_SCENE", "fill"},
@@ -75,7 +77,7 @@ void title_state_init(TitleState *state)
             {"Thick Lines (SDL2_gfx)", "sdl2_gfx_bench",
              "Thick/wide line primitives via SDL2_gfx's software rasterizer.",
              "GB_FORCE_SCENE", "thick_lines"},
-        }, 12},
+        }, 13},
         {"Shader Effects", {
             {"Sunrise Gradient", "sdl2_gl_fbo_effects",
              "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",
