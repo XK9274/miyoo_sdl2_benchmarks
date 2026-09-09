@@ -132,9 +132,10 @@ per-stage timing output the same way.
     launches the selected binary; shows live battery/backend status.
 
 - `sdl2_bench_double_buf`
-  - Exercises hardware double buffering in the SDL2 Miyoo backend.
-  - Uses MI_GFX and MI_SYS backed presentation paths.
-  - Renders particle and cube-style geometry workloads.
+  - Combined stress scene: a rotating polyhedron, a particle field, and
+    animated fill-rect bands running simultaneously.
+  - Shape, particle, and fill workloads are each independently togglable
+    in-app for isolated measurement.
 
 - `sdl2_render_suite`
   - Runs a broader 2D rendering workload set.
@@ -190,8 +191,8 @@ five categories (L1/R1 switches category, UP/DOWN moves within it):
 
 | Category | Entries |
 |---|---|
-| Geometry & 3D | Hardware Double Buffer, Turntable Model: Sheep, Turntable Model: Miyoo, Rotating Mesh (NEON) |
-| 2D Rendering | Solid Fill Rate, Texture Blit Throughput, Line & Shape Drawing, Resolution Scaling, Memory Management, Pixel Operations, Sprite Blit Stress Test, AA Shapes (SDL2_gfx), Rounded Rects (SDL2_gfx), Polygons (SDL2_gfx), Bezier Curves (SDL2_gfx), Thick Lines (SDL2_gfx) |
+| Geometry & 3D | Turntable Model: Sheep, Turntable Model: Miyoo, Rotating Mesh (NEON) |
+| 2D Rendering | Geo / Particles / Fill, Solid Fill Rate, Texture Blit Throughput, Line & Shape Drawing, Resolution Scaling, Memory Management, Pixel Operations, Sprite Blit Stress Test, AA Shapes (SDL2_gfx), Rounded Rects (SDL2_gfx), Polygons (SDL2_gfx), Bezier Curves (SDL2_gfx), Thick Lines (SDL2_gfx) |
 | Shader Effects | All 15 `sdl2_gl_fbo_effects` effects, one entry each |
 | Audio | Audio Playback Visualizer |
 | Interactive | Space Shooter Stress Test, Message Box Probe |

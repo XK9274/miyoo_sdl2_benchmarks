@@ -53,11 +53,13 @@ void db_state_init(DoubleBenchState *state)
     state->particle_count = 350;
     state->particle_speed = 400.0f;
     state->cube_rotation = 0.0f;
-    state->show_cube = SDL_TRUE;
+    state->show_shape = SDL_TRUE;
     state->show_particles = SDL_TRUE;
     state->backdrop_grid = SDL_FALSE;
     state->render_mode = 1;
     state->shape_type = 0;
+    state->fill_intensity = 3;
+    state->fill_phase_units = 0.0f;
 
     db_state_update_layout(state, 0);
 

@@ -48,7 +48,19 @@ SDL_bool db_handle_input(DoubleBenchState *state, BenchMetrics *metrics, BenchOv
                     state->backdrop_grid = !state->backdrop_grid;
                     break;
                 case BTN_R1:
-                    state->show_cube = !state->show_cube;
+                    state->show_shape = !state->show_shape;
+                    break;
+                case BTN_LEFT:
+                    state->fill_intensity -= 1;
+                    if (state->fill_intensity < 0) {
+                        state->fill_intensity = 0;
+                    }
+                    break;
+                case BTN_RIGHT:
+                    state->fill_intensity += 1;
+                    if (state->fill_intensity > 10) {
+                        state->fill_intensity = 10;
+                    }
                     break;
                 case BTN_L2:
                     state->particle_speed -= 20.0f;

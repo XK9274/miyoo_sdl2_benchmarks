@@ -10,7 +10,7 @@ What’s inside this folder (sdl_bench/)
 - bin/
   Contains the title screen and benchmark executables:
   • sdl2_title                       – Title screen: select a suite, configure resolution/vsync/frame limit/input mode, launch it
-  • sdl2_bench_double_buf            – Hardware double buffering test (mmiyoo backend)
+  • sdl2_bench_double_buf            – Combined shape/particle/fill stress scene
   • sdl2_render_suite                – Comprehensive rendering suite (fills, lines, textures)
   • sdl2_gl_fbo_effects              – 15 offscreen GL FBO shader effects, read back and composited via the 2D renderer
   • sdl2_audio_bench                 – Audio device/sample/buffer tests

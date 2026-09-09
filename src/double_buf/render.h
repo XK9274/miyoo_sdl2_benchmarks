@@ -9,8 +9,8 @@ void db_render_backdrop(DoubleBenchState *state,
                         SDL_Renderer *renderer,
                         BenchMetrics *metrics);
 
-void db_render_cube_and_particles(DoubleBenchState *state,
-                                  SDL_Renderer *renderer,
-                                  BenchMetrics *metrics);
+void db_render_scene(DoubleBenchState *state,
+                     SDL_Renderer *renderer,
+                     BenchMetrics *metrics);
 
 #endif /* DOUBLE_BUF_RENDER_H */
