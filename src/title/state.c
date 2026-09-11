@@ -25,10 +25,10 @@ void title_state_init(TitleState *state)
              "turntable via SDL_RenderGeometry, exercising the same CPU-side rasterizer pipeline "
              "as the sheep model.",
              "OBJ_MODEL_NAME", "miyoo"},
-            {"Rotating Mesh (NEON)", "sdl2_render_suite",
+            {"Rotating Mesh (NEON)", "sdl2_geometry_bench",
              "Rotating icosahedron-subdivided mesh with particle trails, projected via a "
-             "NEON-optimized SoA vertex pipeline -- render_suite's most architecturally distinct scene.",
-             "RS_FORCE_SCENE", "geometry"},
+             "NEON-optimized SoA vertex pipeline.",
+             NULL, NULL},
         }, 3},
         {"2D Rendering", {
             {"Geo / Particles / Fill", "sdl2_bench_double_buf",
