@@ -50,10 +50,10 @@ void title_state_init(TitleState *state)
              "Cycles render target resolutions and scaling modes -- logical, viewport, and "
              "texture-target scaling.",
              NULL, NULL},
-            {"Memory Management", "sdl2_render_suite",
+            {"Memory Management", "sdl2_memory_bench",
              "Allocates and frees a pool of textures with lifetime tracking, exercising texture "
              "alloc/free churn. Currently regressed -- see README known bugs.",
-             "RS_FORCE_SCENE", "memory"},
+             NULL, NULL},
             {"Pixel Operations", "sdl2_render_suite",
              "CPU-software pixel-buffer effects (plasma, fire, mandelbrot, cellular automaton) "
              "uploaded as a texture each frame.",
