@@ -46,10 +46,10 @@ void title_state_init(TitleState *state)
             {"Line & Shape Drawing", "sdl2_lines_bench",
              "Grid of line/quad-built cube columns stressing line and geometry throughput.",
              NULL, NULL},
-            {"Resolution Scaling", "sdl2_render_suite",
+            {"Resolution Scaling", "sdl2_scaling_bench",
              "Cycles render target resolutions and scaling modes -- logical, viewport, and "
              "texture-target scaling.",
-             "RS_FORCE_SCENE", "scaling"},
+             NULL, NULL},
             {"Memory Management", "sdl2_render_suite",
              "Allocates and frees a pool of textures with lifetime tracking, exercising texture "
              "alloc/free churn. Currently regressed -- see README known bugs.",
