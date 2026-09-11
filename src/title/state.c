@@ -54,10 +54,10 @@ void title_state_init(TitleState *state)
              "Allocates and frees a pool of textures with lifetime tracking, exercising texture "
              "alloc/free churn. Currently regressed -- see README known bugs.",
              NULL, NULL},
-            {"Pixel Operations", "sdl2_render_suite",
+            {"Pixel Operations", "sdl2_pixels_bench",
              "CPU-software pixel-buffer effects (plasma, fire, mandelbrot, cellular automaton) "
              "uploaded as a texture each frame.",
-             "RS_FORCE_SCENE", "pixels"},
+             NULL, NULL},
             {"Sprite Blit Stress Test", "sdl2_sprite_bench",
              "Auto-ramping bouncing-sprite count stress test isolating the raw texture blit/present path.",
              NULL, NULL},
