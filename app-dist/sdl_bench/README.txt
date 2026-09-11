@@ -11,7 +11,13 @@ What’s inside this folder (sdl_bench/)
   Contains the title screen and benchmark executables:
   • sdl2_title                       – Title screen: select a suite, configure resolution/vsync/frame limit/input mode, launch it
   • sdl2_bench_double_buf            – Combined shape/particle/fill stress scene
-  • sdl2_render_suite                – Comprehensive rendering suite (fills, lines, textures)
+  • sdl2_fill_bench                  – Solid fill-rect throughput
+  • sdl2_texture_bench               – Texture blit throughput
+  • sdl2_lines_bench                 – Line & shape drawing throughput
+  • sdl2_geometry_bench              – Rotating NEON-projected mesh with particle trails
+  • sdl2_scaling_bench               – Resolution/render-target scaling
+  • sdl2_memory_bench                – Dynamic texture allocation/lifetime churn
+  • sdl2_pixels_bench                – CPU pixel-buffer effects (plasma/fire/mandelbrot/cellular)
   • sdl2_gl_fbo_effects              – 15 offscreen GL FBO shader effects, read back and composited via the 2D renderer
   • sdl2_audio_bench                 – Audio device/sample/buffer tests
   • sdl2_space_bench                 – Space Bench: space shooter with metrics
@@ -50,15 +56,15 @@ Notes
 - For source code, build instructions, and updates, see the repository above.
 
 
-Render Suite - 7 Test Scenes:
+Former Render Suite, now 7 Standalone Benches:
 
-1. Fill Operations - Color fills, gradients, alpha blending
-2. Line Drawing - Rapid line rendering, patterns
-3. Texture Operations - Streaming, scaling, rotation
-4. Geometric Complexity - 3D meshes, tessellation, wireframes
-5. Resolution Scaling - Multi-resolution performance tests
-6. Memory Management - Dynamic texture allocation stress testing
-7. Pixel Operations - Direct pixel manipulation effects
+1. sdl2_fill_bench - Color fills, gradients, alpha blending
+2. sdl2_lines_bench - Rapid line rendering, patterns
+3. sdl2_texture_bench - Streaming, scaling, rotation
+4. sdl2_geometry_bench - 3D meshes, tessellation, wireframes
+5. sdl2_scaling_bench - Multi-resolution performance tests
+6. sdl2_memory_bench - Dynamic texture allocation stress testing
+7. sdl2_pixels_bench - Direct pixel manipulation effects
 
 GL FBO Effects - 15 Effect Modes:
 

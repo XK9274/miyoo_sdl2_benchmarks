@@ -137,9 +137,30 @@ per-stage timing output the same way.
   - Shape, particle, and fill workloads are each independently togglable
     in-app for isolated measurement.
 
-- `sdl2_render_suite`
-  - Runs a broader 2D rendering workload set.
-  - Includes fill, line, texture, geometry, scaling, memory, and pixel scenes.
+- `sdl2_fill_bench`
+  - Stress-scaled full/partial screen colored-rect fills measuring raw pixel fill throughput.
+
+- `sdl2_texture_bench`
+  - Rotating/pulsing scaled texture blits measuring texture sampling and blit cost.
+
+- `sdl2_lines_bench`
+  - Grid of line/quad-built isometric cube columns stressing line and geometry throughput.
+
+- `sdl2_geometry_bench`
+  - Rotating icosahedron-subdivided mesh with particle trails, projected via a
+    NEON-optimized SoA vertex pipeline.
+
+- `sdl2_scaling_bench`
+  - Cycles render target resolutions and scaling modes -- logical, viewport, and
+    texture-target scaling.
+
+- `sdl2_memory_bench`
+  - Allocates and frees a pool of textures with lifetime tracking, exercising
+    texture alloc/free churn.
+
+- `sdl2_pixels_bench`
+  - CPU-software pixel-buffer effects (plasma, fire, mandelbrot, cellular
+    automaton) uploaded as a texture each frame.
 
 - `sdl2_gl_fbo_effects`
   - Renders 15 shader-based effects offscreen into a hidden window's FBO and
@@ -198,11 +219,12 @@ five categories (L1/R1 switches category, UP/DOWN moves within it):
 | Interactive | Space Shooter Stress Test, Message Box Probe |
 
 Most entries launch a suite binary pinned to one internal scene/effect via an
-env var (e.g. `RS_FORCE_SCENE`, `GB_FORCE_SCENE`, `RSGL_FORCE_EFFECT`,
-`OBJ_MODEL_NAME`) with that suite's auto-cycle disabled; a few entries (the
-double buffer test, the audio visualizer, the space shooter) launch their
-suite as-is since their internal variations are cosmetic rather than distinct
-workloads, and stay togglable in-app.
+env var (e.g. `GB_FORCE_SCENE`, `RSGL_FORCE_EFFECT`, `OBJ_MODEL_NAME`) with
+that suite's auto-cycle disabled. A few entries -- the double buffer test,
+the audio visualizer, and the space shooter -- launch their suite as-is since
+their internal variations are cosmetic rather than distinct workloads, and
+stay togglable in-app. The 7 standalone former render_suite scenes also
+launch as-is, since each binary is now itself the distinct workload.
 
 ## Build Flow
 
@@ -219,7 +241,7 @@ libraries staged by the buildbot SDL providers.
 
 ## Known Bugs
 
-- Memory management in `render_suite` is broken/regressed.
+- Memory management in `sdl2_memory_bench` is broken/regressed.
 - The overlay has a blending issue in most suites, visible in the obj model
   loader.
 - The overlay's own render/update frequency measurably costs framerate;
@@ -249,10 +271,16 @@ miyoo_sdl2_benchmarks/
 |   |-- audio_bench/
 |   |-- common/
 |   |-- double_buf/
+|   |-- fill_bench/
+|   |-- texture_bench/
+|   |-- lines_bench/
+|   |-- geometry_bench/
+|   |-- scaling_bench/
+|   |-- memory_bench/
+|   |-- pixels_bench/
 |   |-- gfx_bench/
 |   |-- gl_fbo_effects/
 |   |-- obj_model_loader/
-|   |-- render_suite/
 |   |-- space_bench/
 |   |-- sprite_bench/
 |   `-- title/                     # Launcher/title screen (sdl2_title)

@@ -47,7 +47,7 @@ cd "$bench_dir"
 # Launches a single benchmark directly under gdbserver so gdb attaches
 # before the process runs, instead of racing a fast crash.
 # Usage: ./launch.sh --gdb <bin-name-under-bin/> [port]
-#   e.g. ./launch.sh --gdb sdl2_render_suite 2345
+#   e.g. ./launch.sh --gdb sdl2_geometry_bench 2345
 # On the host: gdb-multiarch -> target remote <device-ip>:<port>
 if [ "$1" = "--gdb" ]; then
     gdbserver_bin="/mnt/SDCARD/.tmp_update/bin/gdbserver"
@@ -73,14 +73,14 @@ if [ "$1" = "--gdb" ]; then
     exec "$gdbserver_bin" ":$gdb_port" "$gdb_bench_path"
 fi
 
-# Isolated single-scene A/B perf run, tagged fps logging. No env vars other
+# Isolated geometry-bench A/B perf run, tagged fps logging. No env vars other
 # than these are set, so vsync mode etc. stays at the binary's default.
 # Usage: ./launch.sh --geometry <tag> [duration_s]
 #   e.g. ./launch.sh --geometry neon 30
 if [ "$1" = "--geometry" ]; then
     geo_tag="${2:-untagged}"
     geo_duration="${3:-30}"
-    geo_log="$bench_dir/logs/render_suite_geometry_${geo_tag}.log"
+    geo_log="$bench_dir/logs/geometry_bench_${geo_tag}.log"
 
     if [ -z "$2" ]; then
         echo "Usage: $0 --geometry <tag> [duration_s]"
@@ -88,12 +88,12 @@ if [ "$1" = "--geometry" ]; then
     fi
 
     mkdir -p "$bench_dir/logs"
-    echo "Running geometry-scene-only benchmark, tag=$geo_tag duration=${geo_duration}s"
+    echo "Running geometry-bench-only benchmark, tag=$geo_tag duration=${geo_duration}s"
     echo "===== START geometry ($geo_tag): $(date) =====" > "$geo_log"
     ps >> "$geo_log"
     echo "-----" >> "$geo_log"
-    RS_FORCE_SCENE=geometry RS_BENCH_DURATION_S="$geo_duration" RS_BENCH_TAG="$geo_tag" \
-        "bin/sdl2_render_suite" >> "$geo_log" 2>&1
+    GEOMETRY_BENCH_DURATION_S="$geo_duration" GEOMETRY_BENCH_TAG="$geo_tag" \
+        "bin/sdl2_geometry_bench" >> "$geo_log" 2>&1
     geo_exit=$?
     echo "-----" >> "$geo_log"
     ps >> "$geo_log"
