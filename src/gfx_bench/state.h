@@ -31,7 +31,7 @@ typedef struct {
 
 void gb_state_init(GfxBenchState *state);
 
-/* Maps stress_level 1-10 to a workload multiplier, same curve as render_suite's. */
+/* Maps stress_level 1-10 to a 0.5x-7x workload multiplier. */
 float gb_state_stress_factor(const GfxBenchState *state);
 
 float gb_state_sin(const GfxBenchState *state, float units);

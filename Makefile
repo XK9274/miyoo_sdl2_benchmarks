@@ -22,6 +22,7 @@ TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
 COMMON_SOURCES := \
     $(SRC_DIR)/common/asset_path.c \
     $(SRC_DIR)/common/backend_probe.c \
+    $(SRC_DIR)/common/bench_stress.c \
     $(SRC_DIR)/common/format.c \
     $(SRC_DIR)/common/geometry/core.c \
     $(SRC_DIR)/common/geometry/shapes.c \
