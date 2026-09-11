@@ -43,9 +43,9 @@ void title_state_init(TitleState *state)
             {"Texture Blit Throughput", "sdl2_texture_bench",
              "Rotating/pulsing scaled texture blits measuring texture sampling and blit cost.",
              NULL, NULL},
-            {"Line & Shape Drawing", "sdl2_render_suite",
+            {"Line & Shape Drawing", "sdl2_lines_bench",
              "Grid of line/quad-built cube columns stressing line and geometry throughput.",
-             "RS_FORCE_SCENE", "lines"},
+             NULL, NULL},
             {"Resolution Scaling", "sdl2_render_suite",
              "Cycles render target resolutions and scaling modes -- logical, viewport, and "
              "texture-target scaling.",
