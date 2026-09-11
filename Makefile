@@ -10,6 +10,7 @@ PROGRAMS      := sdl2_title \
                  sdl2_bench_double_buf \
                  sdl2_space_bench \
                  sdl2_fill_bench \
+                 sdl2_texture_bench \
                  sdl2_render_suite \
                  sdl2_gl_fbo_effects \
                  sdl2_audio_bench \
@@ -119,6 +120,14 @@ FILL_BENCH_SOURCES := \
 FILL_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(FILL_BENCH_SOURCES))
 FILL_BENCH_TARGET  := $(BIN_DIR)/sdl2_fill_bench
 
+TEXTURE_BENCH_SOURCES := \
+    $(SRC_DIR)/texture_bench/input.c \
+    $(SRC_DIR)/texture_bench/main.c \
+    $(SRC_DIR)/texture_bench/render.c \
+    $(SRC_DIR)/texture_bench/state.c
+TEXTURE_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(TEXTURE_BENCH_SOURCES))
+TEXTURE_BENCH_TARGET  := $(BIN_DIR)/sdl2_texture_bench
+
 RENDER_SOURCES := \
     $(SRC_DIR)/render_suite/input.c \
     $(SRC_DIR)/render_suite/main.c \
@@ -186,6 +195,7 @@ ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(SPACE_OBJECTS) \
                  $(DOUBLE_OBJECTS) \
                  $(FILL_BENCH_OBJECTS) \
+                 $(TEXTURE_BENCH_OBJECTS) \
                  $(RENDER_OBJECTS) \
                  $(GL_FBO_EFFECTS_OBJECTS) \
                  $(AUDIO_OBJECTS) \
@@ -258,6 +268,10 @@ $(DOUBLE_TARGET): $(COMMON_OBJECTS) $(DOUBLE_OBJECTS) | $(BIN_DIR)
 
 $(FILL_BENCH_TARGET): $(COMMON_OBJECTS) $(FILL_BENCH_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(FILL_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(TEXTURE_BENCH_TARGET): $(COMMON_OBJECTS) $(TEXTURE_BENCH_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(TEXTURE_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
 $(RENDER_TARGET): $(COMMON_OBJECTS) $(RENDER_OBJECTS) | $(BIN_DIR)
