@@ -37,9 +37,9 @@ void title_state_init(TitleState *state)
              "simultaneously. Shape render mode, particle count/speed, and fill intensity are "
              "all togglable in-app.",
              NULL, NULL},
-            {"Solid Fill Rate", "sdl2_render_suite",
+            {"Solid Fill Rate", "sdl2_fill_bench",
              "Stress-scaled full/partial screen colored-rect fills measuring raw pixel fill throughput.",
-             "RS_FORCE_SCENE", "fill"},
+             NULL, NULL},
             {"Texture Blit Throughput", "sdl2_render_suite",
              "Rotating/pulsing scaled texture blits measuring texture sampling and blit cost.",
              "RS_FORCE_SCENE", "texture"},
