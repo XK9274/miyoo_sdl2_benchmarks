@@ -163,8 +163,11 @@ per-stage timing output the same way.
     the noise generator's NEON path.
 
 - `sdl2_memory_bench`
-  - Allocates and frees a pool of textures with lifetime tracking, exercising
-    texture alloc/free churn.
+  - Allocates and frees a pool of textures with lifetime tracking, cycling
+    through 4 CPU-generated pixel patterns (gradient, checkerboard, plasma,
+    noise) and 3 allocation modes (texture-only, mixed, malloc-heavy) on
+    independent auto-cycling axes. Toggles lock each axis and switch NEON
+    for the checkerboard generator and texture upload copy path.
 
 - `sdl2_pixels_bench`
   - CPU-software pixel-buffer effects (plasma, mandelbrot, cellular automaton,
@@ -252,7 +255,6 @@ libraries staged by the buildbot SDL providers.
 
 ## Known Bugs
 
-- Memory management in `sdl2_memory_bench` is broken/regressed.
 - The overlay has a blending issue in most suites, visible in the obj model
   loader.
 - The overlay's own render/update frequency measurably costs framerate;

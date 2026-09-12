@@ -20,14 +20,17 @@ static const OverlayRowSpec g_memory_rows[] = {
     {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
     {OVERLAY_ROW_TEXTURE_SWITCHES, {0, 255, 160, 255}, 0, NULL},
     {OVERLAY_ROW_MEMORY, {0, 200, 255, 255}, 0, NULL},
-    {OVERLAY_ROW_RESOURCE_OPS, {255, 180, 120, 255}, 0, NULL},
     {OVERLAY_ROW_TIMING_OVERHEAD, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_CUSTOM, {255, 180, 120, 255}, 0, "%s"},
 };
 
 static const OverlayKeybind g_memory_keybinds[] = {
     {"SELECT", "Toggle overlay"},
     {"MENU", "Reset metrics"},
     {"B", "Adjust stress level"},
+    {"X", "Lock pattern"},
+    {"Y", "Lock alloc mode"},
+    {"L1", "Toggle NEON"},
 };
 
 int main(int argc, char *argv[])
@@ -151,17 +154,24 @@ int main(int argc, char *argv[])
 
         memory_render_scene(&state, renderer, &metrics, delta_seconds);
 
+        char stress_label[96];
+        snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f",
+                 state.stress_level, memory_state_stress_factor(&state));
+        char mode_label[96];
+        snprintf(mode_label, sizeof(mode_label), "%s%s | %s%s | %s",
+                 memory_render_pattern_name(state.current_pattern_mode),
+                 state.forced_pattern_mode >= 0 ? "*" : "",
+                 memory_render_alloc_name(state.current_alloc_mode),
+                 state.forced_alloc_mode >= 0 ? "*" : "",
+                 state.neon_enabled ? "NEON" : "Scalar");
+        const char *custom_values[] = {stress_label, mode_label};
+        bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
+
         bench_overlay_present(overlay, renderer, &metrics, 0, 0);
         SDL_RenderPresent(renderer);
 
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         bench_frame_limit_wait(frame_start_counter);
-
-        char stress_label[48];
-        snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f",
-                 state.stress_level, memory_state_stress_factor(&state));
-        const char *custom_values[] = {stress_label};
-        bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
         if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {
             printf("[BENCH] tag=%s elapsed_s=%.1f frame=%llu fps=%.2f avg_fps=%.2f "

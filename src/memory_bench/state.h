@@ -12,9 +12,13 @@ typedef struct {
     TTF_Font *font;
 
     float resources_phase;
-    SDL_Texture **resource_textures;
-    int resource_texture_count;
-    int resource_allocation_index;
+    float mode_phase_seconds;
+
+    int forced_pattern_mode;  /* -1 = auto-cycle, else locked mode index */
+    int current_pattern_mode;
+    int forced_alloc_mode;    /* -1 = auto-cycle, else locked mode index */
+    int current_alloc_mode;
+    SDL_bool neon_enabled;
 } MemoryBenchState;
 
 void memory_state_init(MemoryBenchState *state);

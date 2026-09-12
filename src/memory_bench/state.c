@@ -10,6 +10,9 @@ void memory_state_init(MemoryBenchState *state)
     SDL_memset(state, 0, sizeof(*state));
     state->stress_level = 1;
     state->top_margin = 0.0f;
+    state->forced_pattern_mode = -1;
+    state->forced_alloc_mode = -1;
+    state->neon_enabled = SDL_TRUE;
 }
 
 void memory_state_update_layout(MemoryBenchState *state, BenchOverlay *overlay)

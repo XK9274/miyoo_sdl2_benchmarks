@@ -1,5 +1,6 @@
 #include "memory_bench/render.h"
 #include "common/memory_opt.h"
+#include "common/render_neon.h"
 
 #include <stdlib.h>
 #include <math.h>
@@ -9,11 +10,14 @@
 #define MAX_DYNAMIC_TEXTURES 50
 #define MIN_TEXTURE_SIZE 16
 #define MAX_TEXTURE_SIZE 128
+#define MEMORY_CHECKER_SIZE 8
 
 typedef struct {
     SDL_Texture *texture;
     Uint32 *pixel_cache;
     size_t pixel_capacity;
+    Uint32 *scratch_buffer;
+    size_t scratch_capacity;
     int width;
     int height;
     Uint32 format;
@@ -27,6 +31,7 @@ typedef struct {
     ResourceTexture textures[MAX_DYNAMIC_TEXTURES];
     int active_count;
     int pool_index;
+    int pool_update_cursor;
     Uint64 total_allocated_bytes;
     Uint64 peak_allocated_bytes;
     double total_allocation_time_ms;
@@ -36,15 +41,38 @@ typedef struct {
 
 static ResourceManager g_resource_manager = {0};
 
-static void memory_copy_texture_rows(void *dst, int dst_pitch,
-                                     const Uint32 *src, int width, int height)
+static const char *g_memory_pattern_names[MEMORY_PATTERN_MAX] = {
+    "Gradient", "Checkerboard", "Plasma", "Noise"
+};
+
+const char *memory_render_pattern_name(int mode)
 {
-    const size_t row_bytes = (size_t)width * sizeof(*src);
+    if (mode < 0 || mode >= MEMORY_PATTERN_MAX) return "?";
+    return g_memory_pattern_names[mode];
+}
+
+static const char *g_memory_alloc_names[MEMORY_ALLOC_MAX] = {
+    "TexOnly", "Mixed", "MallocHeavy"
+};
+
+const char *memory_render_alloc_name(int mode)
+{
+    if (mode < 0 || mode >= MEMORY_ALLOC_MAX) return "?";
+    return g_memory_alloc_names[mode];
+}
+
+static void memory_upload_texture_rows(void *dst, int dst_pitch, const Uint32 *src,
+                                       int width, int height, SDL_bool use_neon)
+{
     Uint8 *dst_row = (Uint8 *)dst;
     int row;
 
     for (row = 0; row < height; ++row) {
-        rs_memcpy(dst_row, src, row_bytes);
+        if (use_neon) {
+            bench_neon_copy_u32((uint32_t *)dst_row, src, (size_t)width);
+        } else {
+            rs_memcpy(dst_row, src, (size_t)width * sizeof(Uint32));
+        }
         dst_row += dst_pitch;
         src += width;
     }
@@ -90,54 +118,98 @@ static Uint32 memory_calculate_texture_bytes(int width, int height, Uint32 forma
     return (Uint32)(width * height * bytes_per_pixel);
 }
 
-static void memory_generate_texture_data(Uint32 *pixels, int width, int height, float phase, int pattern)
+static void memory_generate_gradient(Uint32 *pixels, int width, int height, float phase)
+{
+    for (int y = 0; y < height; y++) {
+        float fy = (float)y / (float)height;
+        for (int x = 0; x < width; x++) {
+            float fx = (float)x / (float)width;
+            Uint8 r = (Uint8)(fx * 255);
+            Uint8 g = (Uint8)(fy * 255);
+            Uint8 b = (Uint8)(sinf(phase + fx * MEMORY_BENCH_PI) * 128 + 127);
+            pixels[y * width + x] = (255u << 24) | ((Uint32)r << 16) | ((Uint32)g << 8) | b;
+        }
+    }
+}
+
+static void memory_generate_checkerboard(Uint32 *pixels, int width, int height,
+                                         float phase, SDL_bool use_neon)
+{
+    for (int by = 0; by < height; by += MEMORY_CHECKER_SIZE) {
+        const int block_h = SDL_min(MEMORY_CHECKER_SIZE, height - by);
+        const int check_y = (by / MEMORY_CHECKER_SIZE) % 2;
+
+        for (int bx = 0; bx < width; bx += MEMORY_CHECKER_SIZE) {
+            const int block_w = SDL_min(MEMORY_CHECKER_SIZE, width - bx);
+            const int check_x = (bx / MEMORY_CHECKER_SIZE) % 2;
+            const Uint8 intensity = (check_x ^ check_y) ? 255 : 64;
+            const Uint8 g = (Uint8)(intensity * sinf(phase) * 0.5f + intensity * 0.5f);
+            const Uint8 b = (Uint8)(intensity * cosf(phase) * 0.5f + intensity * 0.5f);
+            const Uint32 packed = (255u << 24) | ((Uint32)intensity << 16) | ((Uint32)g << 8) | b;
+
+            for (int row = 0; row < block_h; row++) {
+                Uint32 *dst = pixels + (size_t)(by + row) * width + bx;
+                if (use_neon) {
+                    bench_neon_fill_u32(dst, packed, (size_t)block_w);
+                } else {
+                    for (int col = 0; col < block_w; col++) {
+                        dst[col] = packed;
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void memory_generate_plasma(Uint32 *pixels, int width, int height, float phase)
+{
+    for (int y = 0; y < height; y++) {
+        float fy = (float)y / (float)height;
+        for (int x = 0; x < width; x++) {
+            float fx = (float)x / (float)width;
+            float v1 = sinf(fx * 10.0f + phase);
+            float v2 = sinf(fy * 10.0f + phase * 1.3f);
+            float v3 = sinf((fx + fy) * 8.0f + phase * 0.8f);
+            float intensity = (v1 + v2 + v3) / 3.0f;
+            Uint8 r = (Uint8)((intensity + 1.0f) * 127.5f);
+            Uint8 g = (Uint8)((sinf(intensity * MEMORY_BENCH_PI + phase) + 1.0f) * 127.5f);
+            Uint8 b = (Uint8)((cosf(intensity * MEMORY_BENCH_PI + phase * 1.5f) + 1.0f) * 127.5f);
+            pixels[y * width + x] = (255u << 24) | ((Uint32)r << 16) | ((Uint32)g << 8) | b;
+        }
+    }
+}
+
+static void memory_generate_noise_like(Uint32 *pixels, int width, int height, float phase)
 {
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            float fx = (float)x / (float)width;
-            float fy = (float)y / (float)height;
-            Uint8 r = 0, g = 0, b = 0, a = 255;
-
-            switch (pattern % 4) {
-                case 0: /* Gradient */
-                    r = (Uint8)(fx * 255);
-                    g = (Uint8)(fy * 255);
-                    b = (Uint8)(sinf(phase + fx * MEMORY_BENCH_PI) * 128 + 127);
-                    break;
-                case 1: /* Checkerboard */
-                    {
-                        int check_size = 8;
-                        int check_x = (x / check_size) % 2;
-                        int check_y = (y / check_size) % 2;
-                        Uint8 intensity = (check_x ^ check_y) ? 255 : 64;
-                        r = intensity;
-                        g = (Uint8)(intensity * sinf(phase) * 0.5f + intensity * 0.5f);
-                        b = (Uint8)(intensity * cosf(phase) * 0.5f + intensity * 0.5f);
-                    }
-                    break;
-                case 2: /* Plasma */
-                    {
-                        float v1 = sinf(fx * 10.0f + phase);
-                        float v2 = sinf(fy * 10.0f + phase * 1.3f);
-                        float v3 = sinf((fx + fy) * 8.0f + phase * 0.8f);
-                        float intensity = (v1 + v2 + v3) / 3.0f;
-                        r = (Uint8)((intensity + 1.0f) * 127.5f);
-                        g = (Uint8)((sinf(intensity * MEMORY_BENCH_PI + phase) + 1.0f) * 127.5f);
-                        b = (Uint8)((cosf(intensity * MEMORY_BENCH_PI + phase * 1.5f) + 1.0f) * 127.5f);
-                    }
-                    break;
-                case 3: /* Noise-like */
-                    {
-                        int seed = (x * 73 + y * 137 + (int)(phase * 100)) % 255;
-                        r = (Uint8)(seed % 256);
-                        g = (Uint8)((seed * 17) % 256);
-                        b = (Uint8)((seed * 31) % 256);
-                    }
-                    break;
-            }
-
-            pixels[y * width + x] = (a << 24) | (r << 16) | (g << 8) | b;
+            int seed = (x * 73 + y * 137 + (int)(phase * 100)) % 255;
+            Uint8 r = (Uint8)(seed % 256);
+            Uint8 g = (Uint8)((seed * 17) % 256);
+            Uint8 b = (Uint8)((seed * 31) % 256);
+            pixels[y * width + x] = (255u << 24) | ((Uint32)r << 16) | ((Uint32)g << 8) | b;
         }
+    }
+}
+
+static void memory_generate_pattern(Uint32 *pixels, int width, int height, float phase,
+                                    int pattern_mode, SDL_bool use_neon)
+{
+    switch (pattern_mode) {
+        case MEMORY_PATTERN_GRADIENT:
+            memory_generate_gradient(pixels, width, height, phase);
+            break;
+        case MEMORY_PATTERN_CHECKERBOARD:
+            memory_generate_checkerboard(pixels, width, height, phase, use_neon);
+            break;
+        case MEMORY_PATTERN_PLASMA:
+            memory_generate_plasma(pixels, width, height, phase);
+            break;
+        case MEMORY_PATTERN_NOISE:
+            memory_generate_noise_like(pixels, width, height, phase);
+            break;
+        default:
+            break;
     }
 }
 
@@ -146,7 +218,10 @@ static SDL_bool memory_create_dynamic_texture(ResourceTexture *res,
                                               int width,
                                               int height,
                                               float phase,
-                                              int pattern,
+                                              int pattern_mode,
+                                              int alloc_mode,
+                                              int slot_index,
+                                              SDL_bool use_neon,
                                               BenchMetrics *metrics)
 {
     Uint64 start_time = SDL_GetPerformanceCounter();
@@ -171,12 +246,24 @@ static SDL_bool memory_create_dynamic_texture(ResourceTexture *res,
     res->format = SDL_PIXELFORMAT_RGBA8888;
     res->dirty = SDL_TRUE;
 
-    memory_generate_texture_data(res->pixel_cache, width, height, phase, pattern);
+    res->scratch_buffer = NULL;
+    res->scratch_capacity = 0;
+    const SDL_bool wants_scratch = (alloc_mode == MEMORY_ALLOC_MALLOC_HEAVY) ||
+                                   (alloc_mode == MEMORY_ALLOC_MIXED && (slot_index % 2) != 0);
+    if (wants_scratch) {
+        res->scratch_capacity = pixel_count * 4;
+        res->scratch_buffer = malloc(sizeof(Uint32) * res->scratch_capacity);
+        if (!res->scratch_buffer) {
+            res->scratch_capacity = 0;
+        }
+    }
+
+    memory_generate_pattern(res->pixel_cache, width, height, phase, pattern_mode, use_neon);
 
     void *texture_pixels;
     int pitch;
     if (SDL_LockTexture(res->texture, NULL, &texture_pixels, &pitch) == 0) {
-        memory_copy_texture_rows(texture_pixels, pitch, res->pixel_cache, width, height);
+        memory_upload_texture_rows(texture_pixels, pitch, res->pixel_cache, width, height, use_neon);
         SDL_UnlockTexture(res->texture);
     }
 
@@ -188,13 +275,15 @@ static SDL_bool memory_create_dynamic_texture(ResourceTexture *res,
         metrics->resource_allocations++;
 
         Uint32 texture_bytes = memory_calculate_texture_bytes(width, height, SDL_PIXELFORMAT_RGBA8888);
-        metrics->memory_allocated_bytes += texture_bytes;
+        Uint32 scratch_bytes = (Uint32)(res->scratch_capacity * sizeof(Uint32));
+        Uint32 total_bytes = texture_bytes + scratch_bytes;
+        metrics->memory_allocated_bytes += total_bytes;
         if (metrics->memory_allocated_bytes > metrics->memory_peak_bytes) {
             metrics->memory_peak_bytes = metrics->memory_allocated_bytes;
         }
 
         g_resource_manager.total_allocation_time_ms += allocation_time;
-        g_resource_manager.total_allocated_bytes += texture_bytes;
+        g_resource_manager.total_allocated_bytes += total_bytes;
         g_resource_manager.allocation_count++;
 
         if (g_resource_manager.total_allocated_bytes > g_resource_manager.peak_allocated_bytes) {
@@ -214,10 +303,12 @@ static void memory_destroy_resource_texture(ResourceTexture *res, BenchMetrics *
     if (metrics) {
         Uint32 texture_bytes = memory_calculate_texture_bytes(res->width, res->height,
                                                               SDL_PIXELFORMAT_RGBA8888);
-        metrics->memory_allocated_bytes -= texture_bytes;
+        Uint32 scratch_bytes = (Uint32)(res->scratch_capacity * sizeof(Uint32));
+        Uint32 total_bytes = texture_bytes + scratch_bytes;
+        metrics->memory_allocated_bytes -= total_bytes;
         metrics->resource_deallocations++;
 
-        g_resource_manager.total_allocated_bytes -= texture_bytes;
+        g_resource_manager.total_allocated_bytes -= total_bytes;
         g_resource_manager.deallocation_count++;
     }
 
@@ -228,12 +319,19 @@ static void memory_destroy_resource_texture(ResourceTexture *res, BenchMetrics *
         res->pixel_cache = NULL;
     }
     res->pixel_capacity = 0;
+    if (res->scratch_buffer) {
+        free(res->scratch_buffer);
+        res->scratch_buffer = NULL;
+    }
+    res->scratch_capacity = 0;
     res->in_use = SDL_FALSE;
     res->dirty = SDL_FALSE;
 }
 
 static void memory_update_resource_pool(SDL_Renderer *renderer, float stress_factor,
-                                        float phase, float delta_seconds, BenchMetrics *metrics)
+                                        float phase, float delta_seconds,
+                                        int pattern_mode, int alloc_mode, SDL_bool use_neon,
+                                        BenchMetrics *metrics)
 {
     const int min_textures = 5;
     const int max_textures = memory_clampi((int)(min_textures + stress_factor * 30), min_textures, MAX_DYNAMIC_TEXTURES);
@@ -264,12 +362,12 @@ static void memory_update_resource_pool(SDL_Renderer *renderer, float stress_fac
 
         int width = MIN_TEXTURE_SIZE + (rand() % (MAX_TEXTURE_SIZE - MIN_TEXTURE_SIZE));
         int height = MIN_TEXTURE_SIZE + (rand() % (MAX_TEXTURE_SIZE - MIN_TEXTURE_SIZE));
-        int pattern = rand() % 4;
 
         float lifetime = 1.0f + (float)rand() / RAND_MAX * (3.0f + stress_factor * 2.0f);
 
         ResourceTexture *res = &g_resource_manager.textures[slot];
-        if (memory_create_dynamic_texture(res, renderer, width, height, phase, pattern, metrics)) {
+        if (memory_create_dynamic_texture(res, renderer, width, height, phase,
+                                          pattern_mode, alloc_mode, slot, use_neon, metrics)) {
             res->width = width;
             res->height = height;
             res->format = SDL_PIXELFORMAT_RGBA8888;
@@ -333,6 +431,26 @@ static void memory_render_resource_textures(SDL_Renderer *renderer, float phase,
     }
 }
 
+static void memory_touch_scratch_buffers(float phase, SDL_bool use_neon)
+{
+    const Uint32 fill_value = (Uint32)(phase * 1000.0f);
+
+    for (int i = 0; i < MAX_DYNAMIC_TEXTURES; i++) {
+        ResourceTexture *res = &g_resource_manager.textures[i];
+        if (!res->in_use || !res->scratch_buffer || res->scratch_capacity == 0) {
+            continue;
+        }
+
+        if (use_neon) {
+            bench_neon_fill_u32(res->scratch_buffer, fill_value ^ (Uint32)i, res->scratch_capacity);
+        } else {
+            for (size_t j = 0; j < res->scratch_capacity; j++) {
+                res->scratch_buffer[j] = fill_value ^ (Uint32)i;
+            }
+        }
+    }
+}
+
 void memory_render_init(MemoryBenchState *state, SDL_Renderer *renderer)
 {
     (void)state;
@@ -364,12 +482,22 @@ void memory_render_scene(MemoryBenchState *state,
     const int region_height = SDL_max(1, bench_logical_h() - (int)state->top_margin);
 
     state->resources_phase += (float)(delta_seconds * (1.0f + factor * 2.0f));
+    state->mode_phase_seconds += (float)delta_seconds;
 
-    memory_update_resource_pool(renderer, factor, state->resources_phase, (float)delta_seconds, metrics);
+    const float mode_cycle_seconds = 3.0f;
+    const int auto_pattern_mode = (int)(state->mode_phase_seconds / mode_cycle_seconds) % MEMORY_PATTERN_MAX;
+    state->current_pattern_mode = (state->forced_pattern_mode >= 0) ? state->forced_pattern_mode : auto_pattern_mode;
+
+    const int auto_alloc_mode = (int)((state->mode_phase_seconds + mode_cycle_seconds * 0.5f) / mode_cycle_seconds) % MEMORY_ALLOC_MAX;
+    state->current_alloc_mode = (state->forced_alloc_mode >= 0) ? state->forced_alloc_mode : auto_alloc_mode;
+
+    memory_update_resource_pool(renderer, factor, state->resources_phase, (float)delta_seconds,
+                                state->current_pattern_mode, state->current_alloc_mode,
+                                state->neon_enabled, metrics);
 
     const int updates_per_frame = memory_clampi((int)(1 + factor * 2), 1, 3);
     for (int i = 0; i < updates_per_frame; i++) {
-        int update_index = (state->resource_allocation_index + i) % MAX_DYNAMIC_TEXTURES;
+        int update_index = (g_resource_manager.pool_update_cursor + i) % MAX_DYNAMIC_TEXTURES;
         ResourceTexture *res = &g_resource_manager.textures[update_index];
 
         if (res->in_use && res->texture && res->pixel_cache) {
@@ -378,13 +506,14 @@ void memory_render_scene(MemoryBenchState *state,
             void *pixels;
             int pitch;
             if (SDL_LockTexture(res->texture, NULL, &pixels, &pitch) == 0) {
-                memory_generate_texture_data(res->pixel_cache,
-                                             res->width,
-                                             res->height,
-                                             state->resources_phase + (float)i,
-                                             (update_index + i) % 4);
-                memory_copy_texture_rows(pixels, pitch, res->pixel_cache,
-                                         res->width, res->height);
+                memory_generate_pattern(res->pixel_cache,
+                                        res->width,
+                                        res->height,
+                                        state->resources_phase + (float)i,
+                                        state->current_pattern_mode,
+                                        state->neon_enabled);
+                memory_upload_texture_rows(pixels, pitch, res->pixel_cache,
+                                           res->width, res->height, state->neon_enabled);
                 SDL_UnlockTexture(res->texture);
 
                 Uint64 end_time = SDL_GetPerformanceCounter();
@@ -396,43 +525,10 @@ void memory_render_scene(MemoryBenchState *state,
             }
         }
     }
-    state->resource_allocation_index = (state->resource_allocation_index + updates_per_frame) % MAX_DYNAMIC_TEXTURES;
+    g_resource_manager.pool_update_cursor = (g_resource_manager.pool_update_cursor + updates_per_frame) % MAX_DYNAMIC_TEXTURES;
+
+    memory_touch_scratch_buffers(state->resources_phase, state->neon_enabled);
 
     memory_render_resource_textures(renderer, state->resources_phase, region_height,
                                     state->top_margin, metrics);
-
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 200);
-
-    const int bar_x = 10;
-    const int bar_y = (int)state->top_margin + region_height - 30;
-    const int bar_max_width = 200;
-    const int bar_width = (g_resource_manager.active_count * bar_max_width) / MAX_DYNAMIC_TEXTURES;
-
-    SDL_Rect bar_bg = {bar_x, bar_y, bar_max_width, 8};
-    SDL_SetRenderDrawColor(renderer, 64, 64, 64, 200);
-    SDL_RenderFillRect(renderer, &bar_bg);
-
-    SDL_Rect bar_fill = {bar_x, bar_y, bar_width, 8};
-    SDL_SetRenderDrawColor(renderer, 0, 255, 128, 255);
-    SDL_RenderFillRect(renderer, &bar_fill);
-
-    const int mem_bar_x = bar_x + bar_max_width + 20;
-    const int mem_bar_height = 100;
-    const float memory_ratio = (float)g_resource_manager.total_allocated_bytes /
-                              (float)(MAX_DYNAMIC_TEXTURES * MAX_TEXTURE_SIZE * MAX_TEXTURE_SIZE * 4);
-    const int mem_fill_height = (int)(memory_ratio * mem_bar_height);
-
-    SDL_Rect mem_bg = {mem_bar_x, bar_y - mem_bar_height, 12, mem_bar_height};
-    SDL_SetRenderDrawColor(renderer, 64, 64, 64, 200);
-    SDL_RenderFillRect(renderer, &mem_bg);
-
-    SDL_Rect mem_fill = {mem_bar_x, bar_y - mem_fill_height, 12, mem_fill_height};
-    SDL_SetRenderDrawColor(renderer, 255, 128, 0, 255);
-    SDL_RenderFillRect(renderer, &mem_fill);
-
-    if (metrics) {
-        metrics->draw_calls += 4;
-        metrics->vertices_rendered += 16;
-        metrics->triangles_rendered += 8;
-    }
 }
