@@ -4,34 +4,19 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include "common/memory_opt.h"
 
+#define PIXELS_BASE_W 160
+#define PIXELS_BASE_H 120
+#define PIXELS_MAX_W 320
+#define PIXELS_MAX_H 240
+#define PIXELS_NOISE_CELL 20
 #define PIXELS_BENCH_PI 3.14159265358979323846f
-#define PIXEL_SURFACE_WIDTH 160
-#define PIXEL_SURFACE_HEIGHT 120
-#define FIRE_HEIGHT 60
-#define FIRE_WIDTH 80
-
-typedef enum {
-    PIXEL_MODE_PLASMA = 0,
-    PIXEL_MODE_FIRE,
-    PIXEL_MODE_MANDELBROT,
-    PIXEL_MODE_CELLULAR,
-    PIXEL_MODE_MAX
-} PixelMode;
 
 typedef struct {
     Uint8 r, g, b, a;
 } Pixel32;
 
 static inline float pixels_clampf(float value, float min_val, float max_val)
-{
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
-    return value;
-}
-
-static inline int pixels_clampi(int value, int min_val, int max_val)
 {
     if (value < min_val) return min_val;
     if (value > max_val) return max_val;
@@ -45,31 +30,46 @@ static inline Uint8 pixels_clamp_u8(int value)
     return (Uint8)value;
 }
 
-/* Fast sine approximation using lookup table */
-static float g_pixels_sin_table[256];
-static SDL_bool g_pixels_sin_table_initialized = SDL_FALSE;
+static const char *g_pixels_mode_names[PIXEL_MODE_MAX] = {
+    "Plasma", "Mandelbrot", "Cellular", "Noise", "Dither", "Palette"
+};
 
-static void pixels_init_sin_table(void)
+const char *pixels_render_mode_name(int mode)
 {
-    if (g_pixels_sin_table_initialized) return;
-    for (int i = 0; i < 256; i++) {
-        g_pixels_sin_table[i] = sinf((float)i * 2.0f * PIXELS_BENCH_PI / 256.0f);
-    }
-    g_pixels_sin_table_initialized = SDL_TRUE;
+    if (mode < 0 || mode >= PIXEL_MODE_MAX) return "?";
+    return g_pixels_mode_names[mode];
 }
 
-static inline float pixels_fast_sin(float x)
+static const char *g_pixels_blend_names[PIXELS_BLEND_MAX] = {
+    "Alpha", "Additive", "ColorKey"
+};
+
+const char *pixels_render_blend_name(PixelsBlendMode mode)
 {
-    int index = (int)(x * 256.0f / (2.0f * PIXELS_BENCH_PI)) & 255;
-    return g_pixels_sin_table[index];
+    if (mode < 0 || mode >= PIXELS_BLEND_MAX) return "?";
+    return g_pixels_blend_names[mode];
 }
 
-static inline float pixels_fast_cos(float x)
+static const char *g_pixels_upload_names[PIXELS_UPLOAD_MAX] = {
+    "Lock", "Update"
+};
+
+const char *pixels_render_upload_name(PixelsUploadPath path)
 {
-    return pixels_fast_sin(x + PIXELS_BENCH_PI * 0.5f);
+    if (path < 0 || path >= PIXELS_UPLOAD_MAX) return "?";
+    return g_pixels_upload_names[path];
 }
 
-static void pixels_generate_plasma(Pixel32 *pixels, int width, int height, float phase)
+/* 4x4 ordered dither threshold matrix, scaled to 0-15. */
+static const Uint8 g_bayer4x4[4][4] = {
+    { 0,  8,  2, 10},
+    {12,  4, 14,  6},
+    { 3, 11,  1,  9},
+    {15,  7, 13,  5}
+};
+
+static void pixels_generate_plasma(Pixel32 *pixels, int width, int height,
+                                   float phase, const PixelsBenchState *state)
 {
     const float scale = 0.02f;
     const float time_scale = 0.1f;
@@ -79,10 +79,10 @@ static void pixels_generate_plasma(Pixel32 *pixels, int width, int height, float
             float fx = (float)x * scale;
             float fy = (float)y * scale;
 
-            float v1 = pixels_fast_sin(fx * 4.0f + phase * time_scale);
-            float v2 = pixels_fast_sin(fy * 3.0f + phase * time_scale * 1.3f);
-            float v3 = pixels_fast_sin((fx + fy) * 2.0f + phase * time_scale * 0.7f);
-            float v4 = pixels_fast_sin(sqrtf(fx * fx + fy * fy) * 5.0f + phase * time_scale * 1.5f);
+            float v1 = pixels_state_sin_rad(state, fx * 4.0f + phase * time_scale);
+            float v2 = pixels_state_sin_rad(state, fy * 3.0f + phase * time_scale * 1.3f);
+            float v3 = pixels_state_sin_rad(state, (fx + fy) * 2.0f + phase * time_scale * 0.7f);
+            float v4 = pixels_state_sin_rad(state, sqrtf(fx * fx + fy * fy) * 5.0f + phase * time_scale * 1.5f);
 
             float intensity = (v1 + v2 + v3 + v4) * 0.25f;
             intensity = (intensity + 1.0f) * 0.5f;
@@ -91,100 +91,20 @@ static void pixels_generate_plasma(Pixel32 *pixels, int width, int height, float
             float g_phase = intensity * 2.0f * PIXELS_BENCH_PI + PIXELS_BENCH_PI * 0.66f;
             float b_phase = intensity * 2.0f * PIXELS_BENCH_PI + PIXELS_BENCH_PI * 1.33f;
 
-            pixels[y * width + x].r = pixels_clamp_u8((int)((pixels_fast_sin(r_phase) + 1.0f) * 127.5f));
-            pixels[y * width + x].g = pixels_clamp_u8((int)((pixels_fast_sin(g_phase) + 1.0f) * 127.5f));
-            pixels[y * width + x].b = pixels_clamp_u8((int)((pixels_fast_sin(b_phase) + 1.0f) * 127.5f));
+            pixels[y * width + x].r = pixels_clamp_u8((int)((pixels_state_sin_rad(state, r_phase) + 1.0f) * 127.5f));
+            pixels[y * width + x].g = pixels_clamp_u8((int)((pixels_state_sin_rad(state, g_phase) + 1.0f) * 127.5f));
+            pixels[y * width + x].b = pixels_clamp_u8((int)((pixels_state_sin_rad(state, b_phase) + 1.0f) * 127.5f));
             pixels[y * width + x].a = 255;
         }
     }
 }
 
-static void pixels_generate_fire(Pixel32 *pixels, int width, int height, float phase, int *fire_buffer)
-{
-    static SDL_bool fire_initialized = SDL_FALSE;
-    if (!fire_initialized) {
-        for (int x = 0; x < FIRE_WIDTH; x++) {
-            fire_buffer[(FIRE_HEIGHT - 1) * FIRE_WIDTH + x] = 255;
-        }
-        fire_initialized = SDL_TRUE;
-    }
-
-    for (int y = 0; y < FIRE_HEIGHT - 1; y++) {
-        for (int x = 0; x < FIRE_WIDTH; x++) {
-            int sum = 0;
-            int count = 0;
-
-            for (int dy = 0; dy <= 1; dy++) {
-                for (int dx = -1; dx <= 1; dx++) {
-                    int nx = x + dx;
-                    int ny = y + dy;
-                    if (nx >= 0 && nx < FIRE_WIDTH && ny >= 0 && ny < FIRE_HEIGHT) {
-                        sum += fire_buffer[ny * FIRE_WIDTH + nx];
-                        count++;
-                    }
-                }
-            }
-
-            int average = sum / count;
-            int cooling = 2 + (rand() % 4);
-            int new_value = average - cooling;
-            if (new_value < 0) new_value = 0;
-
-            fire_buffer[y * FIRE_WIDTH + x] = new_value;
-        }
-    }
-
-    int disturbance = (int)(phase * 10.0f) % FIRE_WIDTH;
-    for (int i = 0; i < 5; i++) {
-        int x = (disturbance + i) % FIRE_WIDTH;
-        fire_buffer[(FIRE_HEIGHT - 1) * FIRE_WIDTH + x] = 200 + (rand() % 56);
-    }
-
-    memset(pixels, 0, width * height * sizeof(Pixel32));
-
-    int start_x = (width - FIRE_WIDTH) / 2;
-    int start_y = (height - FIRE_HEIGHT) / 2;
-
-    for (int y = 0; y < FIRE_HEIGHT; y++) {
-        for (int x = 0; x < FIRE_WIDTH; x++) {
-            int px = start_x + x;
-            int py = start_y + y;
-            if (px >= 0 && px < width && py >= 0 && py < height) {
-                int intensity = fire_buffer[y * FIRE_WIDTH + x];
-
-                Uint8 r, g, b;
-                if (intensity < 64) {
-                    r = intensity * 4;
-                    g = 0;
-                    b = 0;
-                } else if (intensity < 128) {
-                    r = 255;
-                    g = (intensity - 64) * 4;
-                    b = 0;
-                } else if (intensity < 192) {
-                    r = 255;
-                    g = 255;
-                    b = (intensity - 128) * 4;
-                } else {
-                    r = 255;
-                    g = 255;
-                    b = 255;
-                }
-
-                pixels[py * width + px].r = r;
-                pixels[py * width + px].g = g;
-                pixels[py * width + px].b = b;
-                pixels[py * width + px].a = 255;
-            }
-        }
-    }
-}
-
-static void pixels_generate_mandelbrot(Pixel32 *pixels, int width, int height, float phase)
+static void pixels_generate_mandelbrot(Pixel32 *pixels, int width, int height,
+                                       float phase, const PixelsBenchState *state)
 {
     const float zoom = 1.0f + phase * 0.05f;
-    const float center_x = -0.5f + pixels_fast_cos(phase * 0.3f) * 0.2f;
-    const float center_y = 0.0f + pixels_fast_sin(phase * 0.2f) * 0.2f;
+    const float center_x = -0.5f + pixels_state_cos_rad(state, phase * 0.3f) * 0.2f;
+    const float center_y = 0.0f + pixels_state_sin_rad(state, phase * 0.2f) * 0.2f;
     const int max_iterations = 16;
 
     for (int y = 0; y < height; y++) {
@@ -236,20 +156,17 @@ static void pixels_generate_mandelbrot(Pixel32 *pixels, int width, int height, f
     }
 }
 
-static void pixels_generate_cellular(Pixel32 *pixels, int width, int height, float phase)
+static void pixels_generate_cellular(Pixel32 *pixels, int width, int height,
+                                     float phase, PixelsBenchState *state)
 {
-    static Uint8 *cells = NULL;
-    static Uint8 *new_cells = NULL;
-    static SDL_bool initialized = SDL_FALSE;
+    Uint8 *cells = state->cellular_cells;
+    Uint8 *new_cells = state->cellular_new_cells;
 
-    if (!initialized) {
-        cells = malloc(width * height);
-        new_cells = malloc(width * height);
-
+    if (!state->cellular_seeded) {
         for (int i = 0; i < width * height; i++) {
             cells[i] = (rand() % 100) < 30 ? 1 : 0;
         }
-        initialized = SDL_TRUE;
+        state->cellular_seeded = SDL_TRUE;
     }
 
     for (int y = 0; y < height; y++) {
@@ -285,9 +202,9 @@ static void pixels_generate_cellular(Pixel32 *pixels, int width, int height, flo
         }
     }
 
-    Uint8 *temp = cells;
-    cells = new_cells;
-    new_cells = temp;
+    state->cellular_cells = new_cells;
+    state->cellular_new_cells = cells;
+    cells = state->cellular_cells;
 
     float color_phase = phase * 0.5f;
     for (int y = 0; y < height; y++) {
@@ -296,9 +213,9 @@ static void pixels_generate_cellular(Pixel32 *pixels, int width, int height, flo
                 float fx = (float)x / (float)width;
                 float fy = (float)y / (float)height;
 
-                pixels[y * width + x].r = pixels_clamp_u8((int)((pixels_fast_sin(color_phase + fx) + 1.0f) * 127.5f));
-                pixels[y * width + x].g = pixels_clamp_u8((int)((pixels_fast_sin(color_phase + fy + 2.0f) + 1.0f) * 127.5f));
-                pixels[y * width + x].b = pixels_clamp_u8((int)((pixels_fast_sin(color_phase + fx + fy + 4.0f) + 1.0f) * 127.5f));
+                pixels[y * width + x].r = pixels_clamp_u8((int)((pixels_state_sin_rad(state, color_phase + fx) + 1.0f) * 127.5f));
+                pixels[y * width + x].g = pixels_clamp_u8((int)((pixels_state_sin_rad(state, color_phase + fy + 2.0f) + 1.0f) * 127.5f));
+                pixels[y * width + x].b = pixels_clamp_u8((int)((pixels_state_sin_rad(state, color_phase + fx + fy + 4.0f) + 1.0f) * 127.5f));
                 pixels[y * width + x].a = 255;
             } else {
                 pixels[y * width + x] = (Pixel32){0, 0, 0, 255};
@@ -307,48 +224,221 @@ static void pixels_generate_cellular(Pixel32 *pixels, int width, int height, flo
     }
 }
 
+static inline float pixels_noise_hash(int x, int y, int seed)
+{
+    Uint32 h = (Uint32)(x * 374761393 + y * 668265263 + seed * 2147483647u);
+    h = (h ^ (h >> 13)) * 1274126177u;
+    h ^= (h >> 16);
+    return (float)(h & 0xFFFFu) / 65535.0f;
+}
+
+#if BENCH_HAS_NEON
+static inline void pixels_noise_lerp_row4(float c00, float c10, float c01, float c11,
+                                          float fx0, float fx_step, float fy,
+                                          float out[4])
+{
+    float32x4_t vfx = {fx0, fx0 + fx_step, fx0 + 2.0f * fx_step, fx0 + 3.0f * fx_step};
+    float32x4_t vtop = vmlaq_f32(vdupq_n_f32(c00), vdupq_n_f32(c10 - c00), vfx);
+    float32x4_t vbot = vmlaq_f32(vdupq_n_f32(c01), vdupq_n_f32(c11 - c01), vfx);
+    float32x4_t vval = vmlaq_f32(vtop, vsubq_f32(vbot, vtop), vdupq_n_f32(fy));
+    vst1q_f32(out, vval);
+}
+#endif
+
+static void pixels_generate_noise(Pixel32 *pixels, int width, int height,
+                                  float phase, const PixelsBenchState *state,
+                                  SDL_bool use_neon)
+{
+    const int seed = (int)(phase * 0.05f);
+    const float hue_shift = phase * 0.3f;
+
+    for (int y = 0; y < height; y++) {
+        int gy = y / PIXELS_NOISE_CELL;
+        float fy = (float)(y % PIXELS_NOISE_CELL) / (float)PIXELS_NOISE_CELL;
+
+        int x = 0;
+        while (x < width) {
+            int gx = x / PIXELS_NOISE_CELL;
+            float c00 = pixels_noise_hash(gx, gy, seed);
+            float c10 = pixels_noise_hash(gx + 1, gy, seed);
+            float c01 = pixels_noise_hash(gx, gy + 1, seed);
+            float c11 = pixels_noise_hash(gx + 1, gy + 1, seed);
+
+            int cell_start_x = gx * PIXELS_NOISE_CELL;
+            int cell_end_x = SDL_min(cell_start_x + PIXELS_NOISE_CELL, width);
+
+#if BENCH_HAS_NEON
+            if (use_neon) {
+                int run_x = x;
+                while (run_x + 4 <= cell_end_x) {
+                    float fx0 = (float)(run_x - cell_start_x) / (float)PIXELS_NOISE_CELL;
+                    float fx_step = 1.0f / (float)PIXELS_NOISE_CELL;
+                    float values[4];
+                    pixels_noise_lerp_row4(c00, c10, c01, c11, fx0, fx_step, fy, values);
+                    for (int i = 0; i < 4; i++) {
+                        float intensity = pixels_clampf(values[i], 0.0f, 1.0f);
+                        float hue = intensity * 2.0f * PIXELS_BENCH_PI + hue_shift;
+                        Pixel32 *px = &pixels[y * width + run_x + i];
+                        px->r = pixels_clamp_u8((int)((pixels_state_sin_rad(state, hue) + 1.0f) * 127.5f));
+                        px->g = pixels_clamp_u8((int)(intensity * 255.0f));
+                        px->b = pixels_clamp_u8((int)((pixels_state_cos_rad(state, hue) + 1.0f) * 127.5f));
+                        px->a = 255;
+                    }
+                    run_x += 4;
+                }
+                x = run_x;
+                if (x >= cell_end_x) {
+                    continue;
+                }
+            }
+#else
+            (void)use_neon;
+#endif
+
+            for (; x < cell_end_x; x++) {
+                float fx = (float)(x - cell_start_x) / (float)PIXELS_NOISE_CELL;
+                float top = c00 + (c10 - c00) * fx;
+                float bottom = c01 + (c11 - c01) * fx;
+                float intensity = pixels_clampf(top + (bottom - top) * fy, 0.0f, 1.0f);
+                float hue = intensity * 2.0f * PIXELS_BENCH_PI + hue_shift;
+
+                Pixel32 *px = &pixels[y * width + x];
+                px->r = pixels_clamp_u8((int)((pixels_state_sin_rad(state, hue) + 1.0f) * 127.5f));
+                px->g = pixels_clamp_u8((int)(intensity * 255.0f));
+                px->b = pixels_clamp_u8((int)((pixels_state_cos_rad(state, hue) + 1.0f) * 127.5f));
+                px->a = 255;
+            }
+        }
+    }
+}
+
+static void pixels_generate_dither(Pixel32 *pixels, int width, int height,
+                                   float phase, const PixelsBenchState *state)
+{
+    const float sweep_scale = 0.015f;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            float g = (pixels_state_sin_rad(state, (float)x * sweep_scale + phase * 0.2f) +
+                       pixels_state_sin_rad(state, (float)y * sweep_scale * 1.4f - phase * 0.15f) + 2.0f) * 0.25f;
+            g = pixels_clampf(g, 0.0f, 1.0f);
+
+            const Uint8 threshold = g_bayer4x4[y & 3][x & 3];
+            const Uint8 level = (Uint8)(g * 16.0f);
+            const SDL_bool lit = level > threshold;
+
+            Pixel32 *px = &pixels[y * width + x];
+            if (lit) {
+                px->r = pixels_clamp_u8((int)(g * 255.0f) + 40);
+                px->g = pixels_clamp_u8((int)(g * 200.0f) + 55);
+                px->b = 255;
+            } else {
+                px->r = 8;
+                px->g = 8;
+                px->b = pixels_clamp_u8((int)(g * 80.0f));
+            }
+            px->a = 255;
+        }
+    }
+}
+
+static void pixels_build_palette_lut(Pixel32 lut[256], float phase, const PixelsBenchState *state)
+{
+    for (int i = 0; i < 256; i++) {
+        float t = (float)i / 255.0f;
+        float hue = t * 2.0f * PIXELS_BENCH_PI + phase * 0.4f;
+        lut[i].r = pixels_clamp_u8((int)((pixels_state_sin_rad(state, hue) + 1.0f) * 127.5f));
+        lut[i].g = pixels_clamp_u8((int)((pixels_state_sin_rad(state, hue + 2.09f) + 1.0f) * 127.5f));
+        lut[i].b = pixels_clamp_u8((int)((pixels_state_sin_rad(state, hue + 4.19f) + 1.0f) * 127.5f));
+        lut[i].a = 255;
+    }
+}
+
+static void pixels_generate_palette(Pixel32 *pixels, int width, int height,
+                                    float phase, const PixelsBenchState *state)
+{
+    Pixel32 lut[256];
+    pixels_build_palette_lut(lut, phase, state);
+
+    const float cx = width * 0.5f;
+    const float cy = height * 0.5f;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            float dx = (float)x - cx;
+            float dy = (float)y - cy;
+            float dist = sqrtf(dx * dx + dy * dy);
+            Uint8 index = (Uint8)((int)(dist * 3.0f - phase * 40.0f) & 0xFF);
+            pixels[y * width + x] = lut[index];
+        }
+    }
+}
+
+static void pixels_apply_colorkey(Pixel32 *pixels, size_t count)
+{
+    for (size_t i = 0; i < count; i++) {
+        if (pixels[i].r == 0 && pixels[i].g == 0 && pixels[i].b == 0) {
+            pixels[i].a = 0;
+        }
+    }
+}
+
+static SDL_bool pixels_resize_buffers(PixelsBenchState *state, SDL_Renderer *renderer,
+                                      int width, int height)
+{
+    void *new_buffer = malloc((size_t)width * (size_t)height * sizeof(Pixel32));
+    Uint8 *new_cells = malloc((size_t)width * (size_t)height);
+    Uint8 *new_next_cells = malloc((size_t)width * (size_t)height);
+    if (!new_buffer || !new_cells || !new_next_cells) {
+        free(new_buffer);
+        free(new_cells);
+        free(new_next_cells);
+        return SDL_FALSE;
+    }
+
+    free(state->pixel_buffer);
+    free(state->cellular_cells);
+    free(state->cellular_new_cells);
+    state->pixel_buffer = new_buffer;
+    state->cellular_cells = new_cells;
+    state->cellular_new_cells = new_next_cells;
+    state->cellular_seeded = SDL_FALSE;
+
+    if (state->pixel_texture) {
+        SDL_DestroyTexture(state->pixel_texture);
+        state->pixel_texture = NULL;
+    }
+    if (renderer) {
+        state->pixel_texture = SDL_CreateTexture(renderer,
+                                                  SDL_PIXELFORMAT_RGBA8888,
+                                                  SDL_TEXTUREACCESS_STREAMING,
+                                                  width, height);
+    }
+
+    state->buffer_width = width;
+    state->buffer_height = height;
+    return SDL_TRUE;
+}
+
 void pixels_render_init(PixelsBenchState *state, SDL_Renderer *renderer)
 {
     if (!state) return;
 
-    pixels_init_sin_table();
-
-    state->pixel_surface = SDL_CreateRGBSurface(0,
-                                               PIXEL_SURFACE_WIDTH,
-                                               PIXEL_SURFACE_HEIGHT,
-                                               32,
-                                               0x00FF0000,
-                                               0x0000FF00,
-                                               0x000000FF,
-                                               0xFF000000);
-
-    state->pixel_buffer = malloc(PIXEL_SURFACE_WIDTH * PIXEL_SURFACE_HEIGHT * sizeof(Pixel32));
-
-    if (renderer) {
-        state->pixel_texture = SDL_CreateTexture(renderer,
-                                                SDL_PIXELFORMAT_RGBA8888,
-                                                SDL_TEXTUREACCESS_STREAMING,
-                                                PIXEL_SURFACE_WIDTH,
-                                                PIXEL_SURFACE_HEIGHT);
-    }
-
+    pixels_resize_buffers(state, renderer, PIXELS_BASE_W, PIXELS_BASE_H);
     state->pixel_phase = 0.0f;
-    state->pixel_plasma_offset = 0;
 }
 
 void pixels_render_cleanup(PixelsBenchState *state)
 {
     if (!state) return;
 
-    if (state->pixel_surface) {
-        SDL_FreeSurface(state->pixel_surface);
-        state->pixel_surface = NULL;
-    }
+    free(state->pixel_buffer);
+    state->pixel_buffer = NULL;
 
-    if (state->pixel_buffer) {
-        free(state->pixel_buffer);
-        state->pixel_buffer = NULL;
-    }
+    free(state->cellular_cells);
+    state->cellular_cells = NULL;
+    free(state->cellular_new_cells);
+    state->cellular_new_cells = NULL;
 
     if (state->pixel_texture) {
         SDL_DestroyTexture(state->pixel_texture);
@@ -368,74 +458,98 @@ void pixels_render_scene(PixelsBenchState *state,
     const float factor = pixels_state_stress_factor(state);
     const int region_height = SDL_max(1, bench_logical_h() - (int)state->top_margin);
 
-    state->pixel_phase += (float)(delta_seconds * (1.0f + factor * 2.0f));
+    const float t = pixels_clampf((factor - 0.5f) / 6.5f, 0.0f, 1.0f);
+    const int target_w = PIXELS_BASE_W + (int)(t * (float)(PIXELS_MAX_W - PIXELS_BASE_W));
+    const int target_h = PIXELS_BASE_H + (int)(t * (float)(PIXELS_MAX_H - PIXELS_BASE_H));
+    if (target_w != state->buffer_width || target_h != state->buffer_height) {
+        pixels_resize_buffers(state, renderer, target_w, target_h);
+    }
+
+    const int width = state->buffer_width;
+    const int height = state->buffer_height;
+
+    state->pixel_phase += (float)(delta_seconds * (1.0f + factor));
 
     const int mode_duration = 300;
-    const int current_mode = ((int)(state->pixel_phase * 60.0f) / mode_duration) % PIXEL_MODE_MAX;
+    const int auto_mode = ((int)(state->pixel_phase * 60.0f) / mode_duration) % PIXEL_MODE_MAX;
+    const int current_mode = (state->forced_mode >= 0) ? state->forced_mode : auto_mode;
+    state->current_mode = current_mode;
 
-    const int operations_per_frame = pixels_clampi((int)(1 + factor * 2), 1, 3);
+    Pixel32 *pixels = (Pixel32 *)state->pixel_buffer;
 
-    for (int op = 0; op < operations_per_frame; op++) {
-        Uint64 start_time = SDL_GetPerformanceCounter();
+    Uint64 gen_start = SDL_GetPerformanceCounter();
+    switch (current_mode) {
+        case PIXEL_MODE_PLASMA:
+            pixels_generate_plasma(pixels, width, height, state->pixel_phase, state);
+            break;
+        case PIXEL_MODE_MANDELBROT:
+            pixels_generate_mandelbrot(pixels, width, height, state->pixel_phase, state);
+            break;
+        case PIXEL_MODE_CELLULAR:
+            pixels_generate_cellular(pixels, width, height, state->pixel_phase, state);
+            break;
+        case PIXEL_MODE_NOISE:
+            pixels_generate_noise(pixels, width, height, state->pixel_phase, state, state->neon_copy_enabled);
+            break;
+        case PIXEL_MODE_DITHER:
+            pixels_generate_dither(pixels, width, height, state->pixel_phase, state);
+            break;
+        case PIXEL_MODE_PALETTE:
+            pixels_generate_palette(pixels, width, height, state->pixel_phase, state);
+            break;
+        default:
+            break;
+    }
+    Uint64 gen_end = SDL_GetPerformanceCounter();
+    if (metrics) {
+        metrics->stage_transform_ms += (double)(gen_end - gen_start) /
+                                       (double)SDL_GetPerformanceFrequency() * 1000.0;
+    }
 
-        Pixel32 *pixels = (Pixel32 *)state->pixel_buffer;
-        if (!pixels) {
-            continue;
-        }
+    if (state->blend_mode == PIXELS_BLEND_COLORKEY) {
+        pixels_apply_colorkey(pixels, (size_t)width * (size_t)height);
+    }
 
-        static int fire_buffer[FIRE_HEIGHT * FIRE_WIDTH] = {0};
+    Uint64 draw_start = SDL_GetPerformanceCounter();
 
-        float op_phase = state->pixel_phase + (float)op * 0.1f;
-
-        switch (current_mode) {
-            case PIXEL_MODE_PLASMA:
-                pixels_generate_plasma(pixels, PIXEL_SURFACE_WIDTH, PIXEL_SURFACE_HEIGHT, op_phase);
-                break;
-            case PIXEL_MODE_FIRE:
-                pixels_generate_fire(pixels, PIXEL_SURFACE_WIDTH, PIXEL_SURFACE_HEIGHT, op_phase, fire_buffer);
-                break;
-            case PIXEL_MODE_MANDELBROT:
-                pixels_generate_mandelbrot(pixels, PIXEL_SURFACE_WIDTH, PIXEL_SURFACE_HEIGHT, op_phase);
-                break;
-            case PIXEL_MODE_CELLULAR:
-                pixels_generate_cellular(pixels, PIXEL_SURFACE_WIDTH, PIXEL_SURFACE_HEIGHT, op_phase);
-                break;
-        }
-
-        if (state->pixel_texture) {
+    if (state->pixel_texture) {
+        const size_t pixel_count = (size_t)width * (size_t)height;
+        if (state->upload_path == PIXELS_UPLOAD_LOCK) {
             void *tex_pixels = NULL;
             int pitch = 0;
             if (SDL_LockTexture(state->pixel_texture, NULL, &tex_pixels, &pitch) == 0) {
                 (void)pitch;
-                const size_t pixel_count = (size_t)PIXEL_SURFACE_WIDTH * (size_t)PIXEL_SURFACE_HEIGHT;
-                bench_neon_copy_u32((uint32_t *)tex_pixels, (uint32_t *)pixels, pixel_count);
+                if (state->neon_copy_enabled) {
+                    bench_neon_copy_u32((uint32_t *)tex_pixels, (uint32_t *)pixels, pixel_count);
+                } else {
+                    memcpy(tex_pixels, pixels, pixel_count * sizeof(Pixel32));
+                }
                 SDL_UnlockTexture(state->pixel_texture);
             }
-        }
-
-        if (state->pixel_surface) {
-            memcpy(state->pixel_surface->pixels,
-                   pixels,
-                   PIXEL_SURFACE_WIDTH * PIXEL_SURFACE_HEIGHT * sizeof(Pixel32));
-        }
-
-        Uint64 end_time = SDL_GetPerformanceCounter();
-        if (metrics) {
-            double lock_time = (double)(end_time - start_time) /
-                             (double)SDL_GetPerformanceFrequency() * 1000.0;
-            metrics->lock_unlock_overhead_ms += lock_time;
-            metrics->pixel_operations++;
+        } else {
+            SDL_UpdateTexture(state->pixel_texture, NULL, pixels, width * (int)sizeof(Pixel32));
         }
     }
 
+    Uint64 upload_end = SDL_GetPerformanceCounter();
+    if (metrics) {
+        metrics->lock_unlock_overhead_ms += (double)(upload_end - draw_start) /
+                                            (double)SDL_GetPerformanceFrequency() * 1000.0;
+        metrics->pixel_operations++;
+    }
+
     if (state->pixel_texture) {
-        const float scale = 2.0f + pixels_fast_sin(state->pixel_phase * 0.5f) * 0.5f;
+        SDL_BlendMode blend = (state->blend_mode == PIXELS_BLEND_ADDITIVE)
+                              ? SDL_BLENDMODE_ADD : SDL_BLENDMODE_BLEND;
+        SDL_SetTextureBlendMode(state->pixel_texture, blend);
+
+        const float scale = 2.0f + pixels_state_sin_rad(state, state->pixel_phase * 0.5f) * 0.5f;
 
         SDL_FRect dest = {
-            bench_logical_w() * 0.5f - PIXEL_SURFACE_WIDTH * scale * 0.5f,
-            state->top_margin + region_height * 0.5f - PIXEL_SURFACE_HEIGHT * scale * 0.5f,
-            PIXEL_SURFACE_WIDTH * scale,
-            PIXEL_SURFACE_HEIGHT * scale
+            bench_logical_w() * 0.5f - (float)width * scale * 0.5f,
+            state->top_margin + region_height * 0.5f - (float)height * scale * 0.5f,
+            (float)width * scale,
+            (float)height * scale
         };
 
         SDL_RenderCopyF(renderer, state->pixel_texture, NULL, &dest);
@@ -446,6 +560,12 @@ void pixels_render_scene(PixelsBenchState *state,
             metrics->triangles_rendered += 2;
             metrics->texture_switches++;
         }
+    }
+
+    Uint64 draw_end = SDL_GetPerformanceCounter();
+    if (metrics) {
+        metrics->stage_draw_ms += (double)(draw_end - draw_start) /
+                                  (double)SDL_GetPerformanceFrequency() * 1000.0;
     }
 
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);

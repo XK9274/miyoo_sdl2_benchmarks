@@ -1,4 +1,5 @@
 #include "pixels_bench/input.h"
+#include "pixels_bench/render.h"
 
 #include <SDL2/SDL.h>
 
@@ -30,6 +31,22 @@ SDL_bool pixels_handle_input(PixelsBenchState *state, BenchMetrics *metrics, Ben
                     if (state->stress_level > 10) {
                         state->stress_level = 1;
                     }
+                    break;
+                case BTN_X:
+                    if (state->forced_mode < 0) {
+                        state->forced_mode = state->current_mode;
+                    } else {
+                        state->forced_mode = -1;
+                    }
+                    break;
+                case BTN_Y:
+                    state->neon_copy_enabled = state->neon_copy_enabled ? SDL_FALSE : SDL_TRUE;
+                    break;
+                case BTN_L1:
+                    state->blend_mode = (state->blend_mode + 1) % PIXELS_BLEND_MAX;
+                    break;
+                case BTN_R1:
+                    state->upload_path = (state->upload_path + 1) % PIXELS_UPLOAD_MAX;
                     break;
                 case BTN_METRICS_RESET:
                     bench_reset_metrics(metrics);

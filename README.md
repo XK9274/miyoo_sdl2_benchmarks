@@ -159,8 +159,11 @@ per-stage timing output the same way.
     texture alloc/free churn.
 
 - `sdl2_pixels_bench`
-  - CPU-software pixel-buffer effects (plasma, fire, mandelbrot, cellular
-    automaton) uploaded as a texture each frame.
+  - CPU-software pixel-buffer effects (plasma, mandelbrot, cellular automaton,
+    value-noise field, ordered dithering, palette/LUT expansion) uploaded as a
+    texture each frame, with buffer resolution scaling by stress level.
+    Toggles isolate mode lock, NEON copy, blend mode (alpha/additive/color-key),
+    and upload path (`SDL_LockTexture` vs `SDL_UpdateTexture`) for A/B testing.
 
 - `sdl2_gl_fbo_effects`
   - Renders 15 shader-based effects offscreen into a hidden window's FBO and

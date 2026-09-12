@@ -19,13 +19,18 @@ static const OverlayRowSpec g_pixels_rows[] = {
     {OVERLAY_ROW_FRAME_TIME, {0, 200, 255, 255}, 0, NULL},
     {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
     {OVERLAY_ROW_TEXTURE_SWITCHES, {0, 255, 160, 255}, 0, NULL},
-    {OVERLAY_ROW_TIMING_OVERHEAD, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_RESOURCE_OPS, {0, 200, 255, 255}, 0, NULL},
+    {OVERLAY_ROW_CUSTOM, {255, 180, 120, 255}, 0, "%s"},
 };
 
 static const OverlayKeybind g_pixels_keybinds[] = {
     {"SELECT", "Toggle overlay"},
     {"MENU", "Reset metrics"},
     {"B", "Adjust stress level"},
+    {"X", "Lock mode"},
+    {"Y", "Toggle NEON copy"},
+    {"L1", "Cycle blend mode"},
+    {"R1", "Toggle upload path"},
 };
 
 int main(int argc, char *argv[])
@@ -158,7 +163,14 @@ int main(int argc, char *argv[])
         char stress_label[48];
         snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f",
                  state.stress_level, pixels_state_stress_factor(&state));
-        const char *custom_values[] = {stress_label};
+        char mode_label[80];
+        snprintf(mode_label, sizeof(mode_label), "%s%s %dx%d | %s | %s",
+                 pixels_render_mode_name(state.current_mode),
+                 state.forced_mode >= 0 ? "*" : "",
+                 state.buffer_width, state.buffer_height,
+                 pixels_render_blend_name(state.blend_mode),
+                 pixels_render_upload_name(state.upload_path));
+        const char *custom_values[] = {stress_label, mode_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
         if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {
