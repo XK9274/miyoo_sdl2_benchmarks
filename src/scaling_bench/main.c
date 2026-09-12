@@ -24,6 +24,9 @@ static const OverlayKeybind g_scaling_keybinds[] = {
     {"SELECT", "Toggle overlay"},
     {"MENU", "Reset metrics"},
     {"B", "Adjust stress level"},
+    {"X", "Lock scaling mode"},
+    {"Y", "Lock content mode"},
+    {"L1", "Toggle NEON"},
 };
 
 int main(int argc, char *argv[])
@@ -161,7 +164,14 @@ int main(int argc, char *argv[])
         snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f | Res %dx%d",
                  state.stress_level, scaling_state_stress_factor(&state),
                  state.scaling_current_width, state.scaling_current_height);
-        const char *custom_values[] = {stress_label};
+        char mode_label[96];
+        snprintf(mode_label, sizeof(mode_label), "%s%s | %s%s | %s",
+                 scaling_render_mode_name(state.scaling_mode),
+                 state.forced_scaling_mode >= 0 ? "*" : "",
+                 scaling_render_content_name(state.content_mode),
+                 state.forced_content_mode >= 0 ? "*" : "",
+                 state.neon_enabled ? "NEON" : "Scalar");
+        const char *custom_values[] = {stress_label, mode_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
         if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {

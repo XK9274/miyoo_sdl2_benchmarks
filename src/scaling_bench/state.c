@@ -8,6 +8,9 @@ void scaling_state_init(ScalingBenchState *state)
     SDL_memset(state, 0, sizeof(*state));
     state->stress_level = 1;
     state->top_margin = 0.0f;
+    state->forced_content_mode = -1;
+    state->forced_scaling_mode = -1;
+    state->neon_enabled = SDL_TRUE;
     bench_sin_table_init(&state->sin_table);
 }
 
