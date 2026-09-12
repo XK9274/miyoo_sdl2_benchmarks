@@ -17,8 +17,16 @@ typedef struct {
     int scaling_current_width;
     int scaling_current_height;
     float scaling_phase;
-    SDL_Texture **scaling_targets;
-    int scaling_target_count;
+
+    void *content_buffer;
+    SDL_Texture *content_texture;
+    SDL_Texture *target_texture;
+
+    int content_mode;
+    int forced_content_mode;   /* -1 = auto-cycle, else locked mode index */
+    int scaling_mode;
+    int forced_scaling_mode;   /* -1 = auto-cycle, else locked mode index */
+    SDL_bool neon_enabled;
 } ScalingBenchState;
 
 void scaling_state_init(ScalingBenchState *state);

@@ -151,8 +151,11 @@ per-stage timing output the same way.
     NEON-optimized SoA vertex pipeline.
 
 - `sdl2_scaling_bench`
-  - Cycles render target resolutions and scaling modes -- logical, viewport, and
-    texture-target scaling.
+  - CPU-generated content (gradient, checkerboard, value-noise) scaled through
+    logical, viewport, and texture-target paths, with target resolution
+    driven continuously by stress level. Content and scaling-path cycling
+    run on independent auto-cycling axes; toggles lock each axis and switch
+    the noise generator's NEON path.
 
 - `sdl2_memory_bench`
   - Allocates and frees a pool of textures with lifetime tracking, exercising
