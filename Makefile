@@ -9,7 +9,13 @@ OBJ_DIR       := $(BUILD_DIR)/obj
 PROGRAMS      := sdl2_title \
                  sdl2_bench_double_buf \
                  sdl2_space_bench \
-                 sdl2_render_suite \
+                 sdl2_fill_bench \
+                 sdl2_texture_bench \
+                 sdl2_lines_bench \
+                 sdl2_geometry_bench \
+                 sdl2_scaling_bench \
+                 sdl2_memory_bench \
+                 sdl2_pixels_bench \
                  sdl2_gl_fbo_effects \
                  sdl2_audio_bench \
                  sdl2_sprite_bench \
@@ -22,6 +28,7 @@ TARGETS       := $(addprefix $(BIN_DIR)/,$(PROGRAMS))
 COMMON_SOURCES := \
     $(SRC_DIR)/common/asset_path.c \
     $(SRC_DIR)/common/backend_probe.c \
+    $(SRC_DIR)/common/bench_stress.c \
     $(SRC_DIR)/common/format.c \
     $(SRC_DIR)/common/geometry/core.c \
     $(SRC_DIR)/common/geometry/shapes.c \
@@ -109,19 +116,61 @@ DOUBLE_SOURCES := \
 DOUBLE_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(DOUBLE_SOURCES))
 DOUBLE_TARGET  := $(BIN_DIR)/sdl2_bench_double_buf
 
-RENDER_SOURCES := \
-    $(SRC_DIR)/render_suite/input.c \
-    $(SRC_DIR)/render_suite/main.c \
-    $(SRC_DIR)/render_suite/state.c \
-    $(SRC_DIR)/render_suite/scenes/fill.c \
-    $(SRC_DIR)/render_suite/scenes/lines.c \
-    $(SRC_DIR)/render_suite/scenes/texture.c \
-    $(SRC_DIR)/render_suite/scenes/geometry.c \
-    $(SRC_DIR)/render_suite/scenes/scaling.c \
-    $(SRC_DIR)/render_suite/scenes/memory.c \
-    $(SRC_DIR)/render_suite/scenes/pixels.c
-RENDER_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(RENDER_SOURCES))
-RENDER_TARGET  := $(BIN_DIR)/sdl2_render_suite
+FILL_BENCH_SOURCES := \
+    $(SRC_DIR)/fill_bench/input.c \
+    $(SRC_DIR)/fill_bench/main.c \
+    $(SRC_DIR)/fill_bench/render.c \
+    $(SRC_DIR)/fill_bench/state.c
+FILL_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(FILL_BENCH_SOURCES))
+FILL_BENCH_TARGET  := $(BIN_DIR)/sdl2_fill_bench
+
+TEXTURE_BENCH_SOURCES := \
+    $(SRC_DIR)/texture_bench/input.c \
+    $(SRC_DIR)/texture_bench/main.c \
+    $(SRC_DIR)/texture_bench/render.c \
+    $(SRC_DIR)/texture_bench/state.c
+TEXTURE_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(TEXTURE_BENCH_SOURCES))
+TEXTURE_BENCH_TARGET  := $(BIN_DIR)/sdl2_texture_bench
+
+LINES_BENCH_SOURCES := \
+    $(SRC_DIR)/lines_bench/input.c \
+    $(SRC_DIR)/lines_bench/main.c \
+    $(SRC_DIR)/lines_bench/render.c \
+    $(SRC_DIR)/lines_bench/state.c
+LINES_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(LINES_BENCH_SOURCES))
+LINES_BENCH_TARGET  := $(BIN_DIR)/sdl2_lines_bench
+
+GEOMETRY_BENCH_SOURCES := \
+    $(SRC_DIR)/geometry_bench/input.c \
+    $(SRC_DIR)/geometry_bench/main.c \
+    $(SRC_DIR)/geometry_bench/render.c \
+    $(SRC_DIR)/geometry_bench/state.c
+GEOMETRY_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(GEOMETRY_BENCH_SOURCES))
+GEOMETRY_BENCH_TARGET  := $(BIN_DIR)/sdl2_geometry_bench
+
+SCALING_BENCH_SOURCES := \
+    $(SRC_DIR)/scaling_bench/input.c \
+    $(SRC_DIR)/scaling_bench/main.c \
+    $(SRC_DIR)/scaling_bench/render.c \
+    $(SRC_DIR)/scaling_bench/state.c
+SCALING_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SCALING_BENCH_SOURCES))
+SCALING_BENCH_TARGET  := $(BIN_DIR)/sdl2_scaling_bench
+
+MEMORY_BENCH_SOURCES := \
+    $(SRC_DIR)/memory_bench/input.c \
+    $(SRC_DIR)/memory_bench/main.c \
+    $(SRC_DIR)/memory_bench/render.c \
+    $(SRC_DIR)/memory_bench/state.c
+MEMORY_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(MEMORY_BENCH_SOURCES))
+MEMORY_BENCH_TARGET  := $(BIN_DIR)/sdl2_memory_bench
+
+PIXELS_BENCH_SOURCES := \
+    $(SRC_DIR)/pixels_bench/input.c \
+    $(SRC_DIR)/pixels_bench/main.c \
+    $(SRC_DIR)/pixels_bench/render.c \
+    $(SRC_DIR)/pixels_bench/state.c
+PIXELS_BENCH_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(PIXELS_BENCH_SOURCES))
+PIXELS_BENCH_TARGET  := $(BIN_DIR)/sdl2_pixels_bench
 
 GL_FBO_EFFECTS_SOURCES := \
     $(SRC_DIR)/gl_fbo_effects/input.c \
@@ -175,7 +224,13 @@ ALL_OBJECTS   := $(COMMON_OBJECTS) \
                  $(TITLE_OBJECTS) \
                  $(SPACE_OBJECTS) \
                  $(DOUBLE_OBJECTS) \
-                 $(RENDER_OBJECTS) \
+                 $(FILL_BENCH_OBJECTS) \
+                 $(TEXTURE_BENCH_OBJECTS) \
+                 $(LINES_BENCH_OBJECTS) \
+                 $(GEOMETRY_BENCH_OBJECTS) \
+                 $(SCALING_BENCH_OBJECTS) \
+                 $(MEMORY_BENCH_OBJECTS) \
+                 $(PIXELS_BENCH_OBJECTS) \
                  $(GL_FBO_EFFECTS_OBJECTS) \
                  $(AUDIO_OBJECTS) \
                  $(SPRITE_BENCH_OBJECTS) \
@@ -245,15 +300,37 @@ $(DOUBLE_TARGET): $(COMMON_OBJECTS) $(DOUBLE_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(DOUBLE_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
-$(RENDER_TARGET): $(COMMON_OBJECTS) $(RENDER_OBJECTS) | $(BIN_DIR)
-	$(CC) $(COMMON_OBJECTS) $(RENDER_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+$(FILL_BENCH_TARGET): $(COMMON_OBJECTS) $(FILL_BENCH_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(FILL_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(TEXTURE_BENCH_TARGET): $(COMMON_OBJECTS) $(TEXTURE_BENCH_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(TEXTURE_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(LINES_BENCH_TARGET): $(COMMON_OBJECTS) $(LINES_BENCH_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(LINES_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(GEOMETRY_BENCH_TARGET): $(COMMON_OBJECTS) $(GEOMETRY_BENCH_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(GEOMETRY_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(SCALING_BENCH_TARGET): $(COMMON_OBJECTS) $(SCALING_BENCH_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(SCALING_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(MEMORY_BENCH_TARGET): $(COMMON_OBJECTS) $(MEMORY_BENCH_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(MEMORY_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
+	@echo "Built $@ successfully"
+
+$(PIXELS_BENCH_TARGET): $(COMMON_OBJECTS) $(PIXELS_BENCH_OBJECTS) | $(BIN_DIR)
+	$(CC) $(COMMON_OBJECTS) $(PIXELS_BENCH_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
 
 $(GL_FBO_EFFECTS_TARGET): $(COMMON_OBJECTS) $(GL_FBO_EFFECTS_OBJECTS) | $(BIN_DIR)
 	$(CC) $(COMMON_OBJECTS) $(GL_FBO_EFFECTS_OBJECTS) $(LDFLAGS) $(LDLIBS) -o $@
 	@echo "Built $@ successfully"
-
-sdl2_render_suite: $(RENDER_TARGET)
 
 sdl2_gl_fbo_effects: $(GL_FBO_EFFECTS_TARGET)
 $(AUDIO_TARGET): $(COMMON_OBJECTS) $(AUDIO_OBJECTS) | $(BIN_DIR)

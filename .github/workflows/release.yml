@@ -134,7 +134,9 @@ jobs:
         run: |
           ls -la app-dist/sdl_bench/bin/
           file app-dist/sdl_bench/bin/*
-          test "$(find app-dist/sdl_bench/bin -maxdepth 1 -type f | wc -l)" -eq 9
+          expected="$(make print-config | awk -F'= ' '/^PROGRAMS/{print $2}' | wc -w)"
+          actual="$(find app-dist/sdl_bench/bin -maxdepth 1 -type f | wc -l)"
+          test "$actual" -eq "$expected"
           strings app-dist/sdl_bench/bin/sdl2_title | grep -F -- "${{ needs.preflight.outputs.tag }}"
 
       - name: Package release archive
