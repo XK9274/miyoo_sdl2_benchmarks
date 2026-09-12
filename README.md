@@ -1,3 +1,5 @@
+
+
 # Miyoo SDL2/OpenGL Benchmarks
 
 SDL2 benchmark programs for the Miyoo Mini. The project is used to exercise
@@ -105,7 +107,7 @@ app-dist/sdl_bench/ -> /mnt/SDCARD/App/sdl_bench/
 ```
 
 Then restart MainUI or reboot the device. The app appears under Apps as
-`SDL Benchmark`.
+`Miyoo SDL2 Test Launcher`.
 
 When launched normally, `app-dist/sdl_bench/launch.sh` starts `sdl2_title`,
 the themed launcher/title screen, from which you pick and configure a suite
