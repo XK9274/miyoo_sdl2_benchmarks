@@ -1,4 +1,5 @@
 #include "scaling_bench/input.h"
+#include "scaling_bench/render.h"
 
 #include <SDL2/SDL.h>
 
@@ -30,6 +31,23 @@ SDL_bool scaling_handle_input(ScalingBenchState *state, BenchMetrics *metrics, B
                     if (state->stress_level > 10) {
                         state->stress_level = 1;
                     }
+                    break;
+                case BTN_X:
+                    if (state->forced_scaling_mode < 0) {
+                        state->forced_scaling_mode = state->scaling_mode;
+                    } else {
+                        state->forced_scaling_mode = -1;
+                    }
+                    break;
+                case BTN_Y:
+                    if (state->forced_content_mode < 0) {
+                        state->forced_content_mode = state->content_mode;
+                    } else {
+                        state->forced_content_mode = -1;
+                    }
+                    break;
+                case BTN_L1:
+                    state->neon_enabled = state->neon_enabled ? SDL_FALSE : SDL_TRUE;
                     break;
                 case BTN_METRICS_RESET:
                     bench_reset_metrics(metrics);
