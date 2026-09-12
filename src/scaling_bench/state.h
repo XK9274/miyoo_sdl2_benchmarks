@@ -17,6 +17,7 @@ typedef struct {
     int scaling_current_width;
     int scaling_current_height;
     float scaling_phase;
+    float mode_phase_seconds;
 
     void *content_buffer;
     SDL_Texture *content_texture;

@@ -376,6 +376,7 @@ void scaling_render_scene(ScalingBenchState *state,
     const float center_y = (float)state->top_margin + (float)region_height * 0.5f;
 
     state->scaling_phase += (float)(delta_seconds * (1.0f + factor));
+    state->mode_phase_seconds += (float)delta_seconds;
 
     const float t = scaling_clampf((factor - 0.5f) / 6.5f, 0.0f, 1.0f);
     const int target_width = SCALING_MIN_W + (int)(t * (float)(bench_logical_w() - SCALING_MIN_W));
@@ -391,13 +392,12 @@ void scaling_render_scene(ScalingBenchState *state,
         return;
     }
 
-    const int content_mode_duration = 300;
-    const int auto_content_mode = ((int)(state->scaling_phase * 60.0f) / content_mode_duration) % SCALING_CONTENT_MAX;
+    const float mode_cycle_seconds = 3.0f;
+    const int auto_content_mode = (int)(state->mode_phase_seconds / mode_cycle_seconds) % SCALING_CONTENT_MAX;
     const int current_content_mode = (state->forced_content_mode >= 0) ? state->forced_content_mode : auto_content_mode;
     state->content_mode = current_content_mode;
 
-    const int scaling_mode_duration = 240;
-    const int auto_scaling_mode = ((int)(state->scaling_phase * 60.0f) / scaling_mode_duration) % SCALING_MODE_MAX;
+    const int auto_scaling_mode = (int)((state->mode_phase_seconds + mode_cycle_seconds * 0.5f) / mode_cycle_seconds) % SCALING_MODE_MAX;
     const int current_scaling_mode = (state->forced_scaling_mode >= 0) ? state->forced_scaling_mode : auto_scaling_mode;
     state->scaling_mode = current_scaling_mode;
 
