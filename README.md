@@ -138,7 +138,12 @@ per-stage timing output the same way.
     in-app for isolated measurement.
 
 - `sdl2_fill_bench`
-  - Stress-scaled full/partial screen colored-rect fills measuring raw pixel fill throughput.
+  - Stress-scaled colored-rect fills across 4 layout patterns (column bands,
+    row bands, checkerboard blocks, concentric rings) measuring raw pixel
+    fill throughput. Pattern and draw mechanism (per-rect `SDL_RenderFillRect`
+    calls vs. one batched `SDL_RenderFillRects` call) cycle on independent
+    auto-cycling axes; toggles lock each axis and switch alpha-blended vs.
+    opaque fills.
 
 - `sdl2_texture_bench`
   - Rotating/pulsing scaled texture blits measuring texture sampling and blit cost.

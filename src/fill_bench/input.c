@@ -1,4 +1,5 @@
 #include "fill_bench/input.h"
+#include "fill_bench/render.h"
 
 #include <SDL2/SDL.h>
 
@@ -30,6 +31,17 @@ SDL_bool fill_handle_input(FillBenchState *state, BenchMetrics *metrics, BenchOv
                     if (state->stress_level > 10) {
                         state->stress_level = 1;
                     }
+                    break;
+                case BTN_X:
+                    state->forced_pattern_mode = (state->forced_pattern_mode < 0)
+                        ? state->current_pattern_mode : -1;
+                    break;
+                case BTN_Y:
+                    state->forced_draw_mode = (state->forced_draw_mode < 0)
+                        ? state->current_draw_mode : -1;
+                    break;
+                case BTN_L1:
+                    state->blend_enabled = state->blend_enabled ? SDL_FALSE : SDL_TRUE;
                     break;
                 case BTN_METRICS_RESET:
                     bench_reset_metrics(metrics);

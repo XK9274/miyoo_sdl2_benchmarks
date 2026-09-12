@@ -18,12 +18,16 @@ static const OverlayRowSpec g_fill_rows[] = {
     {OVERLAY_ROW_DRAW_CALLS, {0, 255, 160, 255}, 0, NULL},
     {OVERLAY_ROW_VERTICES, {0, 255, 160, 255}, 0, NULL},
     {OVERLAY_ROW_TRIANGLES, {0, 255, 160, 255}, 0, NULL},
+    {OVERLAY_ROW_CUSTOM, {255, 180, 120, 255}, 0, "%s"},
 };
 
 static const OverlayKeybind g_fill_keybinds[] = {
     {"SELECT", "Toggle overlay"},
     {"MENU", "Reset metrics"},
     {"B", "Adjust stress level"},
+    {"X", "Lock pattern"},
+    {"Y", "Lock draw mode"},
+    {"L1", "Toggle blend"},
 };
 
 int main(int argc, char *argv[])
@@ -151,7 +155,14 @@ int main(int argc, char *argv[])
         char stress_label[48];
         snprintf(stress_label, sizeof(stress_label), "Stress L%d x%.1f",
                  state.stress_level, fill_state_stress_factor(&state));
-        const char *custom_values[] = {stress_label};
+        char mode_label[80];
+        snprintf(mode_label, sizeof(mode_label), "%s%s | %s%s | %s",
+                 fill_render_pattern_name(state.current_pattern_mode),
+                 state.forced_pattern_mode >= 0 ? "*" : "",
+                 fill_render_draw_name(state.current_draw_mode),
+                 state.forced_draw_mode >= 0 ? "*" : "",
+                 state.blend_enabled ? "Blend" : "Opaque");
+        const char *custom_values[] = {stress_label, mode_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
         if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {

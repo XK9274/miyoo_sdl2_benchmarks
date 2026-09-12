@@ -10,6 +10,9 @@ void fill_state_init(FillBenchState *state)
     state->top_margin = 0.0f;
     bench_sin_table_init(&state->sin_table);
     state->fill_phase_units = 0.0f;
+    state->forced_pattern_mode = -1;
+    state->forced_draw_mode = -1;
+    state->blend_enabled = SDL_FALSE;
 }
 
 void fill_state_update_layout(FillBenchState *state, BenchOverlay *overlay)

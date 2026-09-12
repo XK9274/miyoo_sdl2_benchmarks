@@ -15,6 +15,13 @@ typedef struct {
     BenchSinTable sin_table;
 
     float fill_phase_units;
+    float mode_phase_seconds;
+
+    int forced_pattern_mode;  /* -1 = auto-cycle, else locked mode index */
+    int current_pattern_mode;
+    int forced_draw_mode;     /* -1 = auto-cycle, else locked mode index */
+    int current_draw_mode;
+    SDL_bool blend_enabled;
 } FillBenchState;
 
 void fill_state_init(FillBenchState *state);
