@@ -168,6 +168,12 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
@@ -182,6 +188,16 @@ jobs:
           TAG="${{ needs.preflight.outputs.tag }}"
           TARGET_SHA="${{ needs.preflight.outputs.target_sha }}"
           PRERELEASE="${{ needs.preflight.outputs.prerelease }}"
+
+          PREV_TAG="$(git tag --list 'v*' --sort=-v:refname | grep -vx "$TAG" | head -1)"
+          RANGE="$TARGET_SHA"
+          [[ -n "$PREV_TAG" ]] && RANGE="$PREV_TAG..$TARGET_SHA"
+          COMMIT_LIST="$(git log "$RANGE" --oneline --no-merges --reverse)"
+          if [[ -z "$COMMIT_LIST" ]]; then
+            CHANGELOG="No new commits — this tag points to the same commit as the previous release."
+          else
+            CHANGELOG="$(echo "$COMMIT_LIST" | sed -E 's/^([0-9a-f]+) (.*)$/- `\1` \2/')"
+          fi
 
           RELEASE_FLAGS=()
           if [[ "$PRERELEASE" == "true" ]]; then
@@ -207,6 +223,10 @@ jobs:
 
           ### Install
           Extract to \`/mnt/SDCARD/App/sdl_bench\` on the device, then restart MainUI.
+
+          ### What changed
+
+          $CHANGELOG
 
           ### Build info
           - Commit: $TARGET_SHA
