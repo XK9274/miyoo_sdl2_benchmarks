@@ -32,6 +32,7 @@ typedef struct {
     SDL_Texture *pixel_texture;
     void *pixel_buffer;
     float pixel_phase;
+    float mode_phase_seconds;
 
     Uint8 *cellular_cells;
     Uint8 *cellular_new_cells;

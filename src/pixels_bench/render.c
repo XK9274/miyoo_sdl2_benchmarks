@@ -469,9 +469,10 @@ void pixels_render_scene(PixelsBenchState *state,
     const int height = state->buffer_height;
 
     state->pixel_phase += (float)(delta_seconds * (1.0f + factor));
+    state->mode_phase_seconds += (float)delta_seconds;
 
-    const int mode_duration = 300;
-    const int auto_mode = ((int)(state->pixel_phase * 60.0f) / mode_duration) % PIXEL_MODE_MAX;
+    const float mode_cycle_seconds = 3.0f;
+    const int auto_mode = (int)(state->mode_phase_seconds / mode_cycle_seconds) % PIXEL_MODE_MAX;
     const int current_mode = (state->forced_mode >= 0) ? state->forced_mode : auto_mode;
     state->current_mode = current_mode;
 
