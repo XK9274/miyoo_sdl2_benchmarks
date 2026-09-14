@@ -38,10 +38,24 @@ typedef struct {
     SDL_bool exec_failed;
 } TitleLaunchResult;
 
+typedef struct {
+    const char *tag;
+    int duration_s;
+    const char *output_path;
+} TitleProfileLaunchParams;
+
 /* Bridges shared SDL context config and the entry's test selector to the launched suite. */
 SDL_bool title_launch_suite(const TitleState *state,
                             const TitleSuiteEntry *entry,
                             TitleContext *ctx,
                             TitleLaunchResult *out_result);
+
+/* Bridges shared SDL context config and the entry's test selector to the launched suite,
+ * plus the BENCH_PROFILE_* env vars when profile is non-NULL. */
+SDL_bool title_launch_suite_ex(const TitleState *state,
+                               const TitleSuiteEntry *entry,
+                               TitleContext *ctx,
+                               const TitleProfileLaunchParams *profile,
+                               TitleLaunchResult *out_result);
 
 #endif /* TITLE_LAUNCHER_H */

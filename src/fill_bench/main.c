@@ -87,9 +87,8 @@ int main(int argc, char *argv[])
     FillBenchState state;
     fill_state_init(&state);
 
-    const char *bench_duration_str = SDL_getenv("FILL_BENCH_DURATION_S");
-    const double bench_duration_s = bench_duration_str ? SDL_atof(bench_duration_str) : 0.0;
-    const char *bench_tag = SDL_getenv("FILL_BENCH_TAG");
+    BenchProfileCapture profile;
+    bench_profile_load(&profile);
 
     if (loading_active) {
         bench_loading_step(&loading, 0.4f, "Loading fonts");
@@ -122,8 +121,6 @@ int main(int argc, char *argv[])
     }
 
     printf("SDL2 Fill Rate Bench initialised\n");
-
-    double next_bench_log_ms = 0.0;
 
     SDL_bool running = SDL_TRUE;
     while (running) {
@@ -165,21 +162,12 @@ int main(int argc, char *argv[])
         const char *custom_values[] = {stress_label, mode_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
-        if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {
-            printf("[BENCH] tag=%s elapsed_s=%.1f frame=%llu fps=%.2f avg_fps=%.2f "
-                   "min_fps=%.2f max_fps=%.2f frame_ms=%.3f\n",
-                   bench_tag, metrics.accumulated_frame_time_ms / 1000.0,
-                   (unsigned long long)metrics.frame_count, metrics.current_fps, metrics.avg_fps,
-                   metrics.min_fps, metrics.max_fps, metrics.frame_time_ms);
-            fflush(stdout);
-            next_bench_log_ms = metrics.accumulated_frame_time_ms + 2000.0;
-        }
-
-        if (bench_duration_s > 0.0 && metrics.accumulated_frame_time_ms >= bench_duration_s * 1000.0) {
+        if (bench_profile_update(&profile, &metrics)) {
             running = SDL_FALSE;
         }
     }
 
+    bench_profile_shutdown(&profile);
     bench_driver_shutdown();
     fill_state_destroy(&state, renderer);
     bench_overlay_destroy(overlay);

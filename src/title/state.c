@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "title/config_panel.h"
+#include "title/profile_run.h"
 
 void title_state_init(TitleState *state)
 {
@@ -157,6 +158,7 @@ void title_state_init(TitleState *state)
     state->focus = TITLE_FOCUS_LIST;
     state->config_row = 0;
     state->mode = TITLE_MODE_MENU;
+    state->profile_duration_s = TITLE_PROFILE_DURATION_DEFAULT_S;
 }
 
 void title_state_move_selection(TitleState *state, int delta)
@@ -333,6 +335,108 @@ void title_state_open_info_modal(TitleState *state)
 }
 
 void title_state_close_info_modal(TitleState *state)
+{
+    if (!state) {
+        return;
+    }
+    state->mode = TITLE_MODE_MENU;
+}
+
+void title_state_profile_select_open(TitleState *state)
+{
+    if (!state) {
+        return;
+    }
+
+    TitleProfileQueueItem flat[TITLE_PROFILE_MAX_QUEUE];
+    const int count = title_profile_flatten_entries(state, flat, TITLE_PROFILE_MAX_QUEUE);
+    for (int i = 0; i < count; i++) {
+        state->profile_selected[flat[i].category][flat[i].entry] = SDL_TRUE;
+    }
+    state->profile_cursor = 0;
+    state->mode = TITLE_MODE_PROFILE_SELECT;
+}
+
+void title_state_profile_select_move(TitleState *state, int delta)
+{
+    if (!state || delta == 0) {
+        return;
+    }
+    const int count = title_profile_flatten_entries(state, NULL, 0);
+    if (count == 0) {
+        return;
+    }
+    int next = (state->profile_cursor + delta) % count;
+    if (next < 0) {
+        next += count;
+    }
+    state->profile_cursor = next;
+}
+
+void title_state_profile_select_toggle(TitleState *state)
+{
+    if (!state) {
+        return;
+    }
+    TitleProfileQueueItem flat[TITLE_PROFILE_MAX_QUEUE];
+    const int count = title_profile_flatten_entries(state, flat, TITLE_PROFILE_MAX_QUEUE);
+    if (state->profile_cursor < 0 || state->profile_cursor >= count) {
+        return;
+    }
+    const TitleProfileQueueItem *item = &flat[state->profile_cursor];
+    state->profile_selected[item->category][item->entry] = !state->profile_selected[item->category][item->entry];
+}
+
+void title_state_profile_select_toggle_all(TitleState *state)
+{
+    if (!state) {
+        return;
+    }
+    TitleProfileQueueItem flat[TITLE_PROFILE_MAX_QUEUE];
+    const int count = title_profile_flatten_entries(state, flat, TITLE_PROFILE_MAX_QUEUE);
+
+    SDL_bool any_unselected = SDL_FALSE;
+    for (int i = 0; i < count; i++) {
+        if (!state->profile_selected[flat[i].category][flat[i].entry]) {
+            any_unselected = SDL_TRUE;
+            break;
+        }
+    }
+    for (int i = 0; i < count; i++) {
+        state->profile_selected[flat[i].category][flat[i].entry] = any_unselected;
+    }
+}
+
+void title_state_profile_select_adjust_duration(TitleState *state, int delta)
+{
+    if (!state || delta == 0) {
+        return;
+    }
+    int next = state->profile_duration_s + delta;
+    if (next < TITLE_PROFILE_DURATION_MIN_S) {
+        next = TITLE_PROFILE_DURATION_MIN_S;
+    } else if (next > TITLE_PROFILE_DURATION_MAX_S) {
+        next = TITLE_PROFILE_DURATION_MAX_S;
+    }
+    state->profile_duration_s = next;
+}
+
+SDL_bool title_state_profile_has_selection(const TitleState *state)
+{
+    if (!state) {
+        return SDL_FALSE;
+    }
+    TitleProfileQueueItem flat[TITLE_PROFILE_MAX_QUEUE];
+    const int count = title_profile_flatten_entries(state, flat, TITLE_PROFILE_MAX_QUEUE);
+    for (int i = 0; i < count; i++) {
+        if (state->profile_selected[flat[i].category][flat[i].entry]) {
+            return SDL_TRUE;
+        }
+    }
+    return SDL_FALSE;
+}
+
+void title_state_profile_select_cancel(TitleState *state)
 {
     if (!state) {
         return;

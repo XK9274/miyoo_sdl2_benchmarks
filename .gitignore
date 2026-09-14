@@ -26,6 +26,12 @@ Thumbs.db
 
 app-dist/sdl_bench/bin/
 app-dist/sdl_bench/lib/
+app-dist/sdl_bench/logs/
+
+# Profiler runs pulled from the device
+tools/profiler/runs/
+__pycache__/
+*.pyc
 
 # Release artifacts
 *.tar.gz

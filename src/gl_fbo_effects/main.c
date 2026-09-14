@@ -175,6 +175,9 @@ int main(int argc, char *argv[])
     Uint64 counter = SDL_GetPerformanceCounter();
     const Uint64 freq = SDL_GetPerformanceFrequency();
 
+    BenchProfileCapture profile;
+    bench_profile_load(&profile);
+
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
@@ -225,8 +228,13 @@ int main(int argc, char *argv[])
         snprintf(timer_label, sizeof(timer_label), "FBO %s | Timer %.2fs", fbo_label, state.elapsed_time);
         const char *custom_values[] = {effect_label, timer_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
+
+        if (bench_profile_update(&profile, &metrics)) {
+            running = SDL_FALSE;
+        }
     }
 
+    bench_profile_shutdown(&profile);
     bench_driver_shutdown();
     rsgl_effects_cleanup(&state);
     rsgl_state_destroy(&state);

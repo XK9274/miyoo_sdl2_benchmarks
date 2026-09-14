@@ -34,6 +34,7 @@ typedef enum {
     TITLE_CONFIG_VSYNC,
     TITLE_CONFIG_FRAME_LIMIT,
     TITLE_CONFIG_INPUT_MODE,
+    TITLE_CONFIG_START_BENCHMARK,
     TITLE_CONFIG_COUNT
 } TitleConfigRow;
 
@@ -45,8 +46,20 @@ typedef enum {
 typedef enum {
     TITLE_MODE_MENU = 0,
     TITLE_MODE_CHILD_ERROR,
-    TITLE_MODE_INFO_MODAL
+    TITLE_MODE_INFO_MODAL,
+    TITLE_MODE_PROFILE_SELECT,
+    TITLE_MODE_PROFILE_RUNNING
 } TitleMode;
+
+#define TITLE_PROFILE_DURATION_MIN_S 2
+#define TITLE_PROFILE_DURATION_MAX_S 10
+#define TITLE_PROFILE_DURATION_DEFAULT_S 5
+#define TITLE_PROFILE_MAX_QUEUE (TITLE_CATEGORY_COUNT * TITLE_MAX_ENTRIES_PER_CATEGORY)
+
+typedef struct {
+    int category;
+    int entry;
+} TitleProfileQueueItem;
 
 typedef struct {
     TitleCategory categories[TITLE_CATEGORY_COUNT];
@@ -66,6 +79,14 @@ typedef struct {
     char error_message[160];
     int info_modal_category;
     int info_modal_entry;
+
+    SDL_bool profile_selected[TITLE_CATEGORY_COUNT][TITLE_MAX_ENTRIES_PER_CATEGORY];
+    int profile_cursor;
+    int profile_duration_s;
+    char profile_run_id[32];
+    TitleProfileQueueItem profile_queue[TITLE_PROFILE_MAX_QUEUE];
+    int profile_queue_count;
+    int profile_queue_index;
 } TitleState;
 
 void title_state_init(TitleState *state);
@@ -98,5 +119,24 @@ void title_state_clear_error(TitleState *state);
 void title_state_open_info_modal(TitleState *state);
 
 void title_state_close_info_modal(TitleState *state);
+
+/* Opens the profiler selection screen: every eligible entry pre-selected, duration at default. */
+void title_state_profile_select_open(TitleState *state);
+
+/* Moves the selection cursor among eligible (non-excluded) entries (delta: -1 or +1). */
+void title_state_profile_select_move(TitleState *state, int delta);
+
+/* Toggles the cursor row's inclusion in the run. */
+void title_state_profile_select_toggle(TitleState *state);
+
+/* Selects every eligible entry if any are currently unselected, else deselects all. */
+void title_state_profile_select_toggle_all(TitleState *state);
+
+void title_state_profile_select_adjust_duration(TitleState *state, int delta);
+
+/* True if at least one eligible entry is currently selected. */
+SDL_bool title_state_profile_has_selection(const TitleState *state);
+
+void title_state_profile_select_cancel(TitleState *state);
 
 #endif /* TITLE_STATE_H */

@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 
+#include "bench_common.h"
 #include "space_bench/gl_effects.h"
 #include "space_bench/input.h"
 #include "space_bench/render.h"
@@ -128,6 +129,9 @@ int main(int argc, char *argv[])
 
     printf("SDL2 space bench started\n");
 
+    BenchProfileCapture profile;
+    bench_profile_load(&profile);
+
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
@@ -164,8 +168,13 @@ int main(int argc, char *argv[])
                  state.weapon_upgrades.split_level, guidance, state.weapon_upgrades.drone_count, thumper);
         const char *custom_values[] = {status_line, upgrades_line};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
+
+        if (bench_profile_update(&profile, &metrics)) {
+            running = SDL_FALSE;
+        }
     }
 
+    bench_profile_shutdown(&profile);
     bench_driver_shutdown();
     bench_overlay_destroy(overlay);
     space_gl_effects_shutdown();

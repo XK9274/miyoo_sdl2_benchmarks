@@ -90,9 +90,8 @@ int main(int argc, char *argv[])
     MemoryBenchState state;
     memory_state_init(&state);
 
-    const char *bench_duration_str = SDL_getenv("MEMORY_BENCH_DURATION_S");
-    const double bench_duration_s = bench_duration_str ? SDL_atof(bench_duration_str) : 0.0;
-    const char *bench_tag = SDL_getenv("MEMORY_BENCH_TAG");
+    BenchProfileCapture profile;
+    bench_profile_load(&profile);
 
     if (loading_active) {
         bench_loading_step(&loading, 0.4f, "Loading fonts");
@@ -129,8 +128,6 @@ int main(int argc, char *argv[])
     }
 
     printf("SDL2 Memory Management Bench initialised\n");
-
-    double next_bench_log_ms = 0.0;
 
     SDL_bool running = SDL_TRUE;
     while (running) {
@@ -173,25 +170,12 @@ int main(int argc, char *argv[])
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         bench_frame_limit_wait(frame_start_counter);
 
-        if (bench_tag && metrics.accumulated_frame_time_ms >= next_bench_log_ms) {
-            printf("[BENCH] tag=%s elapsed_s=%.1f frame=%llu fps=%.2f avg_fps=%.2f "
-                   "min_fps=%.2f max_fps=%.2f frame_ms=%.3f alloc_ms=%.3f lock_ms=%.3f "
-                   "mem_bytes=%llu mem_peak=%llu\n",
-                   bench_tag, metrics.accumulated_frame_time_ms / 1000.0,
-                   (unsigned long long)metrics.frame_count, metrics.current_fps, metrics.avg_fps,
-                   metrics.min_fps, metrics.max_fps, metrics.frame_time_ms,
-                   metrics.allocation_time_ms, metrics.lock_unlock_overhead_ms,
-                   (unsigned long long)metrics.memory_allocated_bytes,
-                   (unsigned long long)metrics.memory_peak_bytes);
-            fflush(stdout);
-            next_bench_log_ms = metrics.accumulated_frame_time_ms + 2000.0;
-        }
-
-        if (bench_duration_s > 0.0 && metrics.accumulated_frame_time_ms >= bench_duration_s * 1000.0) {
+        if (bench_profile_update(&profile, &metrics)) {
             running = SDL_FALSE;
         }
     }
 
+    bench_profile_shutdown(&profile);
     bench_driver_shutdown();
     memory_render_cleanup(&state);
     memory_state_destroy(&state, renderer);

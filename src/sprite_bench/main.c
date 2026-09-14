@@ -103,6 +103,9 @@ int main(int argc, char *argv[])
 
     printf("SDL2 Sprite Bench initialised (no vsync)\n");
 
+    BenchProfileCapture profile;
+    bench_profile_load(&profile);
+
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
@@ -140,8 +143,13 @@ int main(int argc, char *argv[])
                  state.direction > 0 ? "+" : "-", state.static_mode ? "Static" : "Dynamic");
         const char *custom_values[] = {hint_line};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
+
+        if (bench_profile_update(&profile, &metrics)) {
+            running = SDL_FALSE;
+        }
     }
 
+    bench_profile_shutdown(&profile);
     bench_driver_shutdown();
     bench_overlay_destroy(overlay);
     sprite_state_destroy(&state);

@@ -75,6 +75,44 @@ TitleAction title_handle_input(TitleState *state)
             title_state_close_info_modal(state);
             continue;
         }
+        if (state->mode == TITLE_MODE_PROFILE_RUNNING) {
+            /* The runner drives itself to completion; input is swallowed while it runs. */
+            continue;
+        }
+        if (state->mode == TITLE_MODE_PROFILE_SELECT) {
+            switch (sym) {
+                case BTN_EXIT:
+                case BTN_B:
+                    title_state_profile_select_cancel(state);
+                    break;
+                case BTN_UP:
+                    title_state_profile_select_move(state, -1);
+                    break;
+                case BTN_DOWN:
+                    title_state_profile_select_move(state, 1);
+                    break;
+                case BTN_A:
+                    title_state_profile_select_toggle(state);
+                    break;
+                case BTN_X:
+                    title_state_profile_select_toggle_all(state);
+                    break;
+                case BTN_L2:
+                    title_state_profile_select_adjust_duration(state, -1);
+                    break;
+                case BTN_R2:
+                    title_state_profile_select_adjust_duration(state, 1);
+                    break;
+                case BTN_START:
+                    if (title_state_profile_has_selection(state)) {
+                        action = TITLE_ACTION_PROFILE_START;
+                    }
+                    break;
+                default:
+                    break;
+            }
+            continue;
+        }
 
         switch (sym) {
             case BTN_EXIT:
@@ -112,7 +150,9 @@ TitleAction title_handle_input(TitleState *state)
                 break;
             case BTN_A:
             case BTN_START:
-                if (state->focus == TITLE_FOCUS_CONFIG) {
+                if (state->focus == TITLE_FOCUS_CONFIG && state->config_row == TITLE_CONFIG_START_BENCHMARK) {
+                    action = TITLE_ACTION_PROFILE_SELECT;
+                } else if (state->focus == TITLE_FOCUS_CONFIG) {
                     title_state_toggle_edit(state);
                 } else {
                     action = TITLE_ACTION_LAUNCH;

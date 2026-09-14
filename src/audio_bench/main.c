@@ -180,6 +180,9 @@ int main(int argc, char *argv[])
     }
     printf("SDL2 audio bench started\n");
 
+    BenchProfileCapture profile;
+    bench_profile_load(&profile);
+
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
@@ -314,11 +317,16 @@ int main(int argc, char *argv[])
             driver_label, format_line, callback_line, time_line, cursor_line, volume_line, mode_line,
         };
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
+
+        if (bench_profile_update(&profile, &metrics)) {
+            running = SDL_FALSE;
+        }
     }
 
     audio_device_stop(SDL_FALSE);
     audio_device_shutdown();
 
+    bench_profile_shutdown(&profile);
     bench_driver_shutdown();
     bench_overlay_destroy(overlay);
     SDL_DestroyRenderer(renderer);

@@ -7,6 +7,7 @@
 #include "common/driver_support.h"
 #include "common/display_config.h"
 #include "common/frame_limit.h"
+#include "common/profile_capture.h"
 #include "common/format.h"
 #include "common/geometry/shapes.h"
 

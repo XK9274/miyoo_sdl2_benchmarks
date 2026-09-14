@@ -156,6 +156,9 @@ int main(int argc, char *argv[])
 
     printf("SDL2_gfx bench initialised\n");
 
+    BenchProfileCapture profile;
+    bench_profile_load(&profile);
+
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
@@ -217,8 +220,13 @@ int main(int argc, char *argv[])
                  state.stress_level, gb_state_stress_factor(&state));
         const char *custom_values[] = {scene_label, stress_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
+
+        if (bench_profile_update(&profile, &metrics)) {
+            running = SDL_FALSE;
+        }
     }
 
+    bench_profile_shutdown(&profile);
     bench_driver_shutdown();
     bench_overlay_destroy(overlay);
     SDL_DestroyRenderer(renderer);

@@ -26,6 +26,7 @@ const char *title_config_row_label(TitleConfigRow row)
         case TITLE_CONFIG_VSYNC:       return "VSync Mode";
         case TITLE_CONFIG_FRAME_LIMIT: return "Frame Limit";
         case TITLE_CONFIG_INPUT_MODE:  return "Input Mode";
+        case TITLE_CONFIG_START_BENCHMARK: return "Start Benchmark";
         default:                       return "";
     }
 }

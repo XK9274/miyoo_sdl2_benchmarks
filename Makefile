@@ -46,6 +46,7 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/driver_support.c \
     $(SRC_DIR)/common/display_config.c \
     $(SRC_DIR)/common/frame_limit.c \
+    $(SRC_DIR)/common/profile_capture.c \
     $(SRC_DIR)/common/loading_screen.c \
     $(SRC_DIR)/common/gl_effect.c \
     $(SRC_DIR)/common/math3d/vec3.c \
@@ -67,6 +68,7 @@ TITLE_SOURCES := \
     $(SRC_DIR)/title/menu.c \
     $(SRC_DIR)/title/config_panel.c \
     $(SRC_DIR)/title/launcher.c \
+    $(SRC_DIR)/title/profile_run.c \
     $(SRC_DIR)/title/state.c \
     $(SRC_DIR)/title/backend_status.c \
     $(SRC_DIR)/title/statusbar.c \

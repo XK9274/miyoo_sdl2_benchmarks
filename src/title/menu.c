@@ -2,9 +2,13 @@
 
 #include "title/config_panel.h"
 #include "title/modal.h"
+#include "title/profile_run.h"
 #include "title/render_util.h"
 #include "title/statusbar.h"
 #include "title/version.h"
+
+#define TITLE_PROFILE_SELECT_VISIBLE_ROWS 10
+#define TITLE_PROFILE_SELECT_ROW_HEIGHT 20
 
 #define TITLE_LIST_X 40
 #define TITLE_LIST_VISIBLE_ROWS 9
@@ -27,6 +31,99 @@ static void title_draw_row_highlight_for_text(SDL_Renderer *renderer, TTF_Font *
     int text_h = 0;
     TTF_SizeUTF8(font, (text && text[0]) ? text : " ", NULL, &text_h);
     title_draw_row_highlight(renderer, x, row_y - pad_v, w, text_h + pad_v * 2, color);
+}
+
+static void title_draw_profile_select(SDL_Renderer *renderer, TTF_Font *ui_font, const TitleState *state)
+{
+    const SDL_Rect full_screen = {0, 0, BENCH_NATIVE_W, BENCH_NATIVE_H};
+    const SDL_Color dim = {0, 0, 0, 170};
+    title_draw_dim_rect(renderer, full_screen, dim);
+
+    TitleProfileQueueItem flat[TITLE_PROFILE_MAX_QUEUE];
+    const int count = title_profile_flatten_entries(state, flat, TITLE_PROFILE_MAX_QUEUE);
+
+    int selected_count = 0;
+    for (int i = 0; i < count; i++) {
+        if (state->profile_selected[flat[i].category][flat[i].entry]) {
+            selected_count++;
+        }
+    }
+
+    const int box_w = 420;
+    const int box_h = 46 + TITLE_PROFILE_SELECT_VISIBLE_ROWS * TITLE_PROFILE_SELECT_ROW_HEIGHT + 44;
+    const SDL_Rect box = {(BENCH_NATIVE_W - box_w) / 2, (BENCH_NATIVE_H - box_h) / 2, box_w, box_h};
+    const SDL_Color box_bg = {28, 30, 36, 235};
+    const SDL_Color border = {90, 95, 108, 255};
+    title_draw_dim_rect(renderer, box, box_bg);
+    SDL_SetRenderDrawColor(renderer, border.r, border.g, border.b, border.a);
+    SDL_RenderDrawRect(renderer, &box);
+
+    const SDL_Color title_color = {235, 235, 240, 255};
+    const SDL_Color row_color = {225, 225, 230, 255};
+    const SDL_Color highlight_focus = {50, 90, 160, 255};
+    const SDL_Color checked_color = {130, 220, 150, 255};
+    const SDL_Color hint_color = {170, 174, 184, 255};
+
+    int y = box.y + 12;
+    title_draw_text(renderer, ui_font, "Select Benchmarks", box.x + box_w / 2, y, title_color, SDL_TRUE);
+    y += 28;
+
+    int scroll = state->profile_cursor - TITLE_PROFILE_SELECT_VISIBLE_ROWS + 1;
+    if (scroll < 0) {
+        scroll = 0;
+    }
+    const int max_scroll = count - TITLE_PROFILE_SELECT_VISIBLE_ROWS;
+    if (max_scroll > 0 && scroll > max_scroll) {
+        scroll = max_scroll;
+    } else if (max_scroll <= 0) {
+        scroll = 0;
+    }
+
+    const int visible = SDL_min(TITLE_PROFILE_SELECT_VISIBLE_ROWS, count - scroll);
+    for (int row = 0; row < visible; row++) {
+        const int i = scroll + row;
+        const TitleProfileQueueItem *item = &flat[i];
+        const TitleSuiteEntry *entry = &state->categories[item->category].entries[item->entry];
+        const SDL_bool selected_row = (state->profile_cursor == i);
+        const SDL_bool checked = state->profile_selected[item->category][item->entry];
+
+        char line[96];
+        SDL_snprintf(line, sizeof(line), "[%s] %s", checked ? "x" : " ", entry->label);
+
+        const int row_y = y + row * TITLE_PROFILE_SELECT_ROW_HEIGHT;
+        if (selected_row) {
+            title_draw_row_highlight_for_text(renderer, ui_font, line, box.x + 16, row_y, box_w - 32, 3, highlight_focus);
+        }
+        title_draw_text(renderer, ui_font, line, box.x + 20, row_y, checked ? checked_color : row_color, SDL_FALSE);
+    }
+
+    char footer1[96];
+    SDL_snprintf(footer1, sizeof(footer1), "Duration: %ds (L2/R2)   Selected: %d/%d",
+                state->profile_duration_s, selected_count, count);
+    title_draw_text(renderer, ui_font, footer1, box.x + box_w / 2, box.y + box_h - 40, row_color, SDL_TRUE);
+
+    title_draw_text(renderer, ui_font, "A: toggle   X: all/none   START: run   B: cancel",
+                    box.x + box_w / 2, box.y + box_h - 18, hint_color, SDL_TRUE);
+}
+
+static void title_draw_profile_running(SDL_Renderer *renderer, TTF_Font *title_font, TTF_Font *ui_font,
+                                       const TitleState *state)
+{
+    const SDL_Rect full_screen = {0, 0, BENCH_NATIVE_W, BENCH_NATIVE_H};
+    const SDL_Color dim = {0, 0, 0, 190};
+    title_draw_dim_rect(renderer, full_screen, dim);
+
+    const SDL_Color title_color = {235, 235, 240, 255};
+
+    char header[48];
+    SDL_snprintf(header, sizeof(header), "Profiling %d/%d",
+                state->profile_queue_index + 1, state->profile_queue_count);
+    title_draw_text(renderer, title_font, header, BENCH_NATIVE_W / 2, BENCH_NATIVE_H / 2 - 20, title_color, SDL_TRUE);
+
+    const TitleSuiteEntry *entry = title_profile_run_current_entry(state);
+    if (entry) {
+        title_draw_text(renderer, ui_font, entry->label, BENCH_NATIVE_W / 2, BENCH_NATIVE_H / 2 + 16, title_color, SDL_TRUE);
+    }
 }
 
 /* Smoothed FPS from the wall-clock gap between renders. */
@@ -143,10 +240,26 @@ void title_menu_render(TitleContext *ctx, const TitleState *state)
         title_draw_text(renderer, ui_font, label, TITLE_LIST_X, row_y, color, SDL_FALSE);
     }
 
+    const SDL_Color highlight_action = {40, 140, 70, 255};
+    const SDL_Color action_color = {150, 225, 170, 255};
+
     /* "Label: value", wrapped in <> only while actively editing that row. */
     for (int row = 0; row < TITLE_CONFIG_COUNT; row++) {
         const int row_y = config_top + row * TITLE_CONFIG_ROW_HEIGHT;
         const SDL_bool selected = (state->focus == TITLE_FOCUS_CONFIG) && (state->config_row == row);
+
+        if (row == TITLE_CONFIG_START_BENCHMARK) {
+            char label[48];
+            SDL_snprintf(label, sizeof(label), "> %s", title_config_row_label((TitleConfigRow)row));
+            if (selected) {
+                title_draw_row_highlight_for_text(renderer, ui_font, label, TITLE_CONFIG_X - 8, row_y, 240, 4,
+                                                  highlight_action);
+            }
+            title_draw_text(renderer, ui_font, label, TITLE_CONFIG_X, row_y,
+                            selected ? highlight_text : action_color, SDL_FALSE);
+            continue;
+        }
+
         const SDL_bool disabled = title_config_row_disabled((TitleConfigRow)row);
         const SDL_bool editing = selected && state->editing && !disabled;
 
@@ -183,6 +296,13 @@ void title_menu_render(TitleContext *ctx, const TitleState *state)
     if (state->mode == TITLE_MODE_INFO_MODAL) {
         const TitleSuiteEntry *entry = &state->categories[state->info_modal_category].entries[state->info_modal_entry];
         title_draw_modal(renderer, accent_font, ui_font, entry->label, entry->info);
+    }
+
+    if (state->mode == TITLE_MODE_PROFILE_SELECT) {
+        title_draw_profile_select(renderer, ui_font, state);
+    }
+    if (state->mode == TITLE_MODE_PROFILE_RUNNING) {
+        title_draw_profile_running(renderer, title_font, ui_font, state);
     }
 
     SDL_RenderPresent(renderer);

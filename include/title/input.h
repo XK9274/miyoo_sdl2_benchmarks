@@ -6,7 +6,9 @@
 typedef enum {
     TITLE_ACTION_NONE = 0,
     TITLE_ACTION_LAUNCH,
-    TITLE_ACTION_QUIT
+    TITLE_ACTION_QUIT,
+    TITLE_ACTION_PROFILE_SELECT, /* open the profiler selection screen */
+    TITLE_ACTION_PROFILE_START   /* selection confirmed -- begin the profiler run */
 } TitleAction;
 
 /* Polls pending SDL events, updates state, returns the resulting action if any. */

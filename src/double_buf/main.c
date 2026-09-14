@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 
+#include "bench_common.h"
 #include "double_buf/input.h"
 #include "double_buf/particles.h"
 #include "double_buf/render.h"
@@ -119,6 +120,9 @@ int main(int argc, char *argv[])
 
     printf("SDL2 geo/particles/fill combined stress benchmark started\n");
 
+    BenchProfileCapture profile;
+    bench_profile_load(&profile);
+
     SDL_bool running = SDL_TRUE;
     while (running) {
         const Uint64 frame_start_counter = SDL_GetPerformanceCounter();
@@ -166,8 +170,13 @@ int main(int argc, char *argv[])
                  metrics.stage_clear_ms, metrics.stage_draw_ms);
         const char *custom_values[] = {shape_label, particle_label, state_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
+
+        if (bench_profile_update(&profile, &metrics)) {
+            running = SDL_FALSE;
+        }
     }
 
+    bench_profile_shutdown(&profile);
     bench_driver_shutdown();
     bench_overlay_destroy(overlay);
     SDL_DestroyRenderer(renderer);

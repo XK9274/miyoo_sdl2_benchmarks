@@ -81,6 +81,7 @@ if [ "$1" = "--geometry" ]; then
     geo_tag="${2:-untagged}"
     geo_duration="${3:-30}"
     geo_log="$bench_dir/logs/geometry_bench_${geo_tag}.log"
+    geo_csv="$bench_dir/logs/geometry_bench_${geo_tag}.csv"
 
     if [ -z "$2" ]; then
         echo "Usage: $0 --geometry <tag> [duration_s]"
@@ -92,13 +93,14 @@ if [ "$1" = "--geometry" ]; then
     echo "===== START geometry ($geo_tag): $(date) =====" > "$geo_log"
     ps >> "$geo_log"
     echo "-----" >> "$geo_log"
-    GEOMETRY_BENCH_DURATION_S="$geo_duration" GEOMETRY_BENCH_TAG="$geo_tag" \
+    BENCH_PROFILE_TAG="$geo_tag" BENCH_PROFILE_DURATION_S="$geo_duration" BENCH_PROFILE_OUTPUT_PATH="$geo_csv" \
         "bin/sdl2_geometry_bench" >> "$geo_log" 2>&1
     geo_exit=$?
     echo "-----" >> "$geo_log"
     ps >> "$geo_log"
     echo "===== END geometry ($geo_tag): $(date) exit=$geo_exit =====" >> "$geo_log"
     echo "Done. Log: $geo_log"
+    echo "Metrics: $geo_csv"
     exit $geo_exit
 fi
 
@@ -108,6 +110,7 @@ if [ "$1" = "--obj-model" ]; then
     obj_tag="${2:-untagged}"
     obj_duration="${3:-30}"
     obj_log="$bench_dir/logs/obj_model_loader_${obj_tag}.log"
+    obj_csv="$bench_dir/logs/obj_model_loader_${obj_tag}.csv"
 
     if [ -z "$2" ]; then
         echo "Usage: $0 --obj-model <tag> [duration_s]"
@@ -119,13 +122,14 @@ if [ "$1" = "--obj-model" ]; then
     echo "===== START obj-model ($obj_tag): $(date) =====" > "$obj_log"
     ps >> "$obj_log"
     echo "-----" >> "$obj_log"
-    OBJ_BENCH_DURATION_S="$obj_duration" OBJ_BENCH_TAG="$obj_tag" \
+    BENCH_PROFILE_TAG="$obj_tag" BENCH_PROFILE_DURATION_S="$obj_duration" BENCH_PROFILE_OUTPUT_PATH="$obj_csv" \
         "bin/sdl2_obj_model_loader" >> "$obj_log" 2>&1
     obj_exit=$?
     echo "-----" >> "$obj_log"
     ps >> "$obj_log"
     echo "===== END obj-model ($obj_tag): $(date) exit=$obj_exit =====" >> "$obj_log"
     echo "Done. Log: $obj_log"
+    echo "Metrics: $obj_csv"
     exit $obj_exit
 fi
 
@@ -149,6 +153,31 @@ if [ "$1" = "--messagebox-probe" ]; then
     echo "===== END messagebox-probe ($mb_tag): $(date) exit=$mb_exit =====" >> "$mb_log"
     echo "Done. Log: $mb_log"
     exit $mb_exit
+fi
+
+# Runs the title screen's profiler over every eligible suite/entry unattended,
+# then exits instead of returning to the menu -- for iterating on the SDL2
+# backend over SSH without touching the on-screen UI.
+# Usage: ./launch.sh --profile-all [duration_s]
+#   e.g. ./launch.sh --profile-all 8
+if [ "$1" = "--profile-all" ]; then
+    profile_duration="${2:-5}"
+    profile_run_log="$bench_dir/logs/profile_autorun_$(date +%Y%m%d_%H%M%S).log"
+
+    if [ ! -f "bin/sdl2_title" ]; then
+        echo "Error: bin/sdl2_title not found"
+        exit 1
+    fi
+
+    mkdir -p "$bench_dir/logs"
+    exe_cpuclock
+    echo "Running profiler over every eligible suite, duration=${profile_duration}s"
+    BENCH_PROFILE_AUTORUN=1 BENCH_PROFILE_DURATION_S="$profile_duration" \
+        bin/sdl2_title >> "$profile_run_log" 2>&1
+    profile_exit=$?
+    echo "Done. Session log: $profile_run_log"
+    echo "Profiler output: $bench_dir/logs/profile/"
+    exit $profile_exit
 fi
 
 echo "Starting SDL2 Demo Suites title screen..."

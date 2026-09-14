@@ -17,6 +17,7 @@
 #include "common/asset_path.h"
 #include "common/display_config.h"
 #include "common/frame_limit.h"
+#include "common/profile_capture.h"
 #include "title/background.h"
 #include "title/config_panel.h"
 
@@ -185,6 +186,12 @@ static const char *title_input_mode_string(BenchInputSource mode)
 
 SDL_bool title_launch_suite(const TitleState *state, const TitleSuiteEntry *entry, TitleContext *ctx, TitleLaunchResult *out_result)
 {
+    return title_launch_suite_ex(state, entry, ctx, NULL, out_result);
+}
+
+SDL_bool title_launch_suite_ex(const TitleState *state, const TitleSuiteEntry *entry, TitleContext *ctx,
+                               const TitleProfileLaunchParams *profile, TitleLaunchResult *out_result)
+{
     if (!state || !entry || !ctx || !out_result) {
         return SDL_FALSE;
     }
@@ -225,6 +232,13 @@ SDL_bool title_launch_suite(const TitleState *state, const TitleSuiteEntry *entr
         setenv(BENCH_HINT_MMIYOO_INPUT_MODE, title_input_mode_string(state->input_mode), 1);
         if (entry->test_env_var && entry->test_env_value) {
             setenv(entry->test_env_var, entry->test_env_value, 1);
+        }
+        if (profile) {
+            char duration_str[16];
+            snprintf(duration_str, sizeof(duration_str), "%d", profile->duration_s);
+            setenv(BENCH_ENV_PROFILE_TAG, profile->tag, 1);
+            setenv(BENCH_ENV_PROFILE_DURATION_S, duration_str, 1);
+            setenv(BENCH_ENV_PROFILE_OUTPUT_PATH, profile->output_path, 1);
         }
 
         char *argv[] = {full_path, NULL};
