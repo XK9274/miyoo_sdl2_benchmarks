@@ -824,7 +824,7 @@ static void waveform_render_ribbons(SDL_Renderer *target,
         render_count = SDL_max(out, 2);
     }
 
-    SDL_SetRenderDrawBlendMode(target, SDL_BLENDMODE_ADD);
+    SDL_SetRenderDrawBlendMode(target, SDL_BLENDMODE_BLEND);
 
     SDL_Vertex verts[(WAVEFORM_DRAW_MAX_POINTS - 1) * 6];
     int v = 0;
@@ -1097,13 +1097,16 @@ void waveform_draw_ui_area(SDL_Renderer *target,
     const int box_size = SDL_min(h - 8, 52);
     const int box_y = y + (h - box_size) / 2;
 
-    waveform_draw_meter_box(target, metrics, x + 8, box_y, box_size, left_level, left_peak, SDL_TRUE);
-    waveform_draw_meter_box(target, metrics, x + 16 + box_size, box_y, box_size, right_level, right_peak, SDL_FALSE);
-
-    const int fill_x = x + 32 + box_size * 2;
+    const int fill_x = x + 8;
     const int fill_w = w - (box_size * 2 + 40);
     const int fill_h = h - 12;
     const int fill_y = y + 6;
+
+    const int box1_x = x + w - 16 - box_size * 2;
+    const int box2_x = box1_x + 8 + box_size;
+
+    waveform_draw_meter_box(target, metrics, box1_x, box_y, box_size, left_level, left_peak, SDL_TRUE);
+    waveform_draw_meter_box(target, metrics, box2_x, box_y, box_size, right_level, right_peak, SDL_FALSE);
 
     if (fill_w > 24 && fill_h > 24) {
         SDL_Rect preview_backdrop = {fill_x, fill_y, fill_w, fill_h};
