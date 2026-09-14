@@ -4,6 +4,7 @@
 
 #include <time.h>
 
+#include "common/backend_probe.h"
 #include "common/driver_support.h"
 #include "title/battery_icon.h"
 #include "title/config_panel.h"
@@ -152,7 +153,7 @@ void title_statusbar_render_status_header(SDL_Renderer *renderer, TTF_Font *smal
     SDL_snprintf(display, sizeof(display), "%dx%d@%dHz",
                 backend->display_w, backend->display_h, backend->display_refresh_hz);
     SDL_snprintf(renderer_str, sizeof(renderer_str), "Renderer: %s", backend->renderer_name);
-    SDL_snprintf(cpu_ram, sizeof(cpu_ram), "%dc/%dMB", backend->cpu_count, backend->ram_mb);
+    SDL_snprintf(cpu_ram, sizeof(cpu_ram), "%dc/%.0fMB", backend->cpu_count, bench_backend_probe_ram_used_mb());
     SDL_snprintf(mma_pool, sizeof(mma_pool), "MMA %.1f/%.1fMB",
                 backend->mma_pool_used_bytes / (1024.0 * 1024.0),
                 backend->mma_pool_max_bytes / (1024.0 * 1024.0));
@@ -217,6 +218,7 @@ void title_statusbar_render_status_header(SDL_Renderer *renderer, TTF_Font *smal
 }
 
 #define TITLE_KEYBIND_COUNT 6
+#define TITLE_KEYBIND_ROW_COLS 3
 
 /* Keybind legend, contextual to focus/edit state. */
 void title_statusbar_render_footer(SDL_Renderer *renderer, TTF_Font *ui_font, TTF_Font *small_font,
@@ -248,6 +250,13 @@ void title_statusbar_render_footer(SDL_Renderer *renderer, TTF_Font *ui_font, TT
         keybind_segments[i].text = keybind_texts[i];
         keybind_segments[i].color = (i % 2 == 0) ? color_a : color_b;
     }
-    title_draw_segmented_line(renderer, ui_font, keybind_segments, TITLE_KEYBIND_COUNT,
-                              BENCH_NATIVE_W / 2, top + (TITLE_STATUSBAR_FOOTER_HEIGHT - 20) / 2, " | ", sep_color);
+    int row_h = 0;
+    TTF_SizeUTF8(ui_font, keybind_texts[0], NULL, &row_h);
+    const int row_gap = 4;
+    const int rows_top = top + (TITLE_STATUSBAR_FOOTER_HEIGHT - (row_h * 2 + row_gap)) / 2;
+
+    title_draw_segmented_line(renderer, ui_font, keybind_segments, TITLE_KEYBIND_ROW_COLS,
+                              BENCH_NATIVE_W / 2, rows_top, " | ", sep_color);
+    title_draw_segmented_line(renderer, ui_font, keybind_segments + TITLE_KEYBIND_ROW_COLS, TITLE_KEYBIND_ROW_COLS,
+                              BENCH_NATIVE_W / 2, rows_top + row_h + row_gap, " | ", sep_color);
 }

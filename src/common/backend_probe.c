@@ -140,11 +140,11 @@ float bench_backend_probe_cpu_percent(void)
     return percent;
 }
 
-float bench_backend_probe_ram_percent(void)
+static unsigned long bench_backend_probe_rss_kb(void)
 {
     FILE *f = fopen(BENCH_SELF_STATUS_PROC, "r");
     if (!f) {
-        return 0.0f;
+        return 0;
     }
 
     char line[256];
@@ -155,10 +155,20 @@ float bench_backend_probe_ram_percent(void)
         }
     }
     fclose(f);
+    return rss_kb;
+}
 
+float bench_backend_probe_ram_percent(void)
+{
+    const unsigned long rss_kb = bench_backend_probe_rss_kb();
     const int total_mb = SDL_GetSystemRAM();
     if (total_mb <= 0) {
         return 0.0f;
     }
     return (float)((double)rss_kb / ((double)total_mb * 1024.0) * 100.0);
+}
+
+float bench_backend_probe_ram_used_mb(void)
+{
+    return (float)(bench_backend_probe_rss_kb() / 1024.0);
 }

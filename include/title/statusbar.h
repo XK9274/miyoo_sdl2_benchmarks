@@ -9,7 +9,7 @@
 #include "title/battery_glow.h"
 #include "title/state.h"
 
-#define TITLE_STATUSBAR_FOOTER_HEIGHT 34
+#define TITLE_STATUSBAR_FOOTER_HEIGHT 54
 #define TITLE_STATUSBAR_HEADER_HEIGHT 46
 
 typedef struct {

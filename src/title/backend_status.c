@@ -68,7 +68,6 @@ void title_backend_status_probe(TitleBackendStatus *out, SDL_Window *window, SDL
     }
 
     out->cpu_count = SDL_GetCPUCount();
-    out->ram_mb = SDL_GetSystemRAM();
 
     bench_backend_probe_mma_pool(&out->mma_pool_used_bytes, &out->mma_pool_max_bytes);
 

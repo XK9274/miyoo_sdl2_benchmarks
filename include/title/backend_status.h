@@ -23,7 +23,6 @@ typedef struct {
     int display_refresh_hz;
 
     int cpu_count;
-    int ram_mb;
 
     /* System-wide MI_SYS MMA heap usage, from /proc/mi_modules/mi_sys_mma/. */
     unsigned int mma_pool_used_bytes;

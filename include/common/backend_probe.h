@@ -23,4 +23,7 @@ float bench_backend_probe_cpu_percent(void);
  * (SDL_GetSystemRAM), from /proc/self/status VmRSS. */
 float bench_backend_probe_ram_percent(void);
 
+/* This process's resident memory in MB, from /proc/self/status VmRSS. */
+float bench_backend_probe_ram_used_mb(void);
+
 #endif /* COMMON_BACKEND_PROBE_H */
