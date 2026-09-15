@@ -50,19 +50,8 @@ void bench_backend_probe_mma_pool(Uint32 *out_used_bytes, Uint32 *out_max_bytes)
 
 Uint32 bench_backend_probe_thread_count(void)
 {
-    FILE *f = fopen(BENCH_SELF_STATUS_PROC, "r");
-    if (!f) {
-        return 0;
-    }
-
-    char line[256];
-    unsigned int threads = 0;
-    while (fgets(line, sizeof(line), f)) {
-        if (sscanf(line, "Threads: %u", &threads) == 1) {
-            break;
-        }
-    }
-    fclose(f);
+    Uint32 threads = 0;
+    bench_backend_probe_memory_and_threads(NULL, NULL, &threads);
     return threads;
 }
 
@@ -140,35 +129,50 @@ float bench_backend_probe_cpu_percent(void)
     return percent;
 }
 
-static unsigned long bench_backend_probe_rss_kb(void)
-{
-    FILE *f = fopen(BENCH_SELF_STATUS_PROC, "r");
-    if (!f) {
-        return 0;
-    }
-
-    char line[256];
-    unsigned long rss_kb = 0;
-    while (fgets(line, sizeof(line), f)) {
-        if (sscanf(line, "VmRSS: %lu kB", &rss_kb) == 1) {
-            break;
-        }
-    }
-    fclose(f);
-    return rss_kb;
-}
-
 float bench_backend_probe_ram_percent(void)
 {
-    const unsigned long rss_kb = bench_backend_probe_rss_kb();
-    const int total_mb = SDL_GetSystemRAM();
-    if (total_mb <= 0) {
-        return 0.0f;
-    }
-    return (float)((double)rss_kb / ((double)total_mb * 1024.0) * 100.0);
+    float percent = 0.0f;
+    bench_backend_probe_memory_and_threads(&percent, NULL, NULL);
+    return percent;
 }
 
 float bench_backend_probe_ram_used_mb(void)
 {
-    return (float)(bench_backend_probe_rss_kb() / 1024.0);
+    float mb = 0.0f;
+    bench_backend_probe_memory_and_threads(NULL, &mb, NULL);
+    return mb;
+}
+
+void bench_backend_probe_memory_and_threads(float *out_ram_percent, float *out_ram_used_mb,
+                                             Uint32 *out_thread_count)
+{
+    unsigned long rss_kb = 0;
+    unsigned int threads = 0;
+
+    FILE *f = fopen(BENCH_SELF_STATUS_PROC, "r");
+    if (f) {
+        char line[256];
+        SDL_bool have_rss = SDL_FALSE, have_threads = SDL_FALSE;
+        while ((!have_rss || !have_threads) && fgets(line, sizeof(line), f)) {
+            if (!have_rss && sscanf(line, "VmRSS: %lu kB", &rss_kb) == 1) {
+                have_rss = SDL_TRUE;
+            } else if (!have_threads && sscanf(line, "Threads: %u", &threads) == 1) {
+                have_threads = SDL_TRUE;
+            }
+        }
+        fclose(f);
+    }
+
+    if (out_ram_percent) {
+        const int total_mb = SDL_GetSystemRAM();
+        *out_ram_percent = (total_mb > 0)
+            ? (float)((double)rss_kb / ((double)total_mb * 1024.0) * 100.0)
+            : 0.0f;
+    }
+    if (out_ram_used_mb) {
+        *out_ram_used_mb = (float)(rss_kb / 1024.0);
+    }
+    if (out_thread_count) {
+        *out_thread_count = threads;
+    }
 }

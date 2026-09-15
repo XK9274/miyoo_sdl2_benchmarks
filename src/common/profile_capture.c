@@ -58,11 +58,11 @@ SDL_bool bench_profile_update(BenchProfileCapture *cap, const BenchMetrics *metr
 
     if (metrics->accumulated_frame_time_ms >= cap->next_sample_ms) {
         const float cpu_percent = bench_backend_probe_cpu_percent();
-        const float ram_percent = bench_backend_probe_ram_percent();
-        const float ram_used_mb = bench_backend_probe_ram_used_mb();
+        float ram_percent, ram_used_mb;
+        Uint32 thread_count;
+        bench_backend_probe_memory_and_threads(&ram_percent, &ram_used_mb, &thread_count);
         Uint32 mma_used_bytes, mma_max_bytes;
         bench_backend_probe_mma_pool(&mma_used_bytes, &mma_max_bytes);
-        const Uint32 thread_count = bench_backend_probe_thread_count();
         const Uint32 cpu_freq_mhz = bench_backend_probe_cpu_freq_mhz();
 
         BenchDriverStatus status;

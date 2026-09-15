@@ -15,8 +15,10 @@ Uint32 bench_backend_probe_thread_count(void);
 /* Current CPU clock speed in MHz from cpufreq sysfs, or 0 if unavailable. */
 Uint32 bench_backend_probe_cpu_freq_mhz(void);
 
-/* This process's CPU usage (% of one core) since the previous call to this
- * function, from /proc/self/stat. Returns 0 on the first call. */
+/* This process's CPU usage since the previous call to this function, from
+ * /proc/self/stat utime+stime summed across all its threads -- can exceed
+ * 100% when multiple threads run concurrently on separate cores. Returns 0
+ * on the first call. */
 float bench_backend_probe_cpu_percent(void);
 
 /* This process's resident memory as a percentage of total system RAM
@@ -25,5 +27,12 @@ float bench_backend_probe_ram_percent(void);
 
 /* This process's resident memory in MB, from /proc/self/status VmRSS. */
 float bench_backend_probe_ram_used_mb(void);
+
+/* Reads /proc/self/status once, deriving any of RAM%, RAM MB, and thread
+ * count a caller wants from it -- pass NULL for outputs not needed. Cheaper
+ * than calling the individual probes above when more than one is wanted for
+ * the same sample. */
+void bench_backend_probe_memory_and_threads(float *out_ram_percent, float *out_ram_used_mb,
+                                             Uint32 *out_thread_count);
 
 #endif /* COMMON_BACKEND_PROBE_H */
