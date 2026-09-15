@@ -6,6 +6,7 @@
 
 #include <SDL2/SDL_image.h>
 
+#include "common/asset_path.h"
 #include "title/launcher.h"
 
 SDL_Texture *title_background_load(SDL_Renderer *renderer)
@@ -20,7 +21,7 @@ SDL_Texture *title_background_load(SDL_Renderer *renderer)
     }
 
     char path[PATH_MAX];
-    snprintf(path, sizeof(path), "%s/../assets/title_bg.png", bin_dir);
+    bench_path_join3(path, sizeof(path), bin_dir, "/../assets/", "title_bg.png");
 
     SDL_Surface *surface = IMG_Load(path);
     if (!surface) {

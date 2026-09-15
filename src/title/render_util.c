@@ -260,7 +260,7 @@ int title_wrap_text(TTF_Font *font, const char *text, int max_width,
         word[word_len] = '\0';
         p += word_len;
 
-        char candidate[TITLE_WRAP_LINE_LEN];
+        char candidate[TITLE_WRAP_LINE_LEN + sizeof(word)];
         if (current[0]) {
             snprintf(candidate, sizeof(candidate), "%s %s", current, word);
         } else {
@@ -271,8 +271,7 @@ int title_wrap_text(TTF_Font *font, const char *text, int max_width,
         TTF_SizeUTF8(font, candidate, &candidate_w, NULL);
 
         if (candidate_w > max_width && current[0]) {
-            strncpy(lines[line_count], current, TITLE_WRAP_LINE_LEN - 1);
-            lines[line_count][TITLE_WRAP_LINE_LEN - 1] = '\0';
+            snprintf(lines[line_count], TITLE_WRAP_LINE_LEN, "%s", current);
             line_count++;
             strncpy(current, word, sizeof(current) - 1);
             current[sizeof(current) - 1] = '\0';
@@ -283,8 +282,7 @@ int title_wrap_text(TTF_Font *font, const char *text, int max_width,
     }
 
     if (current[0] && line_count < max_lines) {
-        strncpy(lines[line_count], current, TITLE_WRAP_LINE_LEN - 1);
-        lines[line_count][TITLE_WRAP_LINE_LEN - 1] = '\0';
+        snprintf(lines[line_count], TITLE_WRAP_LINE_LEN, "%s", current);
         line_count++;
     }
 

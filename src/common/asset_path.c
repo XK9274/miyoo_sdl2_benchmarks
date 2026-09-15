@@ -43,3 +43,13 @@ SDL_bool bench_resolve_asset_path(const char *relative_name, char *out, size_t o
     const int written = snprintf(out, out_size, "%s/../assets/%s", bin_dir, relative_name);
     return (written > 0 && (size_t)written < out_size) ? SDL_TRUE : SDL_FALSE;
 }
+
+SDL_bool bench_path_join3(char *out, size_t out_size, const char *a, const char *b, const char *c)
+{
+    if (!out || out_size == 0 || !a || !b || !c) {
+        return SDL_FALSE;
+    }
+
+    const int written = snprintf(out, out_size, "%s%s%s", a, b, c);
+    return (written > 0 && (size_t)written < out_size) ? SDL_TRUE : SDL_FALSE;
+}

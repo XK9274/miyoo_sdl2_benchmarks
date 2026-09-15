@@ -204,7 +204,7 @@ SDL_bool title_launch_suite_ex(const TitleState *state, const TitleSuiteEntry *e
     }
 
     char full_path[PATH_MAX];
-    snprintf(full_path, sizeof(full_path), "%s/%s", bin_dir, entry->bin_name);
+    bench_path_join3(full_path, sizeof(full_path), bin_dir, "/", entry->bin_name);
 
     int logical_w, logical_h;
     title_resolution_dims(state->logical_res, &logical_w, &logical_h);

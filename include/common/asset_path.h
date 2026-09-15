@@ -13,4 +13,8 @@
  * Returns SDL_FALSE if the binary's own path can't be read or out is too small. */
 SDL_bool bench_resolve_asset_path(const char *relative_name, char *out, size_t out_size);
 
+/* Concatenates a, b, and c into out (e.g. a="/dir", b="/", c="file.csv").
+ * Returns SDL_FALSE if the result would be truncated. */
+SDL_bool bench_path_join3(char *out, size_t out_size, const char *a, const char *b, const char *c);
+
 #endif /* COMMON_ASSET_PATH_H */
