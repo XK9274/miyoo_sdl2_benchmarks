@@ -6,6 +6,8 @@
 #include "title/battery_fill.h"
 #include "title/battery_glow.h"
 
+#define TITLE_BATTERY_CHARGE_COLOR ((SDL_Color){225, 190, 40, 255})
+
 /* Total on-screen width (body + nub) an icon of this height will occupy. */
 int title_battery_icon_width(int height);
 

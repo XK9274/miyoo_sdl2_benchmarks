@@ -28,7 +28,7 @@ void title_draw_battery_icon(SDL_Renderer *renderer, TitleBatteryFill *fill, Tit
 
     const SDL_Color outline = {170, 174, 184, 255};
     const SDL_Color bg = {40, 42, 48, 255};
-    const SDL_Color fill_charging = {225, 190, 40, 255}; /* yellow */
+    const SDL_Color fill_charging = TITLE_BATTERY_CHARGE_COLOR;
     const SDL_Color fill_ok = {60, 170, 90, 255};
     const SDL_Color fill_low = {190, 70, 60, 255};
     const SDL_Color fill_color = charging ? fill_charging : ((percent <= 15) ? fill_low : fill_ok);

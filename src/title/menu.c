@@ -1,5 +1,7 @@
 #include "title/menu.h"
 
+#include <string.h>
+
 #include "title/config_panel.h"
 #include "title/modal.h"
 #include "title/profile_run.h"
@@ -282,6 +284,17 @@ void title_menu_render(TitleContext *ctx, const TitleState *state)
             row_color = highlight_text;
         }
         title_draw_text(renderer, ui_font, row_line, TITLE_CONFIG_X, row_y, row_color, SDL_FALSE);
+    }
+
+    if (state->profile_last_output[0] != '\0') {
+        const char *display = state->profile_last_output;
+        if (strncmp(display, "logs/profile/", 13) == 0) {
+            display += 13;
+        }
+        const int last_output_y = config_top + TITLE_CONFIG_COUNT * TITLE_CONFIG_ROW_HEIGHT + 6;
+        char line[80];
+        SDL_snprintf(line, sizeof(line), "Output: %s", display);
+        title_draw_text(renderer, ctx->small_font, line, TITLE_CONFIG_X, last_output_y, action_color, SDL_FALSE);
     }
 
     if (state->mode == TITLE_MODE_CHILD_ERROR) {

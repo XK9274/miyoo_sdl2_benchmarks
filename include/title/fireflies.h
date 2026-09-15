@@ -13,12 +13,18 @@ typedef struct {
     float phase;
     float hue_mix;
     SDL_bool far; /* half the flies: half draw size, half brightness -- reads as further away */
+
+    float charge_mix;   /* 0 = normal palette, 1 = full charge colour */
+    float pop_delay;    /* ripple stagger after a charging edge, seconds */
+    float pop_elapsed;  /* seconds since the last charging edge; <0 = no pop in progress */
+    SDL_bool fading;    /* easing charge_mix back to 0 after unplug */
 } TitleFirefly;
 
 typedef struct {
     GLEffectTarget target;
     Uint32 program;
     SDL_bool ready;
+    SDL_bool was_charging;
     TitleFirefly flies[TITLE_FIREFLY_COUNT];
 } TitleFireflies;
 

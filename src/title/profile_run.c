@@ -143,6 +143,9 @@ SDL_bool title_profile_run_step(TitleState *state, TitleContext *ctx)
     char tag[32];
     snprintf(tag, sizeof(tag), "c%d_e%d", item->category, item->entry);
 
+    snprintf(state->profile_last_output, sizeof(state->profile_last_output),
+            "logs/profile/%s/%s.csv", state->profile_run_id, tag);
+
     char output_path[PATH_MAX];
     char run_log_path[PATH_MAX];
     snprintf(output_path, sizeof(output_path), "%s/%s.csv", run_dir, tag);

@@ -87,6 +87,7 @@ typedef struct {
     TitleProfileQueueItem profile_queue[TITLE_PROFILE_MAX_QUEUE];
     int profile_queue_count;
     int profile_queue_index;
+    char profile_last_output[96]; /* relative path of the last profile CSV written, or empty */
 } TitleState;
 
 void title_state_init(TitleState *state);
