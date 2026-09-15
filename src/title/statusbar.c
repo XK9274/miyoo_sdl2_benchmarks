@@ -217,8 +217,9 @@ void title_statusbar_render_status_header(SDL_Renderer *renderer, TTF_Font *smal
     }
 }
 
-#define TITLE_KEYBIND_COUNT 6
-#define TITLE_KEYBIND_ROW_COLS 3
+#define TITLE_KEYBIND_COUNT 7
+#define TITLE_KEYBIND_ROW1_COLS 4
+#define TITLE_KEYBIND_ROW2_COLS 3
 
 /* Keybind legend, contextual to focus/edit state. */
 void title_statusbar_render_footer(SDL_Renderer *renderer, TTF_Font *ui_font, TTF_Font *small_font,
@@ -243,7 +244,7 @@ void title_statusbar_render_footer(SDL_Renderer *renderer, TTF_Font *ui_font, TT
     const char *a_text = !config_focused ? "A: Launch" : (state->editing ? "A: Done" : "A: Edit");
 
     const char *const keybind_texts[TITLE_KEYBIND_COUNT] = {
-        "Up/Down: Navigate", left_right_text, "L1/R1: Switch Panel", a_text, "Select: Info", "Exit: Quit",
+        "Up/Down: Navigate", left_right_text, "L1/2: Switch Panel", "R1/2: Switch Panel", a_text, "Select: Info", "Exit: Quit",
     };
     TitleStatusSegment keybind_segments[TITLE_KEYBIND_COUNT];
     for (int i = 0; i < TITLE_KEYBIND_COUNT; i++) {
@@ -255,8 +256,8 @@ void title_statusbar_render_footer(SDL_Renderer *renderer, TTF_Font *ui_font, TT
     const int row_gap = 4;
     const int rows_top = top + (TITLE_STATUSBAR_FOOTER_HEIGHT - (row_h * 2 + row_gap)) / 2;
 
-    title_draw_segmented_line(renderer, ui_font, keybind_segments, TITLE_KEYBIND_ROW_COLS,
+    title_draw_segmented_line(renderer, ui_font, keybind_segments, TITLE_KEYBIND_ROW1_COLS,
                               BENCH_NATIVE_W / 2, rows_top, " | ", sep_color);
-    title_draw_segmented_line(renderer, ui_font, keybind_segments + TITLE_KEYBIND_ROW_COLS, TITLE_KEYBIND_ROW_COLS,
+    title_draw_segmented_line(renderer, ui_font, keybind_segments + TITLE_KEYBIND_ROW1_COLS, TITLE_KEYBIND_ROW2_COLS,
                               BENCH_NATIVE_W / 2, rows_top + row_h + row_gap, " | ", sep_color);
 }

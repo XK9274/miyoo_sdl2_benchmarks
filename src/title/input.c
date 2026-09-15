@@ -140,9 +140,11 @@ TitleAction title_handle_input(TitleState *state)
                 }
                 break;
             case BTN_L1:
+            case BTN_L2:
                 title_state_move_focus_horizontal(state, -1);
                 break;
             case BTN_R1:
+            case BTN_R2:
                 title_state_move_focus_horizontal(state, 1);
                 break;
             case BTN_SELECT:
