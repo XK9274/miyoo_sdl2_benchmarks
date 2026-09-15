@@ -13,6 +13,9 @@
 #include "common/loading_screen.h"
 #include "common/overlay_rows.h"
 #include "controller_input.h"
+#ifdef DEBUG_BUILD
+#include "common/overlay_debug_stats.h"
+#endif
 
 /* Configured logical size (not the fixed native window size -- see BENCH_NATIVE_W/H). */
 #define SCREEN_W bench_logical_w()
@@ -112,6 +115,9 @@ int main(int argc, char *argv[])
     /* SDL_CreateRenderer force-ORs in SDL_RENDERER_PRESENTVSYNC in this SDL2
      * fork regardless of flags -- the hint is the only way to turn it off. */
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
+#ifdef DEBUG_BUILD
+    overlay_debug_stats_enable_hints();
+#endif
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
         printf("Renderer creation failed: %s\n", SDL_GetError());
@@ -318,7 +324,7 @@ int main(int argc, char *argv[])
         };
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
-        if (bench_profile_update(&profile, &metrics)) {
+        if (bench_profile_update(&profile, &metrics, renderer)) {
             running = SDL_FALSE;
         }
     }

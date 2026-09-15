@@ -16,7 +16,7 @@ int title_profile_flatten_entries(const TitleState *state, TitleProfileQueueItem
 /* Builds the run queue from the current selection, creates the on-device run
  * directory under logs/profile/<run_id>/, and writes its manifest. Returns
  * SDL_FALSE if the directory or manifest couldn't be written. */
-SDL_bool title_profile_run_begin(TitleState *state);
+SDL_bool title_profile_run_begin(TitleState *state, const TitleContext *ctx);
 
 /* Launches the queued entry at profile_queue_index (blocking fork/exec/wait,
  * env vars from the profiler contract), appends its outcome to the run log,

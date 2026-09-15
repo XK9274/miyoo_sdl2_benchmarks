@@ -18,8 +18,10 @@ def main() -> int:
 
     run = load_profile_run(args.run_dir)
 
-    header = f"{'tag':<10} {'entry':<32} {'samples':>7} {'avg fps':>8} {'min fps':>8} {'max fps':>8} {'max ms':>7}  status"
-    print(f"Run: {run.run_dir}")
+    header = (f"{'tag':<10} {'entry':<32} {'samples':>7} {'avg fps':>8} {'min fps':>8} {'max fps':>8} "
+              f"{'min ms':>7} {'max ms':>7} {'cpu%':>6} {'ram MB':>7}  status")
+    debug_str = "unknown" if run.debug_build is None else ("yes" if run.debug_build else "no")
+    print(f"Run: {run.run_dir} (debug_build={debug_str})")
     print(header)
     print("-" * len(header))
 
@@ -45,7 +47,8 @@ def main() -> int:
         print(
             f"{entry.tag:<10} {entry.entry_label[:32]:<32} {entry.sample_count:>7} "
             f"{entry.avg_fps:>8.2f} {entry.min_fps:>8.2f} {entry.max_fps:>8.2f} "
-            f"{entry.max_frame_ms:>7.2f}  {status}"
+            f"{entry.min_frame_ms:>7.2f} {entry.max_frame_ms:>7.2f} "
+            f"{entry.avg_cpu_percent:>6.1f} {entry.peak_ram_mb:>7.2f}  {status}"
         )
 
     return 1 if had_failure else 0

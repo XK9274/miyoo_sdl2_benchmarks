@@ -15,9 +15,11 @@ Usage: $0 [OPTIONS]
 Build the Miyoo SDL2 benchmark app through mm-buildbot.
 
 Options:
-  -d, --debug    Build with debug symbols and reduced optimisation
-  -v, --verbose  Keep verbose build output enabled
-  -h, --help     Show this help
+  -d, --debug       Build with debug symbols and reduced optimisation
+      --full-debug  --debug, plus an unstripped sdl2_miyoo driver
+                    (SDL2_MIYOO_DEBUG=1) for on-device gdb/profiler use
+  -v, --verbose     Keep verbose build output enabled
+  -h, --help        Show this help
 
 Environment:
   MM_BUILDBOT_DIR    Existing mm-buildbot checkout to use
@@ -34,6 +36,11 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -d|--debug)
       export DEBUG=1
+      shift
+      ;;
+    --full-debug)
+      export DEBUG=1
+      export SDL2_MIYOO_DEBUG=1
       shift
       ;;
     -v|--verbose)

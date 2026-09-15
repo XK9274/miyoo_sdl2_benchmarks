@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
         const char *custom_values[] = {scene_label, stress_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
-        if (bench_profile_update(&profile, &metrics)) {
+        if (bench_profile_update(&profile, &metrics, renderer)) {
             running = SDL_FALSE;
         }
     }

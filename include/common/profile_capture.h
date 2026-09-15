@@ -33,7 +33,7 @@ void bench_profile_load(BenchProfileCapture *cap);
  * CSV sample row at most every BENCH_PROFILE_SAMPLE_INTERVAL_MS. Returns
  * SDL_TRUE once the configured duration has elapsed, telling the caller's
  * main loop to exit. */
-SDL_bool bench_profile_update(BenchProfileCapture *cap, const BenchMetrics *metrics);
+SDL_bool bench_profile_update(BenchProfileCapture *cap, const BenchMetrics *metrics, SDL_Renderer *renderer);
 
 /* Flushes/closes the output file. Safe to call even if never activated. */
 void bench_profile_shutdown(BenchProfileCapture *cap);

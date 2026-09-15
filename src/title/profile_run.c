@@ -9,6 +9,7 @@
 #include <time.h>
 #include <sys/stat.h>
 
+#include "common/asset_path.h"
 #include "common/profile_capture.h"
 
 /* Suites with no per-frame loop to time (dialog probes, etc). Add a bin_name
@@ -74,12 +75,12 @@ static void title_profile_run_dir(const TitleState *state, char *out_dir, size_t
         out_dir[0] = '\0';
         return;
     }
-    snprintf(out_dir, out_size, "%s/../logs/profile/%s", bin_dir, state->profile_run_id);
+    bench_path_join3(out_dir, out_size, bin_dir, "/../logs/profile/", state->profile_run_id);
 }
 
-SDL_bool title_profile_run_begin(TitleState *state)
+SDL_bool title_profile_run_begin(TitleState *state, const TitleContext *ctx)
 {
-    if (!state) {
+    if (!state || !ctx) {
         return SDL_FALSE;
     }
 
@@ -109,7 +110,7 @@ SDL_bool title_profile_run_begin(TitleState *state)
     }
 
     char manifest_path[PATH_MAX];
-    snprintf(manifest_path, sizeof(manifest_path), "%s/manifest.csv", run_dir);
+    bench_path_join3(manifest_path, sizeof(manifest_path), run_dir, "/", "manifest.csv");
     FILE *manifest = fopen(manifest_path, "w");
     if (!manifest) {
         return SDL_FALSE;
@@ -124,6 +125,34 @@ SDL_bool title_profile_run_begin(TitleState *state)
                 state->profile_duration_s, item->category, item->entry);
     }
     fclose(manifest);
+
+    char run_info_path[PATH_MAX];
+    bench_path_join3(run_info_path, sizeof(run_info_path), run_dir, "/", "run_info.csv");
+    FILE *run_info = fopen(run_info_path, "w");
+    if (!run_info) {
+        return SDL_FALSE;
+    }
+    const TitleBackendStatus *backend = &ctx->backend;
+    fprintf(run_info,
+            "renderer_name,render_ok,audio_driver,audio_ok,video_driver,gl_ok,display_refresh_hz,"
+            "cpu_count,mma_pool_max_bytes,joystick_ok,haptic_ok,power_ok,"
+            "sdl_major,sdl_minor,sdl_patch,debug_build\n");
+    fprintf(run_info, "%s,%d,%s,%d,%s,%d,%d,%d,%u,%d,%d,%d,%d,%d,%d,%d\n",
+            backend->renderer_name, (int)backend->render_ok,
+            backend->audio_driver, (int)backend->audio_ok,
+            backend->video_driver, (int)backend->gl_ok,
+            backend->display_refresh_hz,
+            backend->cpu_count,
+            backend->mma_pool_max_bytes,
+            (int)backend->joystick_ok, (int)backend->haptic_ok, (int)backend->power_ok,
+            backend->sdl_major, backend->sdl_minor, backend->sdl_patch,
+#ifdef DEBUG_BUILD
+            1
+#else
+            0
+#endif
+            );
+    fclose(run_info);
 
     return SDL_TRUE;
 }
@@ -146,10 +175,13 @@ SDL_bool title_profile_run_step(TitleState *state, TitleContext *ctx)
     snprintf(state->profile_last_output, sizeof(state->profile_last_output),
             "logs/profile/%s/%s.csv", state->profile_run_id, tag);
 
+    char tag_csv[40];
+    snprintf(tag_csv, sizeof(tag_csv), "%s.csv", tag);
+
     char output_path[PATH_MAX];
     char run_log_path[PATH_MAX];
-    snprintf(output_path, sizeof(output_path), "%s/%s.csv", run_dir, tag);
-    snprintf(run_log_path, sizeof(run_log_path), "%s/run.log", run_dir);
+    bench_path_join3(output_path, sizeof(output_path), run_dir, "/", tag_csv);
+    bench_path_join3(run_log_path, sizeof(run_log_path), run_dir, "/", "run.log");
 
     TitleProfileLaunchParams params;
     params.tag = tag;

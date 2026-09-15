@@ -12,6 +12,9 @@
 #include "common/hotkeys.h"
 #include "common/loading_screen.h"
 #include "common/overlay_rows.h"
+#ifdef DEBUG_BUILD
+#include "common/overlay_debug_stats.h"
+#endif
 
 static const OverlayRowSpec g_memory_rows[] = {
     {OVERLAY_ROW_CUSTOM, {255, 180, 120, 255}, 0, "%s"},
@@ -63,6 +66,9 @@ int main(int argc, char *argv[])
     /* SDL_CreateRenderer force-ORs in SDL_RENDERER_PRESENTVSYNC in this SDL2
      * fork regardless of flags -- the hint is the only way to turn it off. */
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
+#ifdef DEBUG_BUILD
+    overlay_debug_stats_enable_hints();
+#endif
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
         printf("Renderer creation failed: %s\n", SDL_GetError());
@@ -170,7 +176,7 @@ int main(int argc, char *argv[])
         bench_update_metrics(&metrics, delta_seconds * 1000.0);
         bench_frame_limit_wait(frame_start_counter);
 
-        if (bench_profile_update(&profile, &metrics)) {
+        if (bench_profile_update(&profile, &metrics, renderer)) {
             running = SDL_FALSE;
         }
     }

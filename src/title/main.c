@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
             }
         }
         title_state_profile_select_open(&state);
-        if (title_profile_run_begin(&state)) {
+        if (title_profile_run_begin(&state, &ctx)) {
             state.mode = TITLE_MODE_PROFILE_RUNNING;
         } else {
             fprintf(stderr, "sdl2_title: autorun could not start profiler run\n");
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
         }
 
         if (action == TITLE_ACTION_PROFILE_START) {
-            if (title_profile_run_begin(&state)) {
+            if (title_profile_run_begin(&state, &ctx)) {
                 state.mode = TITLE_MODE_PROFILE_RUNNING;
             } else {
                 state.mode = TITLE_MODE_CHILD_ERROR;
