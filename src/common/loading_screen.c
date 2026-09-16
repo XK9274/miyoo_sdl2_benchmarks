@@ -832,7 +832,6 @@ void bench_loading_mark_idle(BenchLoadingScreen *screen,
     if (!screen->render_thread) {
         bench_loading_present(screen);
     }
-    SDL_Delay(120);
 }
 
 /* Stops and joins the ship's render thread (if any) so nothing is still
@@ -867,7 +866,6 @@ void bench_loading_finish(BenchLoadingScreen *screen)
         SDL_strlcpy(screen->message, "Loading complete", sizeof(screen->message));
     }
     bench_loading_present(screen);
-    SDL_Delay(90);
 
     if (screen->owns_font && screen->font) {
         TTF_CloseFont(screen->font);
