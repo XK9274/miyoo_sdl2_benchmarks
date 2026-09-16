@@ -49,6 +49,7 @@ COMMON_SOURCES := \
     $(SRC_DIR)/common/profile_capture.c \
     $(SRC_DIR)/common/loading_screen.c \
     $(SRC_DIR)/common/gl_effect.c \
+    $(SRC_DIR)/common/gl_effect_library.c \
     $(SRC_DIR)/common/math3d/vec3.c \
     $(SRC_DIR)/common/math3d/mat4.c \
     $(SRC_DIR)/common/model/mesh.c \
