@@ -81,13 +81,14 @@ static void obj_state_scan_models(ObjModelLoaderState *state)
                 continue;
             }
 
-            char obj_path[300];
+            char obj_path[600];
             snprintf(obj_path, sizeof(obj_path), "%s/%s/%s.obj", ROOTS[r], entry->d_name, entry->d_name);
             if (access(obj_path, F_OK) != 0) {
                 continue;
             }
 
-            snprintf(state->available_models[state->available_model_count], OBJ_MODEL_NAME_LEN, "%s", entry->d_name);
+            snprintf(state->available_models[state->available_model_count], OBJ_MODEL_NAME_LEN, "%.*s",
+                     (int)OBJ_MODEL_NAME_LEN - 1, entry->d_name);
             state->available_model_count++;
         }
 
@@ -127,7 +128,8 @@ static void obj_state_load_model_by_index(SDL_Renderer *renderer, ObjModelLoader
 
         loaded = model_instance_load(renderer, path, &state->model);
         if (loaded) {
-            snprintf(state->model_label, sizeof(state->model_label), "%s", path);
+            snprintf(state->model_label, sizeof(state->model_label), "%.*s",
+                     (int)sizeof(state->model_label) - 1, path);
             if (obj_model_needs_z_up_fix(name)) {
                 obj_state_fix_axis_z_up_to_y_up(&state->model.mesh);
             }

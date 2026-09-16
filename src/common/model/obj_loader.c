@@ -190,7 +190,7 @@ ObjLoaderResult obj_loader_load(const char *obj_path, Mesh *mesh)
     if (num_materials == 0) {
         char base_name[256];
         obj_basename(obj_path, base_name, sizeof(base_name));
-        char mtl_path[512];
+        char mtl_path[800];
         if (obj_dir[0] != '\0') {
             snprintf(mtl_path, sizeof(mtl_path), "%s/%s.mtl", obj_dir, base_name);
         } else {
