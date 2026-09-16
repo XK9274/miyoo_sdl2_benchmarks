@@ -5,7 +5,7 @@
 
 #include "bench_common.h"
 
-#define TITLE_MAX_ENTRIES_PER_CATEGORY 16
+#define TITLE_MAX_ENTRIES_PER_CATEGORY 17
 #define TITLE_CATEGORY_COUNT 6 /* 5 real categories + trailing Quit */
 
 typedef struct {

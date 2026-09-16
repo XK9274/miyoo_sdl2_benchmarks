@@ -78,7 +78,19 @@ void title_state_init(TitleState *state)
             {"Thick Lines (SDL2_gfx)", "sdl2_gfx_bench",
              "Thick/wide line primitives via SDL2_gfx's software rasterizer.",
              "GB_FORCE_SCENE", "thick_lines"},
-        }, 13},
+            {"Arbitrary-Ratio Scale (Hardware)", "sdl2_scaling_bench",
+             "Non-integer-ratio streaming-texture scale to the full panel via the "
+             "hardware GFX_Copy/stretch-fill path.",
+             "SCALING_BENCH_FORCE_MODE", "arbitrary_hw"},
+            {"Arbitrary-Ratio Scale (Bilinear NEON)", "sdl2_scaling_bench",
+             "Same non-integer-ratio scale, driven through the opt-in threaded NEON "
+             "bilinear kernel instead of the hardware path.",
+             "SCALING_BENCH_FORCE_MODE", "arbitrary_bilinear"},
+            {"Oversized Composite (Threaded NEON)", "sdl2_scaling_bench",
+             "Whole-panel present of a source texture larger than the framebuffer, "
+             "exercising the threaded NEON downscale-composite fallback.",
+             "SCALING_BENCH_FORCE_MODE", "downscale_composite"},
+        }, 16},
         {"Shader Effects", {
             {"Sunrise Gradient", "sdl2_gl_fbo_effects",
              "GLES2 shader effect rendered offscreen into an FBO and composited through the 2D renderer.",

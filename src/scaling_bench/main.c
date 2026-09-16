@@ -32,6 +32,27 @@ static const OverlayKeybind g_scaling_keybinds[] = {
     {"L1", "Toggle NEON"},
 };
 
+/* SCALING_BENCH_FORCE_MODE=<name> pins the scaling mode and disables
+ * auto-cycle; the two arbitrary_* names additionally select whether the
+ * bilinear NEON hint is set before SDL_CreateRenderer. */
+static SDL_bool scaling_force_mode_from_name(const char *name, ScalingMode *out_mode,
+                                             SDL_bool *out_bilinear)
+{
+    static const struct { const char *name; ScalingMode mode; SDL_bool bilinear; } table[] = {
+        {"arbitrary_hw", SCALING_MODE_ARBITRARY_RATIO, SDL_FALSE},
+        {"arbitrary_bilinear", SCALING_MODE_ARBITRARY_RATIO, SDL_TRUE},
+        {"downscale_composite", SCALING_MODE_DOWNSCALE_COMPOSITE, SDL_FALSE},
+    };
+    for (size_t i = 0; i < SDL_arraysize(table); i++) {
+        if (SDL_strcasecmp(name, table[i].name) == 0) {
+            *out_mode = table[i].mode;
+            *out_bilinear = table[i].bilinear;
+            return SDL_TRUE;
+        }
+    }
+    return SDL_FALSE;
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -39,6 +60,17 @@ int main(int argc, char *argv[])
 
     const Uint64 perf_freq = SDL_GetPerformanceFrequency();
     Uint64 last_counter = SDL_GetPerformanceCounter();
+
+    ScalingMode forced_mode = SCALING_MODE_MAX;
+    SDL_bool forced_mode_valid = SDL_FALSE;
+    const char *force_mode_name = SDL_getenv("SCALING_BENCH_FORCE_MODE");
+    if (force_mode_name) {
+        SDL_bool want_bilinear = SDL_FALSE;
+        forced_mode_valid = scaling_force_mode_from_name(force_mode_name, &forced_mode, &want_bilinear);
+        if (forced_mode_valid && want_bilinear) {
+            SDL_setenv("SDL_MMIYOO_SCALE_FILTER", "bilinear", 1);
+        }
+    }
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         printf("SDL_Init failed: %s\n", SDL_GetError());
@@ -91,6 +123,9 @@ int main(int argc, char *argv[])
 
     ScalingBenchState state;
     scaling_state_init(&state);
+    if (forced_mode_valid) {
+        state.forced_scaling_mode = (int)forced_mode;
+    }
 
     BenchProfileCapture profile;
     bench_profile_load(&profile);

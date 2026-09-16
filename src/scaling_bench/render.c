@@ -9,6 +9,9 @@
 #define SCALING_MIN_W 160
 #define SCALING_MIN_H 120
 #define SCALING_NOISE_CELL 20
+#define SCALING_ARBITRARY_RATIO_OFFSET 41
+#define SCALING_DOWNSCALE_W 1280
+#define SCALING_DOWNSCALE_H 960
 
 typedef struct {
     Uint8 r, g, b, a;
@@ -29,7 +32,7 @@ static inline Uint8 scaling_clamp_u8(int value)
 }
 
 static const char *g_scaling_mode_names[SCALING_MODE_MAX] = {
-    "Logical", "Viewport", "TextureTarget"
+    "Logical", "Viewport", "TextureTarget", "ArbitraryRatio", "DownscaleComposite"
 };
 
 const char *scaling_render_mode_name(int mode)
@@ -332,6 +335,173 @@ static void scaling_test_texture_target_scaling(SDL_Renderer *renderer, ScalingB
     }
 }
 
+static SDL_bool scaling_resize_arbitrary(ScalingBenchState *state, SDL_Renderer *renderer,
+                                         int width, int height)
+{
+    void *new_buffer = malloc((size_t)width * (size_t)height * sizeof(Pixel32));
+    if (!new_buffer) {
+        return SDL_FALSE;
+    }
+
+    free(state->arbitrary_content_buffer);
+    state->arbitrary_content_buffer = new_buffer;
+
+    if (state->arbitrary_texture) {
+        SDL_DestroyTexture(state->arbitrary_texture);
+        state->arbitrary_texture = NULL;
+    }
+    if (renderer) {
+        state->arbitrary_texture = SDL_CreateTexture(renderer,
+                                                      SDL_PIXELFORMAT_RGBA8888,
+                                                      SDL_TEXTUREACCESS_STREAMING,
+                                                      width, height);
+        if (state->arbitrary_texture) {
+            SDL_SetTextureBlendMode(state->arbitrary_texture, SDL_BLENDMODE_NONE);
+        }
+    }
+
+    state->arbitrary_current_width = width;
+    state->arbitrary_current_height = height;
+    return SDL_TRUE;
+}
+
+static SDL_bool scaling_ensure_downscale(ScalingBenchState *state, SDL_Renderer *renderer)
+{
+    if (state->downscale_content_buffer && state->downscale_texture) {
+        return SDL_TRUE;
+    }
+
+    if (!state->downscale_content_buffer) {
+        state->downscale_content_buffer = malloc((size_t)SCALING_DOWNSCALE_W *
+                                                  (size_t)SCALING_DOWNSCALE_H * sizeof(Pixel32));
+        if (!state->downscale_content_buffer) {
+            return SDL_FALSE;
+        }
+    }
+    if (!state->downscale_texture && renderer) {
+        state->downscale_texture = SDL_CreateTexture(renderer,
+                                                      SDL_PIXELFORMAT_RGBA8888,
+                                                      SDL_TEXTUREACCESS_STREAMING,
+                                                      SCALING_DOWNSCALE_W, SCALING_DOWNSCALE_H);
+    }
+    return state->downscale_content_buffer && state->downscale_texture;
+}
+
+static void scaling_generate_content(int content_mode, Pixel32 *pixels, int width, int height,
+                                     float phase, const ScalingBenchState *state)
+{
+    switch (content_mode) {
+        case SCALING_CONTENT_GRADIENT:
+            scaling_generate_gradient(pixels, width, height, phase, state);
+            break;
+        case SCALING_CONTENT_CHECKERBOARD:
+            scaling_generate_checkerboard(pixels, width, height, phase, state);
+            break;
+        case SCALING_CONTENT_NOISE:
+            scaling_generate_noise(pixels, width, height, phase, state->neon_enabled);
+            break;
+        default:
+            break;
+    }
+}
+
+/* Physical-output dst with a non-power-of-two content-size offset keeps the
+ * src/dst ratio off every integer value across the full stress range,
+ * forcing a non-integer scale rather than a letterboxed integer one. */
+static void scaling_test_arbitrary_ratio_scaling(SDL_Renderer *renderer, ScalingBenchState *state,
+                                                  int content_mode, BenchMetrics *metrics)
+{
+    int out_w = 0, out_h = 0;
+    SDL_GetRendererOutputSize(renderer, &out_w, &out_h);
+    if (out_w <= 0 || out_h <= 0) {
+        return;
+    }
+
+    int content_w = SDL_max(SCALING_MIN_W, out_w - SCALING_ARBITRARY_RATIO_OFFSET);
+    int content_h = SDL_max(SCALING_MIN_H, out_h - SCALING_ARBITRARY_RATIO_OFFSET);
+
+    if (content_w != state->arbitrary_current_width || content_h != state->arbitrary_current_height) {
+        scaling_resize_arbitrary(state, renderer, content_w, content_h);
+    }
+    if (!state->arbitrary_content_buffer || !state->arbitrary_texture) {
+        return;
+    }
+
+    Uint64 start_time = SDL_GetPerformanceCounter();
+
+    Pixel32 *pixels = (Pixel32 *)state->arbitrary_content_buffer;
+    scaling_generate_content(content_mode, pixels, content_w, content_h, state->scaling_phase, state);
+
+    void *tex_pixels = NULL;
+    int pitch = 0;
+    if (SDL_LockTexture(state->arbitrary_texture, NULL, &tex_pixels, &pitch) == 0) {
+        (void)pitch;
+        const size_t pixel_count = (size_t)content_w * (size_t)content_h;
+        if (state->neon_enabled) {
+            bench_neon_copy_u32((uint32_t *)tex_pixels, (uint32_t *)pixels, pixel_count);
+        } else {
+            memcpy(tex_pixels, pixels, pixel_count * sizeof(Pixel32));
+        }
+        SDL_UnlockTexture(state->arbitrary_texture);
+    }
+
+    SDL_Rect dst = {0, 0, out_w, out_h};
+    SDL_RenderCopy(renderer, state->arbitrary_texture, NULL, &dst);
+
+    Uint64 end_time = SDL_GetPerformanceCounter();
+    if (metrics) {
+        metrics->scaling_operations++;
+        metrics->scaling_overhead_ms +=
+            (double)(end_time - start_time) / (double)SDL_GetPerformanceFrequency() * 1000.0;
+        metrics->draw_calls++;
+        metrics->vertices_rendered += 4;
+        metrics->triangles_rendered += 2;
+        metrics->texture_switches++;
+    }
+}
+
+/* Source texture pixel dims (SCALING_DOWNSCALE_W/H) exceed the panel
+ * framebuffer, and a NULL dst fills the whole target unscaled by SDL2. */
+static void scaling_test_downscale_composite(SDL_Renderer *renderer, ScalingBenchState *state,
+                                             int content_mode, BenchMetrics *metrics)
+{
+    if (!scaling_ensure_downscale(state, renderer)) {
+        return;
+    }
+
+    Uint64 start_time = SDL_GetPerformanceCounter();
+
+    Pixel32 *pixels = (Pixel32 *)state->downscale_content_buffer;
+    scaling_generate_content(content_mode, pixels, SCALING_DOWNSCALE_W, SCALING_DOWNSCALE_H,
+                             state->scaling_phase, state);
+
+    void *tex_pixels = NULL;
+    int pitch = 0;
+    if (SDL_LockTexture(state->downscale_texture, NULL, &tex_pixels, &pitch) == 0) {
+        (void)pitch;
+        const size_t pixel_count = (size_t)SCALING_DOWNSCALE_W * (size_t)SCALING_DOWNSCALE_H;
+        if (state->neon_enabled) {
+            bench_neon_copy_u32((uint32_t *)tex_pixels, (uint32_t *)pixels, pixel_count);
+        } else {
+            memcpy(tex_pixels, pixels, pixel_count * sizeof(Pixel32));
+        }
+        SDL_UnlockTexture(state->downscale_texture);
+    }
+
+    SDL_RenderCopy(renderer, state->downscale_texture, NULL, NULL);
+
+    Uint64 end_time = SDL_GetPerformanceCounter();
+    if (metrics) {
+        metrics->scaling_operations++;
+        metrics->scaling_overhead_ms +=
+            (double)(end_time - start_time) / (double)SDL_GetPerformanceFrequency() * 1000.0;
+        metrics->draw_calls++;
+        metrics->vertices_rendered += 4;
+        metrics->triangles_rendered += 2;
+        metrics->texture_switches++;
+    }
+}
+
 void scaling_render_init(ScalingBenchState *state, SDL_Renderer *renderer)
 {
     if (!state || !renderer) {
@@ -358,6 +528,20 @@ void scaling_render_cleanup(ScalingBenchState *state)
     if (state->target_texture) {
         SDL_DestroyTexture(state->target_texture);
         state->target_texture = NULL;
+    }
+
+    free(state->arbitrary_content_buffer);
+    state->arbitrary_content_buffer = NULL;
+    if (state->arbitrary_texture) {
+        SDL_DestroyTexture(state->arbitrary_texture);
+        state->arbitrary_texture = NULL;
+    }
+
+    free(state->downscale_content_buffer);
+    state->downscale_content_buffer = NULL;
+    if (state->downscale_texture) {
+        SDL_DestroyTexture(state->downscale_texture);
+        state->downscale_texture = NULL;
     }
 }
 
@@ -452,6 +636,12 @@ void scaling_render_scene(ScalingBenchState *state,
             break;
         case SCALING_MODE_TEXTURE_TARGET:
             scaling_test_texture_target_scaling(renderer, state, width, height, center_x, center_y, metrics);
+            break;
+        case SCALING_MODE_ARBITRARY_RATIO:
+            scaling_test_arbitrary_ratio_scaling(renderer, state, current_content_mode, metrics);
+            break;
+        case SCALING_MODE_DOWNSCALE_COMPOSITE:
+            scaling_test_downscale_composite(renderer, state, current_content_mode, metrics);
             break;
         default:
             break;

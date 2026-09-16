@@ -23,6 +23,14 @@ typedef struct {
     SDL_Texture *content_texture;
     SDL_Texture *target_texture;
 
+    int arbitrary_current_width;
+    int arbitrary_current_height;
+    void *arbitrary_content_buffer;
+    SDL_Texture *arbitrary_texture;
+
+    void *downscale_content_buffer;
+    SDL_Texture *downscale_texture;
+
     int content_mode;
     int forced_content_mode;   /* -1 = auto-cycle, else locked mode index */
     int scaling_mode;
