@@ -4,7 +4,6 @@
 #include <SDL2/SDL.h>
 
 #define GL_EFFECT_LIBRARY_COUNT 15
-#define GL_EFFECT_LIBRARY_SOFT_WAVES 1
 
 int gl_effect_library_count(void);
 const char *gl_effect_library_name(int index);

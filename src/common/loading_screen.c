@@ -1,17 +1,12 @@
 #include "common/loading_screen.h"
 
-#include <SDL2/SDL_log.h>
-
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "common/overlay.h"
 #include "common/geometry/core.h"
-#include "common/gl_effect_library.h"
 
-#define LOADING_GL_WIDTH 80
-#define LOADING_GL_HEIGHT 60
 #define LOADING_MESSAGE_MAX 95
 
 static void bench_loading_reset(BenchLoadingScreen *screen)
@@ -20,98 +15,6 @@ static void bench_loading_reset(BenchLoadingScreen *screen)
         return;
     }
     SDL_memset(screen, 0, sizeof(*screen));
-}
-
-static void bench_loading_destroy_gl(BenchLoadingScreen *screen)
-{
-    if (!screen) {
-        return;
-    }
-
-    if (screen->gl_ready) {
-        gl_effect_destroy_program(screen->gl_program);
-        screen->gl_program = 0;
-        gl_effect_target_destroy(&screen->gl_target);
-        gl_effect_context_release();
-        screen->gl_ready = SDL_FALSE;
-        screen->gl_time_accum = 0.0f;
-    }
-
-    screen->gl_init_pending = SDL_FALSE;
-    screen->gl_initializing = SDL_FALSE;
-    screen->gl_first_frame_presented = SDL_FALSE;
-}
-
-static SDL_bool bench_loading_setup_gl(BenchLoadingScreen *screen)
-{
-    if (!screen || !screen->renderer) {
-        return SDL_FALSE;
-    }
-
-    if (!gl_effect_context_acquire()) {
-        return SDL_FALSE;
-    }
-
-    if (!gl_effect_target_create(&screen->gl_target, screen->renderer,
-                                 LOADING_GL_WIDTH, LOADING_GL_HEIGHT)) {
-        gl_effect_context_release();
-        return SDL_FALSE;
-    }
-
-    screen->gl_program = gl_effect_compile_program(
-        gl_effect_library_fragment_source(GL_EFFECT_LIBRARY_SOFT_WAVES));
-    if (!screen->gl_program) {
-        gl_effect_target_destroy(&screen->gl_target);
-        gl_effect_context_release();
-        return SDL_FALSE;
-    }
-
-    screen->gl_ready = SDL_TRUE;
-    return SDL_TRUE;
-}
-
-static void bench_loading_try_initialize_gl(BenchLoadingScreen *screen)
-{
-    if (!screen || screen->style != BENCH_LOADING_STYLE_GL) {
-        return;
-    }
-
-    if (!screen->gl_init_pending || screen->gl_ready || screen->gl_initializing) {
-        if (screen->gl_ready) {
-            screen->gl_init_pending = SDL_FALSE;
-        }
-        return;
-    }
-
-    screen->gl_initializing = SDL_TRUE;
-    if (!bench_loading_setup_gl(screen)) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "bench_loading: deferred GL setup failed, staying in rect style");
-        bench_loading_destroy_gl(screen);
-        screen->style = BENCH_LOADING_STYLE_RECT;
-        screen->gl_init_pending = SDL_FALSE;
-    } else {
-        screen->gl_init_pending = SDL_FALSE;
-    }
-    screen->gl_initializing = SDL_FALSE;
-}
-
-static void bench_loading_update_gl(BenchLoadingScreen *screen)
-{
-    if (!screen->gl_ready) {
-        return;
-    }
-
-    const Uint64 now = SDL_GetPerformanceCounter();
-    double delta = 0.0;
-    if (screen->last_counter != 0) {
-        delta = (double)(now - screen->last_counter) / (double)screen->perf_freq;
-    }
-    screen->last_counter = now;
-    screen->gl_time_accum += (float)delta;
-
-    gl_effect_render(&screen->gl_target, screen->gl_program,
-                     gl_effect_set_time_uniform, &screen->gl_time_accum);
 }
 
 /* BENCH_LOADING_STYLE_SHIP: solid 3D dart geometry, wingspan on X/Z (rotates with the spin), slight Y taper so it isn't flat. */
@@ -319,11 +222,7 @@ static void bench_loading_present(BenchLoadingScreen *screen)
                            screen->background.a);
     SDL_RenderClear(screen->renderer);
 
-    if (screen->style == BENCH_LOADING_STYLE_GL && screen->gl_ready && screen->gl_target.screen_texture) {
-        bench_loading_update_gl(screen);
-        SDL_Rect dst = {0, 0, w, h};
-        SDL_RenderCopy(screen->renderer, screen->gl_target.screen_texture, NULL, &dst);
-    } else if (screen->style == BENCH_LOADING_STYLE_SHIP) {
+    if (screen->style == BENCH_LOADING_STYLE_SHIP) {
         bench_loading_render_ship(screen, w, h);
     }
 
@@ -332,14 +231,6 @@ static void bench_loading_present(BenchLoadingScreen *screen)
     bench_loading_render_message(screen, w, h);
 
     SDL_RenderPresent(screen->renderer);
-
-    if (screen->style == BENCH_LOADING_STYLE_GL && screen->gl_init_pending) {
-        if (!screen->gl_first_frame_presented) {
-            screen->gl_first_frame_presented = SDL_TRUE;
-        } else {
-            bench_loading_try_initialize_gl(screen);
-        }
-    }
 
     if (screen->state_mutex) {
         SDL_UnlockMutex(screen->state_mutex);
@@ -395,11 +286,6 @@ SDL_bool bench_loading_begin(BenchLoadingScreen *screen,
 
     screen->font = bench_load_font(24);
     screen->owns_font = (screen->font != NULL);
-
-    if (style == BENCH_LOADING_STYLE_GL) {
-        screen->gl_init_pending = SDL_TRUE;
-        screen->gl_first_frame_presented = SDL_FALSE;
-    }
 
     if (style == BENCH_LOADING_STYLE_SHIP) {
         screen->state_mutex = SDL_CreateMutex();
@@ -491,7 +377,7 @@ void bench_loading_mark_idle(BenchLoadingScreen *screen,
 }
 
 /* Stops and joins the ship's render thread (if any) so nothing is still
-   touching screen->font/renderer/gl_* when the caller tears them down. */
+   touching screen->font/renderer when the caller tears them down. */
 static void bench_loading_stop_render_thread(BenchLoadingScreen *screen)
 {
     if (!screen->render_thread) {
@@ -529,7 +415,6 @@ void bench_loading_finish(BenchLoadingScreen *screen)
     screen->font = NULL;
     screen->owns_font = SDL_FALSE;
 
-    bench_loading_destroy_gl(screen);
     screen->active = SDL_FALSE;
 }
 
@@ -547,6 +432,5 @@ void bench_loading_abort(BenchLoadingScreen *screen)
     screen->font = NULL;
     screen->owns_font = SDL_FALSE;
 
-    bench_loading_destroy_gl(screen);
     screen->active = SDL_FALSE;
 }

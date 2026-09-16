@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     SDL_bool loading_active = bench_loading_begin(&loading,
                                                   window,
                                                   renderer,
-                                                  BENCH_LOADING_STYLE_GL);
+                                                  BENCH_LOADING_STYLE_RECT);
     if (loading_active) {
         bench_loading_step(&loading, 0.1f, "Preparing state objects");
     }

@@ -4,12 +4,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
-#include "common/gl_effect.h"
-
 typedef enum {
     BENCH_LOADING_STYLE_RECT = 0,
-    BENCH_LOADING_STYLE_GL = 1,
-    BENCH_LOADING_STYLE_SHIP = 2
+    BENCH_LOADING_STYLE_SHIP = 1
 } BenchLoadingStyle;
 
 typedef struct BenchLoadingScreen {
@@ -31,14 +28,6 @@ typedef struct BenchLoadingScreen {
 
     TTF_Font *font;
     SDL_bool owns_font;
-
-    GLEffectTarget gl_target;
-    Uint32 gl_program;
-    float gl_time_accum;
-    SDL_bool gl_ready;
-    SDL_bool gl_init_pending;
-    SDL_bool gl_initializing;
-    SDL_bool gl_first_frame_presented;
 
     float ship_angle; /* BENCH_LOADING_STYLE_SHIP: current Y-axis spin, radians */
 
