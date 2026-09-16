@@ -23,6 +23,18 @@ static void title_backend_probe_audio(TitleBackendStatus *out)
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
+/* GL/audio capability and SDL version are static for the process lifetime --
+   caching them avoids a GL context create/destroy and an audio subsystem
+   init/quit on every return from a child benchmark. */
+static SDL_bool g_static_probed = SDL_FALSE;
+static SDL_bool g_static_gl_ok = SDL_FALSE;
+static SDL_bool g_static_audio_ok = SDL_FALSE;
+static char g_static_audio_driver[32] = {0};
+static int g_static_cpu_count = 0;
+static int g_static_sdl_major = 0;
+static int g_static_sdl_minor = 0;
+static int g_static_sdl_patch = 0;
+
 void title_backend_status_probe(TitleBackendStatus *out, SDL_Window *window, SDL_Renderer *renderer)
 {
     if (!out) {
@@ -56,24 +68,39 @@ void title_backend_status_probe(TitleBackendStatus *out, SDL_Window *window, SDL
     out->haptic_ok = driver_status.rumble_supported;
     out->power_ok = driver_status.power_info_valid;
 
-    title_backend_probe_audio(out);
+    if (!g_static_probed) {
+        title_backend_probe_audio(out);
+        g_static_audio_ok = out->audio_ok;
+        SDL_strlcpy(g_static_audio_driver, out->audio_driver, sizeof(g_static_audio_driver));
 
-    if (gl_effect_context_acquire()) {
-        out->gl_ok = SDL_TRUE;
-        gl_effect_context_release();
-    }
-    /* GL context creation steals window focus on this driver -- re-raise ours. */
-    if (window) {
-        SDL_RaiseWindow(window);
+        if (gl_effect_context_acquire()) {
+            g_static_gl_ok = SDL_TRUE;
+            gl_effect_context_release();
+        }
+        /* GL context creation steals window focus on this driver -- re-raise ours. */
+        if (window) {
+            SDL_RaiseWindow(window);
+        }
+
+        g_static_cpu_count = SDL_GetCPUCount();
+
+        SDL_version v;
+        SDL_GetVersion(&v);
+        g_static_sdl_major = v.major;
+        g_static_sdl_minor = v.minor;
+        g_static_sdl_patch = v.patch;
+
+        g_static_probed = SDL_TRUE;
+    } else {
+        out->audio_ok = g_static_audio_ok;
+        SDL_strlcpy(out->audio_driver, g_static_audio_driver, sizeof(out->audio_driver));
     }
 
-    out->cpu_count = SDL_GetCPUCount();
+    out->gl_ok = g_static_gl_ok;
+    out->cpu_count = g_static_cpu_count;
+    out->sdl_major = g_static_sdl_major;
+    out->sdl_minor = g_static_sdl_minor;
+    out->sdl_patch = g_static_sdl_patch;
 
     bench_backend_probe_mma_pool(&out->mma_pool_used_bytes, &out->mma_pool_max_bytes);
-
-    SDL_version v;
-    SDL_GetVersion(&v);
-    out->sdl_major = v.major;
-    out->sdl_minor = v.minor;
-    out->sdl_patch = v.patch;
 }
