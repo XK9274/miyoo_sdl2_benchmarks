@@ -32,4 +32,8 @@ void gl_effect_render(GLEffectTarget *target,
                       GLEffectSetUniforms set_uniforms,
                       void *userdata);
 
+/* GLEffectSetUniforms callback for a shader taking only a u_time uniform.
+   userdata is a const float* elapsed-seconds value. */
+void gl_effect_set_time_uniform(Uint32 program, void *userdata);
+
 #endif /* COMMON_GL_EFFECT_H */

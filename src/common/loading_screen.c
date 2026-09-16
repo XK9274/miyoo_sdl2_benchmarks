@@ -1,7 +1,6 @@
 #include "common/loading_screen.h"
 
 #include <SDL2/SDL_log.h>
-#include <SDL2/SDL_opengles2.h>
 
 #include <math.h>
 #include <stdio.h>
@@ -9,48 +8,11 @@
 
 #include "common/overlay.h"
 #include "common/geometry/core.h"
+#include "common/gl_effect_library.h"
 
-#define LOADING_GL_WIDTH 160
-#define LOADING_GL_HEIGHT 120
+#define LOADING_GL_WIDTH 80
+#define LOADING_GL_HEIGHT 60
 #define LOADING_MESSAGE_MAX 95
-
-static const GLfloat g_loading_vertices[] = {
-    -1.0f, -1.0f, 0.0f, 0.0f,
-     1.0f, -1.0f, 1.0f, 0.0f,
-     1.0f,  1.0f, 1.0f, 1.0f,
-    -1.0f,  1.0f, 0.0f, 1.0f,
-};
-
-static const GLushort g_loading_indices[] = {0, 1, 2, 0, 2, 3};
-
-static const char *g_loading_vertex_shader =
-    "attribute vec2 a_position;\n"
-    "attribute vec2 a_uv;\n"
-    "varying vec2 v_uv;\n"
-    "void main() {\n"
-    "    gl_Position = vec4(a_position, 0.0, 1.0);\n"
-    "    v_uv = a_uv;\n"
-    "}\n";
-
-static const char *g_loading_fragment_shader =
-    "precision mediump float;\n"
-    "varying vec2 v_uv;\n"
-    "uniform float u_time;\n"
-    "uniform float u_progress;\n"
-    "void main() {\n"
-    "    vec2 uv = v_uv - 0.5;\n"
-    "    float angle = atan(uv.y, uv.x);\n"
-    "    float radius = length(uv);\n"
-    "    float swirl = sin(angle * 4.0 + u_time * 2.4) * 0.2;\n"
-    "    float band = smoothstep(0.45 + swirl * 0.05, 0.0, radius);\n"
-    "    float pulse = 0.5 + 0.5 * sin(u_time * 3.0 + radius * 12.0);\n"
-    "    vec3 base = mix(vec3(0.04, 0.08, 0.16), vec3(0.15, 0.18, 0.32), radius + pulse * 0.05);\n"
-    "    float progress_mask = smoothstep(u_progress - 0.02, u_progress + 0.02, v_uv.x);\n"
-    "    vec3 progress_color = mix(vec3(0.08, 0.18, 0.36), vec3(0.08, 0.8, 0.9), progress_mask);\n"
-    "    vec3 color = base + vec3(band) * 0.2 + progress_color * 0.6;\n"
-    "    color += vec3(0.2, 0.3, 0.6) * smoothstep(0.48, 0.5, v_uv.y + sin(u_time + v_uv.x * 6.0) * 0.02);\n"
-    "    gl_FragColor = vec4(color, 1.0);\n"
-    "}\n";
 
 static void bench_loading_reset(BenchLoadingScreen *screen)
 {
@@ -60,83 +22,19 @@ static void bench_loading_reset(BenchLoadingScreen *screen)
     SDL_memset(screen, 0, sizeof(*screen));
 }
 
-static void bench_loading_clear_gl_stage(BenchLoadingScreen *screen)
-{
-    if (!screen) {
-        return;
-    }
-    if (screen->gl_stage_texture) {
-        SDL_DestroyTexture(screen->gl_stage_texture);
-        screen->gl_stage_texture = NULL;
-    }
-    if (screen->gl_pixels) {
-        SDL_free(screen->gl_pixels);
-        screen->gl_pixels = NULL;
-        screen->gl_capacity = 0;
-    }
-}
-
-static void bench_loading_release_gl_pipeline(BenchLoadingScreen *screen)
-{
-    if (!screen || !screen->gl_ready) {
-        return;
-    }
-
-    if (screen->gl_window && screen->gl_context) {
-        if (SDL_GL_MakeCurrent(screen->gl_window, screen->gl_context) == 0) {
-            if (screen->gl_fbo) {
-                glDeleteFramebuffers(1, &screen->gl_fbo);
-                screen->gl_fbo = 0;
-            }
-            if (screen->gl_color_texture) {
-                glDeleteTextures(1, &screen->gl_color_texture);
-                screen->gl_color_texture = 0;
-            }
-            if (screen->gl_vbo) {
-                glDeleteBuffers(1, &screen->gl_vbo);
-                screen->gl_vbo = 0;
-            }
-            if (screen->gl_ibo) {
-                glDeleteBuffers(1, &screen->gl_ibo);
-                screen->gl_ibo = 0;
-            }
-            if (screen->gl_program) {
-                glDeleteProgram(screen->gl_program);
-                screen->gl_program = 0;
-            }
-        }
-        SDL_GL_MakeCurrent(screen->gl_window, NULL);
-    }
-
-    screen->gl_ready = SDL_FALSE;
-    screen->gl_time_accum = 0.0f;
-}
-
 static void bench_loading_destroy_gl(BenchLoadingScreen *screen)
 {
     if (!screen) {
         return;
     }
 
-    bench_loading_release_gl_pipeline(screen);
-    bench_loading_clear_gl_stage(screen);
-
-    if (!screen->gl_transferred) {
-        if (screen->gl_context) {
-            SDL_GL_DeleteContext(screen->gl_context);
-        }
-        if (screen->gl_window) {
-            SDL_DestroyWindow(screen->gl_window);
-        }
-    }
-
-    screen->gl_context = NULL;
-    screen->gl_window = NULL;
-
-    if (screen->gl_library_loaded && screen->gl_library_owned) {
-        SDL_GL_UnloadLibrary();
-        screen->gl_library_loaded = SDL_FALSE;
-        screen->gl_library_owned = SDL_FALSE;
+    if (screen->gl_ready) {
+        gl_effect_destroy_program(screen->gl_program);
+        screen->gl_program = 0;
+        gl_effect_target_destroy(&screen->gl_target);
+        gl_effect_context_release();
+        screen->gl_ready = SDL_FALSE;
+        screen->gl_time_accum = 0.0f;
     }
 
     screen->gl_init_pending = SDL_FALSE;
@@ -144,206 +42,31 @@ static void bench_loading_destroy_gl(BenchLoadingScreen *screen)
     screen->gl_first_frame_presented = SDL_FALSE;
 }
 
-static Uint32 bench_loading_compile(GLenum type, const char *source)
-{
-    Uint32 shader = glCreateShader(type);
-    if (!shader) {
-        return 0;
-    }
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-
-    GLint status = GL_FALSE;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    if (status != GL_TRUE) {
-        char log[256];
-        GLsizei len = 0;
-        glGetShaderInfoLog(shader, sizeof(log) - 1, &len, log);
-        log[len] = '\0';
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "bench_loading_compile: shader error %s",
-                    log);
-        glDeleteShader(shader);
-        return 0;
-    }
-    return shader;
-}
-
 static SDL_bool bench_loading_setup_gl(BenchLoadingScreen *screen)
 {
-    if (!screen || !screen->renderer || !screen->window) {
+    if (!screen || !screen->renderer) {
         return SDL_FALSE;
     }
 
-    if (!screen->gl_library_loaded) {
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 0);
-        if (SDL_GL_LoadLibrary(NULL) != 0) {
-            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                        "bench_loading_setup_gl: failed to load GL library (%s)",
-                        SDL_GetError());
-            return SDL_FALSE;
-        }
-        screen->gl_library_loaded = SDL_TRUE;
-        screen->gl_library_owned = SDL_TRUE;
-    }
-
-    screen->gl_window = SDL_CreateWindow("bench-loading-gl",
-                                         SDL_WINDOWPOS_UNDEFINED,
-                                         SDL_WINDOWPOS_UNDEFINED,
-                                         LOADING_GL_WIDTH,
-                                         LOADING_GL_HEIGHT,
-                                         SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
-    if (!screen->gl_window) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "bench_loading_setup_gl: failed to create GL window (%s)",
-                    SDL_GetError());
+    if (!gl_effect_context_acquire()) {
         return SDL_FALSE;
     }
 
-    screen->gl_context = SDL_GL_CreateContext(screen->gl_window);
-    if (!screen->gl_context) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "bench_loading_setup_gl: failed to create GL context (%s)",
-                    SDL_GetError());
+    if (!gl_effect_target_create(&screen->gl_target, screen->renderer,
+                                 LOADING_GL_WIDTH, LOADING_GL_HEIGHT)) {
+        gl_effect_context_release();
         return SDL_FALSE;
     }
 
-    if (SDL_GL_MakeCurrent(screen->gl_window, screen->gl_context) != 0) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "bench_loading_setup_gl: make current failed (%s)",
-                    SDL_GetError());
-        return SDL_FALSE;
-    }
-
-    Uint32 vs = bench_loading_compile(GL_VERTEX_SHADER, g_loading_vertex_shader);
-    Uint32 fs = bench_loading_compile(GL_FRAGMENT_SHADER, g_loading_fragment_shader);
-    if (!vs || !fs) {
-        if (vs) {
-            glDeleteShader(vs);
-        }
-        if (fs) {
-            glDeleteShader(fs);
-        }
-        SDL_GL_MakeCurrent(screen->gl_window, NULL);
-        return SDL_FALSE;
-    }
-
-    screen->gl_program = glCreateProgram();
+    screen->gl_program = gl_effect_compile_program(
+        gl_effect_library_fragment_source(GL_EFFECT_LIBRARY_SOFT_WAVES));
     if (!screen->gl_program) {
-        glDeleteShader(vs);
-        glDeleteShader(fs);
-        SDL_GL_MakeCurrent(screen->gl_window, NULL);
-        return SDL_FALSE;
-    }
-
-    glAttachShader(screen->gl_program, vs);
-    glAttachShader(screen->gl_program, fs);
-    glBindAttribLocation(screen->gl_program, 0, "a_position");
-    glBindAttribLocation(screen->gl_program, 1, "a_uv");
-    glLinkProgram(screen->gl_program);
-
-    GLint link_status = GL_FALSE;
-    glGetProgramiv(screen->gl_program, GL_LINK_STATUS, &link_status);
-    if (link_status != GL_TRUE) {
-        char log[256];
-        GLsizei len = 0;
-        glGetProgramInfoLog(screen->gl_program, sizeof(log) - 1, &len, log);
-        log[len] = '\0';
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "bench_loading_setup_gl: link error %s",
-                    log);
-        glDeleteProgram(screen->gl_program);
-        screen->gl_program = 0;
-        glDeleteShader(vs);
-        glDeleteShader(fs);
-        SDL_GL_MakeCurrent(screen->gl_window, NULL);
-        return SDL_FALSE;
-    }
-
-    glDetachShader(screen->gl_program, vs);
-    glDetachShader(screen->gl_program, fs);
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-
-    glGenBuffers(1, &screen->gl_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, screen->gl_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(g_loading_vertices), g_loading_vertices, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &screen->gl_ibo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, screen->gl_ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(g_loading_indices), g_loading_indices, GL_STATIC_DRAW);
-
-    glGenTextures(1, &screen->gl_color_texture);
-    glBindTexture(GL_TEXTURE_2D, screen->gl_color_texture);
-    glTexImage2D(GL_TEXTURE_2D,
-                 0,
-                 GL_RGBA,
-                 LOADING_GL_WIDTH,
-                 LOADING_GL_HEIGHT,
-                 0,
-                 GL_RGBA,
-                 GL_UNSIGNED_BYTE,
-                 NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glGenFramebuffers(1, &screen->gl_fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, screen->gl_fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER,
-                           GL_COLOR_ATTACHMENT0,
-                           GL_TEXTURE_2D,
-                           screen->gl_color_texture,
-                           0);
-
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "bench_loading_setup_gl: framebuffer incomplete (0x%04x)",
-                    status);
-        SDL_GL_MakeCurrent(screen->gl_window, NULL);
-        return SDL_FALSE;
-    }
-
-    screen->gl_uniform_time = glGetUniformLocation(screen->gl_program, "u_time");
-    screen->gl_uniform_progress = glGetUniformLocation(screen->gl_program, "u_progress");
-
-    screen->gl_width = LOADING_GL_WIDTH;
-    screen->gl_height = LOADING_GL_HEIGHT;
-
-    const size_t required = (size_t)screen->gl_width * (size_t)screen->gl_height * 4u;
-    screen->gl_pixels = (Uint8 *)SDL_malloc(required);
-    if (!screen->gl_pixels) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "bench_loading_setup_gl: pixel allocation failed (%zu bytes)",
-                    required);
-        SDL_GL_MakeCurrent(screen->gl_window, NULL);
-        return SDL_FALSE;
-    }
-    screen->gl_capacity = required;
-
-    screen->gl_stage_texture = SDL_CreateTexture(screen->renderer,
-                                                 SDL_PIXELFORMAT_ABGR8888,
-                                                 SDL_TEXTUREACCESS_STREAMING,
-                                                 screen->gl_width,
-                                                 screen->gl_height);
-    if (!screen->gl_stage_texture) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                    "bench_loading_setup_gl: SDL texture creation failed (%s)",
-                    SDL_GetError());
-        SDL_GL_MakeCurrent(screen->gl_window, NULL);
+        gl_effect_target_destroy(&screen->gl_target);
+        gl_effect_context_release();
         return SDL_FALSE;
     }
 
     screen->gl_ready = SDL_TRUE;
-    SDL_GL_MakeCurrent(screen->gl_window, NULL);
     return SDL_TRUE;
 }
 
@@ -379,10 +102,6 @@ static void bench_loading_update_gl(BenchLoadingScreen *screen)
         return;
     }
 
-    if (SDL_GL_MakeCurrent(screen->gl_window, screen->gl_context) != 0) {
-        return;
-    }
-
     const Uint64 now = SDL_GetPerformanceCounter();
     double delta = 0.0;
     if (screen->last_counter != 0) {
@@ -391,71 +110,8 @@ static void bench_loading_update_gl(BenchLoadingScreen *screen)
     screen->last_counter = now;
     screen->gl_time_accum += (float)delta;
 
-    glBindFramebuffer(GL_FRAMEBUFFER, screen->gl_fbo);
-    glViewport(0, 0, screen->gl_width, screen->gl_height);
-    glClearColor(0.04f, 0.05f, 0.09f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    glUseProgram(screen->gl_program);
-    if (screen->gl_uniform_time >= 0) {
-        glUniform1f(screen->gl_uniform_time, screen->gl_time_accum);
-    }
-    if (screen->gl_uniform_progress >= 0) {
-        glUniform1f(screen->gl_uniform_progress, screen->progress);
-    }
-
-    glBindBuffer(GL_ARRAY_BUFFER, screen->gl_vbo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, screen->gl_ibo);
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 4, (const void *)0);
-
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1,
-                          2,
-                          GL_FLOAT,
-                          GL_FALSE,
-                          sizeof(GLfloat) * 4,
-                          (const void *)(sizeof(GLfloat) * 2));
-
-    glDrawElements(GL_TRIANGLES,
-                   (GLsizei)(sizeof(g_loading_indices) / sizeof(g_loading_indices[0])),
-                   GL_UNSIGNED_SHORT,
-                   (const void *)0);
-
-    glDisableVertexAttribArray(1);
-    glDisableVertexAttribArray(0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glUseProgram(0);
-
-    if (screen->gl_pixels && screen->gl_stage_texture) {
-        glReadPixels(0,
-                     0,
-                     screen->gl_width,
-                     screen->gl_height,
-                     GL_RGBA,
-                     GL_UNSIGNED_BYTE,
-                     screen->gl_pixels);
-
-        void *pixels = NULL;
-        int pitch = 0;
-        if (SDL_LockTexture(screen->gl_stage_texture, NULL, &pixels, &pitch) == 0) {
-            Uint8 *dst = (Uint8 *)pixels;
-            const Uint8 *src = screen->gl_pixels;
-            const int src_stride = screen->gl_width * 4;
-            for (int y = 0; y < screen->gl_height; ++y) {
-                Uint8 *row = dst + y * pitch;
-                const Uint8 *src_row = src + (screen->gl_height - 1 - y) * src_stride;
-                SDL_memcpy(row, src_row, (size_t)src_stride);
-            }
-            SDL_UnlockTexture(screen->gl_stage_texture);
-        }
-    }
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    SDL_GL_MakeCurrent(screen->gl_window, NULL);
+    gl_effect_render(&screen->gl_target, screen->gl_program,
+                     gl_effect_set_time_uniform, &screen->gl_time_accum);
 }
 
 /* BENCH_LOADING_STYLE_SHIP: solid 3D dart geometry, wingspan on X/Z (rotates with the spin), slight Y taper so it isn't flat. */
@@ -663,10 +319,10 @@ static void bench_loading_present(BenchLoadingScreen *screen)
                            screen->background.a);
     SDL_RenderClear(screen->renderer);
 
-    if (screen->style == BENCH_LOADING_STYLE_GL && screen->gl_ready && screen->gl_stage_texture) {
+    if (screen->style == BENCH_LOADING_STYLE_GL && screen->gl_ready && screen->gl_target.screen_texture) {
         bench_loading_update_gl(screen);
         SDL_Rect dst = {0, 0, w, h};
-        SDL_RenderCopy(screen->renderer, screen->gl_stage_texture, NULL, &dst);
+        SDL_RenderCopy(screen->renderer, screen->gl_target.screen_texture, NULL, &dst);
     } else if (screen->style == BENCH_LOADING_STYLE_SHIP) {
         bench_loading_render_ship(screen, w, h);
     }
@@ -893,46 +549,4 @@ void bench_loading_abort(BenchLoadingScreen *screen)
 
     bench_loading_destroy_gl(screen);
     screen->active = SDL_FALSE;
-}
-
-SDL_bool bench_loading_obtain_gl(BenchLoadingScreen *screen,
-                                 SDL_Window **out_window,
-                                 SDL_GLContext *out_context)
-{
-    if (!screen) {
-        return SDL_FALSE;
-    }
-
-    if (screen->style == BENCH_LOADING_STYLE_GL && screen->gl_init_pending) {
-        if (!screen->gl_first_frame_presented) {
-            screen->gl_first_frame_presented = SDL_TRUE;
-        }
-        bench_loading_try_initialize_gl(screen);
-    }
-
-    if (screen->style != BENCH_LOADING_STYLE_GL || !screen->gl_ready || screen->gl_transferred) {
-        return SDL_FALSE;
-    }
-
-    bench_loading_release_gl_pipeline(screen);
-    bench_loading_clear_gl_stage(screen);
-
-    if (!screen->gl_window || !screen->gl_context) {
-        return SDL_FALSE;
-    }
-
-    if (out_window) {
-        *out_window = screen->gl_window;
-    }
-    if (out_context) {
-        *out_context = screen->gl_context;
-    }
-
-    screen->gl_window = NULL;
-    screen->gl_context = NULL;
-    screen->gl_transferred = SDL_TRUE;
-    screen->style = BENCH_LOADING_STYLE_RECT;
-    screen->gl_library_owned = SDL_FALSE;
-
-    return SDL_TRUE;
 }

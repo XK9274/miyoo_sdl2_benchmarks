@@ -381,3 +381,12 @@ void gl_effect_render(GLEffectTarget *target, Uint32 program, GLEffectSetUniform
 
     SDL_UnlockTexture(target->screen_texture);
 }
+
+void gl_effect_set_time_uniform(Uint32 program, void *userdata)
+{
+    const float time = *(const float *)userdata;
+    const int loc = glGetUniformLocation(program, "u_time");
+    if (loc >= 0) {
+        glUniform1f(loc, time);
+    }
+}

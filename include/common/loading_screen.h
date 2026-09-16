@@ -4,6 +4,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+#include "common/gl_effect.h"
+
 typedef enum {
     BENCH_LOADING_STYLE_RECT = 0,
     BENCH_LOADING_STYLE_GL = 1,
@@ -30,28 +32,13 @@ typedef struct BenchLoadingScreen {
     TTF_Font *font;
     SDL_bool owns_font;
 
-    SDL_Texture *gl_stage_texture;
-    Uint8 *gl_pixels;
-    size_t gl_capacity;
-    int gl_width;
-    int gl_height;
+    GLEffectTarget gl_target;
+    Uint32 gl_program;
     float gl_time_accum;
     SDL_bool gl_ready;
     SDL_bool gl_init_pending;
     SDL_bool gl_initializing;
     SDL_bool gl_first_frame_presented;
-    SDL_bool gl_library_loaded;
-    SDL_bool gl_library_owned;
-    SDL_bool gl_transferred;
-    SDL_Window *gl_window;
-    SDL_GLContext gl_context;
-    Uint32 gl_vbo;
-    Uint32 gl_ibo;
-    Uint32 gl_program;
-    Uint32 gl_fbo;
-    Uint32 gl_color_texture;
-    int gl_uniform_time;
-    int gl_uniform_progress;
 
     float ship_angle; /* BENCH_LOADING_STYLE_SHIP: current Y-axis spin, radians */
 
@@ -86,9 +73,5 @@ void bench_loading_mark_idle(BenchLoadingScreen *screen,
 void bench_loading_finish(BenchLoadingScreen *screen);
 
 void bench_loading_abort(BenchLoadingScreen *screen);
-
-SDL_bool bench_loading_obtain_gl(BenchLoadingScreen *screen,
-                                 SDL_Window **out_window,
-                                 SDL_GLContext *out_context);
 
 #endif /* COMMON_LOADING_SCREEN_H */
