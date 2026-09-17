@@ -176,8 +176,7 @@ int main(int argc, char *argv[])
             vsync_mode_name = "Strict";
         }
         char vsync_label[48];
-        snprintf(vsync_label, sizeof(vsync_label), "VSync %s (%s)", vsync_mode_name,
-                 driver_status.vsync_verified_active ? "verified" : "unverified");
+        snprintf(vsync_label, sizeof(vsync_label), "VSync %s", vsync_mode_name);
         const char *custom_values[] = {stress_label, mode_label, vsync_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
