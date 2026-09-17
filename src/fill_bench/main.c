@@ -22,6 +22,7 @@ static const OverlayRowSpec g_fill_rows[] = {
     {OVERLAY_ROW_VERTICES, {0, 255, 160, 255}, 0, NULL},
     {OVERLAY_ROW_TRIANGLES, {0, 255, 160, 255}, 0, NULL},
     {OVERLAY_ROW_CUSTOM, {255, 180, 120, 255}, 0, "%s"},
+    {OVERLAY_ROW_CUSTOM, {180, 220, 255, 255}, 0, "%s"},
 };
 
 static const OverlayKeybind g_fill_keybinds[] = {
@@ -31,6 +32,7 @@ static const OverlayKeybind g_fill_keybinds[] = {
     {"X", "Lock pattern"},
     {"Y", "Lock draw mode"},
     {"L1", "Toggle blend"},
+    {"L2", "Toggle vsync"},
 };
 
 int main(int argc, char *argv[])
@@ -165,7 +167,18 @@ int main(int argc, char *argv[])
                  fill_render_draw_name(state.current_draw_mode),
                  state.forced_draw_mode >= 0 ? "*" : "",
                  state.blend_enabled ? "Blend" : "Opaque");
-        const char *custom_values[] = {stress_label, mode_label};
+        BenchDriverStatus driver_status;
+        bench_driver_get_status(&driver_status);
+        const char *vsync_mode_name = "Off";
+        if (driver_status.vsync_status == BENCH_VSYNC_STATUS_ADAPTIVE) {
+            vsync_mode_name = "Adaptive";
+        } else if (driver_status.vsync_status == BENCH_VSYNC_STATUS_STRICT) {
+            vsync_mode_name = "Strict";
+        }
+        char vsync_label[48];
+        snprintf(vsync_label, sizeof(vsync_label), "VSync %s (%s)", vsync_mode_name,
+                 driver_status.vsync_verified_active ? "verified" : "unverified");
+        const char *custom_values[] = {stress_label, mode_label, vsync_label};
         bench_overlay_update(overlay, &metrics, custom_values, (int)SDL_arraysize(custom_values));
 
         if (bench_profile_update(&profile, &metrics, renderer)) {

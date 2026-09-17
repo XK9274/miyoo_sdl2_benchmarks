@@ -225,7 +225,7 @@ void bench_driver_toggle_input_mode(void)
 void bench_driver_toggle_vsync(void)
 {
     const char *current = SDL_GetHint(BENCH_HINT_MMIYOO_VSYNC_MODE);
-    const SDL_bool is_off = (current && strcmp(current, BENCH_VSYNC_MODE_OFF) == 0);
+    const SDL_bool is_off = (!current || strcmp(current, BENCH_VSYNC_MODE_OFF) == 0);
 
     SDL_SetHint(BENCH_HINT_MMIYOO_VSYNC_MODE, is_off ? BENCH_VSYNC_MODE_ADAPTIVE : BENCH_VSYNC_MODE_OFF);
 
