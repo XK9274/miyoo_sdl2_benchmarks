@@ -218,8 +218,12 @@ void bench_driver_toggle_input_mode(void)
     const char *current = SDL_GetHint(BENCH_HINT_MMIYOO_INPUT_MODE);
     const SDL_bool is_keyboard = (current && strcmp(current, BENCH_INPUT_MODE_KEYBOARD) == 0);
 
-    SDL_SetHint(BENCH_HINT_MMIYOO_INPUT_MODE,
-                is_keyboard ? BENCH_INPUT_MODE_JOYSTICK : BENCH_INPUT_MODE_KEYBOARD);
+    /* OVERRIDE priority: title launches every suite with this hint already
+     * set via setenv, and SDL_SetHint (NORMAL priority) silently refuses to
+     * change a hint that also has a same-named environment variable. */
+    SDL_SetHintWithPriority(BENCH_HINT_MMIYOO_INPUT_MODE,
+                             is_keyboard ? BENCH_INPUT_MODE_JOYSTICK : BENCH_INPUT_MODE_KEYBOARD,
+                             SDL_HINT_OVERRIDE);
 }
 
 void bench_driver_toggle_vsync(void)
@@ -227,7 +231,9 @@ void bench_driver_toggle_vsync(void)
     const char *current = SDL_GetHint(BENCH_HINT_MMIYOO_VSYNC_MODE);
     const SDL_bool is_off = (!current || strcmp(current, BENCH_VSYNC_MODE_OFF) == 0);
 
-    SDL_SetHint(BENCH_HINT_MMIYOO_VSYNC_MODE, is_off ? BENCH_VSYNC_MODE_ADAPTIVE : BENCH_VSYNC_MODE_OFF);
+    SDL_SetHintWithPriority(BENCH_HINT_MMIYOO_VSYNC_MODE,
+                             is_off ? BENCH_VSYNC_MODE_ADAPTIVE : BENCH_VSYNC_MODE_OFF,
+                             SDL_HINT_OVERRIDE);
 
     SDL_LockMutex(g_status_mutex);
     g_status.vsync_status = is_off ? BENCH_VSYNC_STATUS_ADAPTIVE : BENCH_VSYNC_STATUS_OFF;
