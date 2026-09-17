@@ -22,9 +22,6 @@ SDL_bool geometry_handle_input(GeometryBenchState *state, BenchMetrics *metrics,
                 case BTN_START:
                     bench_driver_toggle_input_mode();
                     break;
-                case BTN_VSYNC_TOGGLE:
-                    bench_driver_toggle_vsync();
-                    break;
                 case BTN_B:
                     state->stress_level++;
                     if (state->stress_level > 10) {

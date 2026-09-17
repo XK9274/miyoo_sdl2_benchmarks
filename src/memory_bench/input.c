@@ -23,9 +23,6 @@ SDL_bool memory_handle_input(MemoryBenchState *state, BenchMetrics *metrics, Ben
                 case BTN_START:
                     bench_driver_toggle_input_mode();
                     break;
-                case BTN_VSYNC_TOGGLE:
-                    bench_driver_toggle_vsync();
-                    break;
                 case BTN_B:
                     state->stress_level++;
                     if (state->stress_level > 10) {

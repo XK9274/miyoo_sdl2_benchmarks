@@ -22,9 +22,6 @@ SDL_bool gb_handle_input(GfxBenchState *state, BenchMetrics *metrics, BenchOverl
                 case BTN_START:
                     bench_driver_toggle_input_mode();
                     break;
-                case BTN_VSYNC_TOGGLE:
-                    bench_driver_toggle_vsync();
-                    break;
                 case BTN_L2:
                     state->active_scene = (GfxBenchSceneKind)((state->active_scene + 1) % GB_SCENE_MAX);
                     state->auto_cycle = SDL_FALSE;

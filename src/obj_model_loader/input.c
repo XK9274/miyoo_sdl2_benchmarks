@@ -58,9 +58,6 @@ SDL_bool obj_handle_input(SDL_Renderer *renderer, ObjModelLoaderState *state, Be
             case BTN_START:
                 bench_driver_toggle_input_mode();
                 break;
-            case BTN_VSYNC_TOGGLE:
-                bench_driver_toggle_vsync();
-                break;
             case BTN_L2:
                 obj_state_cycle_model(renderer, state, -1);
                 break;

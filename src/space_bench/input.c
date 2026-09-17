@@ -63,11 +63,6 @@ SDL_bool space_handle_input(SpaceBenchState *state, BenchMetrics *metrics, Bench
                         bench_driver_toggle_input_mode();
                     }
                     break;
-                case BTN_VSYNC_TOGGLE:
-                    if (pressed) {
-                        bench_driver_toggle_vsync();
-                    }
-                    break;
                 case BTN_METRICS_RESET:
                     if (pressed && metrics) {
                         bench_reset_metrics(metrics);

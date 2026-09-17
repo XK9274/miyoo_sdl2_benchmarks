@@ -183,50 +183,7 @@ SDL_bool bench_driver_translate_button_event(const SDL_Event *event,
     }
 
     if (event->type == SDL_JOYBUTTONDOWN || event->type == SDL_JOYBUTTONUP) {
-        /* MENU held as a modifier: X = vsync off/adaptive toggle. MENU's own
-           tap action still fires on release, but only if no combo was used
-           during that hold. */
-        static SDL_bool menu_held = SDL_FALSE;
-        static SDL_bool menu_combo_used = SDL_FALSE;
         const Uint8 button = event->jbutton.button;
-        const SDL_bool pressed = (event->type == SDL_JOYBUTTONDOWN);
-
-        if (button == MMIYOO_JOY_BUTTON_MENU) {
-            if (pressed) {
-                menu_held = SDL_TRUE;
-                menu_combo_used = SDL_FALSE;
-                return SDL_FALSE;
-            }
-
-            menu_held = SDL_FALSE;
-            if (menu_combo_used) {
-                menu_combo_used = SDL_FALSE;
-                return SDL_FALSE;
-            }
-
-            SDL_LockMutex(g_status_mutex);
-            g_status.input_source = BENCH_INPUT_SOURCE_JOYSTICK;
-            g_status.joystick_event_count++;
-            SDL_UnlockMutex(g_status_mutex);
-            *out_sym = BTN_MENU;
-            *out_pressed = SDL_TRUE;
-            return SDL_TRUE;
-        }
-
-        if (menu_held && button == MMIYOO_JOY_BUTTON_X) {
-            if (pressed) {
-                menu_combo_used = SDL_TRUE;
-                SDL_LockMutex(g_status_mutex);
-                g_status.input_source = BENCH_INPUT_SOURCE_JOYSTICK;
-                g_status.joystick_event_count++;
-                SDL_UnlockMutex(g_status_mutex);
-                *out_sym = BTN_VSYNC_TOGGLE;
-                *out_pressed = SDL_TRUE;
-                return SDL_TRUE;
-            }
-            return SDL_FALSE;
-        }
-
         if (button < MMIYOO_JOY_BUTTON_SLOTS) {
             const SDL_Keycode mapped = g_joy_button_map[button];
             if (mapped != 0) {
@@ -235,7 +192,7 @@ SDL_bool bench_driver_translate_button_event(const SDL_Event *event,
                 g_status.joystick_event_count++;
                 SDL_UnlockMutex(g_status_mutex);
                 *out_sym = mapped;
-                *out_pressed = pressed;
+                *out_pressed = (event->type == SDL_JOYBUTTONDOWN);
                 return SDL_TRUE;
             }
         }

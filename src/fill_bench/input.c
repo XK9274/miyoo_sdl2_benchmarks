@@ -23,7 +23,7 @@ SDL_bool fill_handle_input(FillBenchState *state, BenchMetrics *metrics, BenchOv
                 case BTN_START:
                     bench_driver_toggle_input_mode();
                     break;
-                case BTN_VSYNC_TOGGLE:
+                case BTN_FILL_VSYNC_TOGGLE:
                     bench_driver_toggle_vsync();
                     break;
                 case BTN_B:
